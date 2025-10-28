@@ -1,98 +1,131 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
+import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
+import { Ionicons } from '@expo/vector-icons';
+
+interface DecodedToken {
+  name: string;
+}
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [userName, setUserName] = useState('');
+  const router = useRouter();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const token = await SecureStore.getItemAsync('accessToken');
+      if (token) {
+        try {
+          const decodedToken = jwtDecode<DecodedToken>(token);
+          setUserName(decodedToken.name);
+        } catch (error) {
+          console.error('Failed to decode token', error);
+          // Handle invalid token, maybe logout
+        }
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const handleLogout = async () => {
+    const refreshToken = await SecureStore.getItemAsync('refreshToken');
+    if (!refreshToken) {
+      // If no refresh token, just clear local data and redirect
+      await SecureStore.deleteItemAsync('accessToken');
+      await SecureStore.deleteItemAsync('refreshToken');
+      router.replace('/splash');
+      return;
+    }
+
+    try {
+      await axios.post('http://localhost:8080/api/v1/auth/logout', {
+        refreshToken,
+      });
+    } catch (error) {
+      // Even if logout fails on the server, clear local data
+      console.error('Logout failed', error);
+    } finally {
+      await SecureStore.deleteItemAsync('accessToken');
+      await SecureStore.deleteItemAsync('refreshToken');
+      router.replace('/splash');
+    }
+  };
+
+  const navigateTo = (path: string) => {
+    router.push(path);
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.greeting}>Olá, {userName} 👋</Text>
+        <TouchableOpacity onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={30} color="#333" />
+        </TouchableOpacity>
+      </View>
+
+        <View style={styles.cardContainer}>
+            <TouchableOpacity style={[styles.card, {backgroundColor: '#E8F0F2'}]} onPress={() => navigateTo('/schedule')}>
+                <Ionicons name="calendar-outline" size={32} color="#3498db" />
+                <Text style={styles.cardText}>Agendar horário</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.card, {backgroundColor: '#E8F0F2'}]} onPress={() => navigateTo('/appointments')}>
+                <Ionicons name="list-outline" size={32} color="#3498db" />
+                <Text style={styles.cardText}>Meus agendamentos</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.card, {backgroundColor: '#E8F0F2'}]} onPress={() => navigateTo('/preferences')}>
+                <Ionicons name="options-outline" size={32} color="#3498db" />
+                <Text style={styles.cardText}>Preferências</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.card, {backgroundColor: '#E8F0F2'}]} onPress={() => navigateTo('/plan')}>
+                <Ionicons name="card-outline" size={32} color="#3498db" />
+                <Text style={styles.cardText}>Meu plano</Text>
+            </TouchableOpacity>
+        </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 20,
+  },
+  header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    marginTop: 50,
+    marginBottom: 30,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  greeting: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  cardContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  card: {
+    width: '48%',
+    height: 150,
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    justifyContent: 'space-between',
+  },
+  cardText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
   },
 });
