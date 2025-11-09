@@ -1,22 +1,28 @@
 
-import React, { useState } from 'react';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
+import type { AxiosError } from 'axios';
+import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
   Alert,
   Platform,
-  Image
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
-import MaskInput from 'react-native-mask-input';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
 import * as Animatable from 'react-native-animatable';
+import MaskInput from 'react-native-mask-input';
+import type { RegisterRequest } from '../services/auth';
+import { registerUser } from '../services/auth';
+
+const MEMBERSHIP_OPTIONS = [
+  { label: 'Club 15', value: 'CLUB_15' },
+  { label: 'Quinze Select', value: 'QUINZE_SELECT' },
+] as const;
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -25,48 +31,63 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [membershipTier, setMembershipTier] = useState('CLUB_15');
+  const [membershipTier, setMembershipTier] = useState<'CLUB_15' | 'QUINZE_SELECT'>('CLUB_15');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const isFormValid =
+    name.trim().length > 0 &&
+    email.trim().length > 0 &&
+    password.trim().length >= 8;
 
   const handleRegister = async () => {
+    if (!isFormValid || isLoading) {
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      const formattedDate = birthDate.toISOString().split('T')[0]; // yyyy-MM-dd
+      const formattedDate = birthDate.toISOString().split('T')[0];
+      const phoneDigits = phone.replace(/\D/g, '');
 
-      const response = await axios.post('http://localhost:8080/api/v1/auth/register', {
-        name,
-        email,
+      const payload: RegisterRequest = {
+        name: name.trim(),
+        email: email.trim(),
         password,
-        phone,
-        birthDate: formattedDate,
         membershipTier,
-        planId: 1, // Hardcoded for now
-      });
+        birthDate: formattedDate,
+        phone: phoneDigits ? phoneDigits : undefined,
+      };
 
-      if (response.status === 201) {
-        const { accessToken, refreshToken } = response.data;
-        await SecureStore.setItemAsync('accessToken', accessToken);
-        await SecureStore.setItemAsync('refreshToken', refreshToken);
-        router.replace('/(tabs)');
-      } else {
-        Alert.alert('Erro no Cadastro', 'Ocorreu um erro inesperado.');
-      }
-    } catch (error: any) {
-        if (error.response && error.response.status === 400) {
-            if (error.response.data && error.response.data.message === 'Email already exists') {
-                Alert.alert('Erro no Cadastro', 'Este e-mail já está em uso.');
-            } else {
-                Alert.alert('Erro no Cadastro', 'Dados inválidos, por favor verifique os campos.');
-            }
-        } else {
-            Alert.alert('Erro no Cadastro', 'Não foi possível criar a conta, tente novamente.');
-        }
+      const { accessToken, refreshToken } = await registerUser(payload);
+
+      await SecureStore.setItemAsync('accessToken', accessToken);
+      await SecureStore.setItemAsync('refreshToken', refreshToken);
+
+  router.replace('/(tabs)');
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      const serverMessage = err.response?.data?.message;
+      Alert.alert(
+        'Erro no Cadastro',
+        serverMessage ?? 'Não foi possível criar a conta, tente novamente.'
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
+  const onDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (event.type === 'dismissed') {
+      if (Platform.OS !== 'ios') {
+        setShowDatePicker(false);
+      }
+      return;
+    }
+
     const currentDate = selectedDate || birthDate;
-    setShowDatePicker(Platform.OS === 'ios');
     setBirthDate(currentDate);
+    setShowDatePicker(Platform.OS === 'ios');
   };
 
   return (
@@ -88,8 +109,13 @@ export default function RegisterScreen() {
         />
 
         <Text style={styles.label}>Data de nascimento</Text>
-        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.input}>
-            <Text>{birthDate.toLocaleDateString('pt-BR')}</Text>
+        <TouchableOpacity
+          onPress={() => setShowDatePicker(true)}
+          style={styles.input}
+          accessibilityRole="button"
+          accessibilityLabel="Selecionar data de nascimento"
+        >
+          <Text>{birthDate.toLocaleDateString('pt-BR')}</Text>
         </TouchableOpacity>
         {showDatePicker && (
           <DateTimePicker
@@ -121,30 +147,39 @@ export default function RegisterScreen() {
 
         <Text style={styles.label}>Telefone</Text>
         <MaskInput
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            mask={['(', /\d/, /\d/, ')', ' ', /\d/, /\d/, /\d/, /\d/, /\d/, '-', /\d/, /\d/, /\d/, /\d/]}
-            placeholder="(99) 99999-9999"
+          style={styles.input}
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          mask={['(', /\d/, /\d/, ')', ' ', /\d/, /\d/, /\d/, /\d/, /\d/, '-', /\d/, /\d/, /\d/, /\d/]}
+          placeholder="(99) 99999-9999"
         />
 
         <Text style={styles.label}>Plano</Text>
         <View style={styles.pickerContainer}>
-            <Picker
-                selectedValue={membershipTier}
-                onValueChange={(itemValue) => setMembershipTier(itemValue)}
-                style={styles.picker}
-            >
-                <Picker.Item label="Club 15" value="CLUB_15" />
-                <Picker.Item label="Quinze Select" value="QUINZE_SELECT" />
-            </Picker>
+          <Picker
+            selectedValue={membershipTier}
+            onValueChange={(itemValue) => setMembershipTier(itemValue)}
+            style={styles.picker}
+          >
+            {MEMBERSHIP_OPTIONS.map((option) => (
+              <Picker.Item key={option.value} label={option.label} value={option.value} />
+            ))}
+          </Picker>
         </View>
       </Animatable.View>
 
       <Animatable.View animation="fadeInUp" delay={400} style={styles.footer}>
-        <Text style={styles.terms}>Ao "continuar", você concorda com os <Text style={styles.link}>Termos de Uso</Text> e a <Text style={styles.link}>Política de Privacidade do Clube Quinze.</Text></Text>
-        <TouchableOpacity style={styles.button} onPress={handleRegister}>
-            <Text style={styles.buttonText}>Continuar</Text>
+        <Text style={styles.terms}>
+          Ao "continuar", você concorda com os <Text style={styles.link}>Termos de Uso</Text> e a{' '}
+          <Text style={styles.link}>Política de Privacidade do Clube Quinze.</Text>
+        </Text>
+        <TouchableOpacity
+          style={[styles.button, (!isFormValid || isLoading) && styles.buttonDisabled]}
+          onPress={handleRegister}
+          disabled={!isFormValid || isLoading}
+        >
+          <Text style={styles.buttonText}>{isLoading ? 'Criando conta...' : 'Continuar'}</Text>
         </TouchableOpacity>
       </Animatable.View>
     </View>
@@ -220,10 +255,13 @@ const styles = StyleSheet.create({
   button: {
     width: '100%',
     height: 50,
-    backgroundColor: '#ddd',
+    backgroundColor: '#4B0082',
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 10,
+  },
+  buttonDisabled: {
+    backgroundColor: '#b5b5b5',
   },
   buttonText: {
     color: '#fff',

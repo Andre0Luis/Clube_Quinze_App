@@ -1,827 +1,457 @@
-// @ts-nocheck
-import { Image } from "expo-image";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Building02 from "../assets/building-02.svg";
-import Calendardate from "../assets/calendar-date.svg";
-import Ellipse11 from "../assets/Ellipse-11.svg";
-import Group543 from "../assets/Group-543.svg";
-import Home02 from "../assets/home-02.svg";
-import Home1 from "../assets/home1.svg";
-import Icfluentchevrondown24regular1 from "../assets/ic-fluent-chevron-down-24-regular-1.svg";
-import Illustration from "../assets/Illustration.svg";
-import NetworkWiFiFull from "../assets/Network-WiFi-Full.svg";
-import Time from "../assets/Time.svg";
-import User from "../assets/user.svg";
-import Users2 from "../assets/users2.svg";
-import Vector70 from "../assets/Vector-70.svg";
-import Vector from "../assets/Vector.svg";
-import Vector1 from "../assets/Vector1.svg";
-import Vector2 from "../assets/Vector2.svg";
+import { Ionicons } from "@expo/vector-icons";
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    Height,
-    LineHeight,
-    Padding,
-    StyleVariable,
-    Width,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+import {
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  LineHeight,
+  Padding,
+  StyleVariable,
 } from "../GlobalStyles";
+
+const myCommunities = [
+  {
+    id: "1",
+    name: "Clube Quinze Premium",
+    description: "Dicas exclusivas e eventos para membros Select.",
+    members: 428,
+    unread: 6,
+  },
+  {
+    id: "2",
+    name: "Bem-estar e Lifestyle",
+    description: "Compartilhe experiências que elevam sua rotina.",
+    members: 289,
+    unread: 2,
+  },
+];
+
+const myPosts = [
+  {
+    id: "1",
+    author: "Equipe Quinze",
+    timestamp: "Hoje · 06:00",
+    content:
+      "Você sabia que segundo o calendário maia, hoje é conhecido como 'um dia fora do tempo'? Aproveite para desacelerar e cuidar de você.",
+    likes: 16,
+    comments: 3,
+  },
+  {
+    id: "2",
+    author: "André Luis",
+    timestamp: "Ontem · 18:40",
+    content:
+      "Acabei de experimentar o tratamento facial Quinze Select e recomendo demais! Quem topa marcar juntos semana que vem?",
+    likes: 24,
+    comments: 7,
+  },
+];
 
 const ComunidadeMeusPostsScreen = () => {
   return (
-    <SafeAreaView style={styles.comunidadeMeusPosts10}>
-      <View style={styles.view}>
-        <View style={[styles.topHeader20, styles.topHeader20SpaceBlock]}>
-          <View style={[styles.statusBar, styles.statusBarFlexBox]}>
-            <Time style={styles.timeIcon} width={27} height={12} />
-            <View style={[styles.status, styles.menu1FlexBox]}>
-              <View style={styles.sim1SingleSim}>
-                <View style={[styles.bar4, styles.barPosition]} />
-                <View style={[styles.bar3, styles.barPosition]} />
-                <View style={[styles.bar2, styles.barPosition]} />
-                <View style={[styles.bar1, styles.barPosition]} />
-              </View>
-              <NetworkWiFiFull
-                style={styles.networkWifiFull}
-                width={Width.width_20}
-                height={Height.height_12}
-              />
-              <Image
-                style={styles.batteryFullUncharged}
-                contentFit="cover"
-                source={require("../assets/Battery-Full-Uncharged.png")}
-              />
-            </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <View style={styles.headerIconWrapper}>
+            <Ionicons name="people-outline" size={24} color={Color.piccolo} />
           </View>
-          <View style={styles.titleWrapper}>
-            <View style={[styles.title, styles.titleSpaceBlock]}>
-              <Text style={[styles.comunidadeQuinze, styles.tabTextFlexBox]}>
-                Comunidade Quinze
-              </Text>
-            </View>
-          </View>
-          <Illustration
-            style={styles.illustrationIcon}
-            width={Width.width_80}
-            height={96}
-          />
-        </View>
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.contentContainerContent}
-        >
-          <View style={styles.mdsPublicTwSegmentedContro}>
-            <View style={[styles.mdsPublicTwTabs, styles.mdsSpaceBlock]}>
-              <Text style={[styles.tabText, styles.textTypo]}>Meus posts</Text>
-            </View>
-            <View
-              style={[
-                styles.comunidadeMeusPosts10MdsPublicTwTabs,
-                styles.mdsSpaceBlock,
-              ]}
-            >
-              <Text style={[styles.tabText, styles.textTypo]}>
-                Minha comunidade
-              </Text>
-            </View>
-          </View>
-          <View style={[styles.frameParent, styles.topHeader20SpaceBlock]}>
-            <View style={[styles.frameWrapper, styles.frameWrapperBorder]}>
-              <View style={styles.frameGroup}>
-                <View style={styles.image205Parent}>
-                  <Image
-                    style={styles.image205Icon}
-                    contentFit="cover"
-                    source={require("../assets/image-206.png")}
-                  />
-                  <Text style={[styles.escrevaSuaPostagem, styles.suaTypo]}>
-                    Escreva sua postagem aqui
-                  </Text>
-                </View>
-                <Vector70
-                  style={[styles.frameChild, styles.userIconLayout]}
-                  height={Height.height_1}
-                />
-                <View
-                  style={[styles.frameContainer, styles.frameContainerFlexBox]}
-                >
-                  <View style={styles.frameView}>
-                    <View style={[styles.vectorParent, styles.tipoFlexBox1]}>
-                      <Vector
-                        style={[styles.vectorIcon, styles.vectorIconLayout]}
-                        width={14}
-                        height={14}
-                      />
-                      <Text
-                        style={[styles.adicioneSuaPostagem, styles.hoje0600Clr]}
-                      >
-                        Adicione sua postagem em
-                      </Text>
-                      <Icfluentchevrondown24regular1
-                        style={styles.icFluentChevronDown24ReguIcon}
-                        width={16}
-                        height={16}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.mdsPublicTwButton}>
-                    <Text style={[styles.buttonText, styles.textTypo]}>
-                      Publicar
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-            <View style={[styles.frameWrapper, styles.frameWrapperBorder]}>
-              <View style={styles.comunidadeMeusPosts10FrameParent}>
-                <View style={styles.frameParent2}>
-                  <View style={styles.image205Parent}>
-                    <Image
-                      style={styles.image205Icon}
-                      contentFit="cover"
-                      source={require("../assets/image-206.png")}
-                    />
-                    <View>
-                      <Text style={[styles.tabText, styles.textTypo]}>
-                        Quinze
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.hoje0600Wrapper}>
-                    <Text style={[styles.hoje0600, styles.menuItemTypo]}>
-                      Hoje - 06:00
-                    </Text>
-                  </View>
-                </View>
-                <Text style={[styles.vocSabiaQue, styles.menuItemTypo]}>
-                  Você sabia que segundo o calendário MAIA, hoje é ”um dia fora
-                  do tempo” ?!
-                </Text>
-                <Vector70
-                  style={[styles.frameChild, styles.userIconLayout]}
-                  height={Height.height_1}
-                />
-                <View style={[styles.frameParent3, styles.statusBarFlexBox]}>
-                  <View style={styles.frameParent4}>
-                    <View style={[styles.vectorGroup, styles.groupFlexBox]}>
-                      <Vector2
-                        style={styles.comunidadeMeusPosts10VectorIcon}
-                        width={16}
-                        height={14}
-                      />
-                      <Text style={[styles.escrevaSuaPostagem, styles.suaTypo]}>
-                        16
-                      </Text>
-                    </View>
-                    <View style={[styles.vectorGroup, styles.groupFlexBox]}>
-                      <Vector1
-                        style={[styles.vectorIcon2, styles.vectorIconLayout]}
-                        width={14}
-                        height={14}
-                      />
-                      <Text style={[styles.escrevaSuaPostagem, styles.suaTypo]}>
-                        03
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.groupFlexBox}>
-                    <Group543
-                      style={styles.frameInner}
-                      width={12}
-                      height={12}
-                    />
-                    <Text style={[styles.escrevaSuaPostagem, styles.suaTypo]}>
-                      Compartilhar
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-        <View style={[styles.menuDeNavegao10, styles.frameWrapperBorder]}>
-          <View style={[styles.item, styles.itemLayout]}>
-            <View style={[styles.tipo, styles.tipoFlexBox]}>
-              <Home02
-                style={[styles.home02Icon, styles.iconLayout]}
-                width={Width.width_24}
-                height={Height.height_24}
-              />
-              <Text style={[styles.nome, styles.nomeTypo]}>Home</Text>
-              <Ellipse11
-                style={[styles.tipoChild, styles.tipoPosition]}
-                width={Width.width_8}
-                height={Height.height_8}
-              />
-            </View>
-            <View style={[styles.marcador, styles.marcadorPosition]} />
-          </View>
-          <View style={styles.itemLayout1}>
-            <View
-              style={[styles.comunidadeMeusPosts10Tipo, styles.tipoFlexBox1]}
-            >
-              <View style={[styles.menu1, styles.menu1FlexBox]}>
-                <View style={styles.iconLayout}>
-                  <Home1 style={[styles.homeIcon, styles.iconPosition]} />
-                </View>
-                <Text style={[styles.menuItemText, styles.menuItemTypo]}>
-                  Home
-                </Text>
-              </View>
-              <Ellipse11
-                style={[styles.tipoItem, styles.tipoPosition]}
-                width={Width.width_8}
-                height={Height.height_8}
-              />
-            </View>
-          </View>
-          <View style={styles.itemLayout1}>
-            <View
-              style={[styles.comunidadeMeusPosts10Tipo, styles.tipoFlexBox1]}
-            >
-              <View style={[styles.menu1, styles.menu1FlexBox]}>
-                <View style={styles.iconLayout}>
-                  <Calendardate
-                    style={[styles.calendarDateIcon, styles.iconPosition]}
-                  />
-                </View>
-                <Text style={[styles.menuItemText, styles.menuItemTypo]}>
-                  Reserva
-                </Text>
-              </View>
-              <Ellipse11
-                style={[styles.tipoItem, styles.tipoPosition]}
-                width={Width.width_8}
-                height={Height.height_8}
-              />
-            </View>
-          </View>
-          <View style={styles.itemLayout}>
-            <View style={[styles.tipo3, styles.tipoFlexBox1]}>
-              <View style={[styles.menu1, styles.menu1FlexBox]}>
-                <View style={styles.iconLayout}>
-                  <Users2 style={[styles.usersIcon, styles.iconPosition]} />
-                </View>
-                <Text style={[styles.menuItemText2, styles.menuItemTypo]}>
-                  Comunidade
-                </Text>
-              </View>
-              <Ellipse11
-                style={[styles.tipoItem, styles.tipoPosition]}
-                width={Width.width_8}
-                height={Height.height_8}
-              />
-            </View>
-            <View
-              style={[
-                styles.comunidadeMeusPosts10Marcador,
-                styles.marcadorPosition,
-              ]}
-            />
-          </View>
-          <View style={styles.itemLayout1}>
-            <View
-              style={[styles.comunidadeMeusPosts10Tipo, styles.tipoFlexBox1]}
-            >
-              <View style={[styles.menu1, styles.menu1FlexBox]}>
-                <View style={styles.iconLayout}>
-                  <User style={[styles.userIcon, styles.iconPosition1]} />
-                </View>
-                <Text style={[styles.menuItemText, styles.menuItemTypo]}>
-                  Perfil
-                </Text>
-              </View>
-              <Ellipse11
-                style={[styles.tipoItem, styles.tipoPosition]}
-                width={Width.width_8}
-                height={Height.height_8}
-              />
-            </View>
-          </View>
-          <View style={[styles.item5, styles.itemLayout1]}>
-            <View style={[styles.tipo5, styles.tipoFlexBox]}>
-              <Building02
-                style={[styles.building02Icon, styles.iconLayout]}
-                width={Width.width_24}
-                height={Height.height_24}
-              />
-              <Text style={[styles.comunidadeMeusPosts10Nome, styles.nomeTypo]}>
-                Serviços
-              </Text>
-              <Ellipse11
-                style={[styles.tipoChild, styles.tipoPosition]}
-                width={Width.width_8}
-                height={Height.height_8}
-              />
-            </View>
+          <View style={styles.headerTexts}>
+            <Text style={styles.title}>Comunidade Quinze</Text>
+            <Text style={styles.subtitle}>
+              Aprenda, compartilhe e interaja com outros membros do clube.
+            </Text>
           </View>
         </View>
-      </View>
+
+        <View style={styles.segmentedControl}>
+          <TouchableOpacity style={[styles.segmentButton, styles.segmentButtonActive]}>
+            <Text style={[styles.segmentLabel, styles.segmentLabelActive]}>Meus posts</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.segmentButton}>
+            <Text style={styles.segmentLabel}>Minha comunidade</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.composeCard}>
+          <View style={styles.composeHeader}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarLabel}>AL</Text>
+            </View>
+            <View style={styles.composeTexts}>
+              <Text style={styles.composeTitle}>Escreva algo para a comunidade</Text>
+              <Text style={styles.composeSubtitle}>
+                Compartilhe novidades, conquistas ou dúvidas.
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.publishButton} activeOpacity={0.85}>
+            <Ionicons name="send" size={16} color={Color.mainGoten} />
+            <Text style={styles.publishButtonText}>Publicar</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Últimas interações</Text>
+          <Text style={styles.sectionSubtitle}>Acompanhe o que rolou recentemente</Text>
+        </View>
+
+        {myPosts.map((post) => (
+          <View key={post.id} style={styles.postCard}>
+            <View style={styles.postHeader}>
+              <View style={styles.avatarSmall}>
+                <Ionicons name="person" size={16} color={Color.mainGoten} />
+              </View>
+              <View style={styles.postHeaderTexts}>
+                <Text style={styles.postAuthor}>{post.author}</Text>
+                <Text style={styles.postTimestamp}>{post.timestamp}</Text>
+              </View>
+              <TouchableOpacity style={styles.moreButton}>
+                <Ionicons name="ellipsis-horizontal" size={18} color={Color.mainTrunks} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.postContent}>{post.content}</Text>
+            <View style={styles.postActions}>
+              <View style={styles.postActionItem}>
+                <Ionicons name="heart-outline" size={18} color={Color.piccolo} />
+                <Text style={styles.postActionLabel}>{post.likes}</Text>
+              </View>
+              <View style={styles.postActionItem}>
+                <Ionicons name="chatbubble-ellipses-outline" size={18} color={Color.piccolo} />
+                <Text style={styles.postActionLabel}>{post.comments}</Text>
+              </View>
+              <TouchableOpacity style={styles.postShare}>
+                <Ionicons name="share-outline" size={18} color={Color.piccolo} />
+                <Text style={styles.postShareLabel}>Compartilhar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Minhas comunidades</Text>
+          <Text style={styles.sectionSubtitle}>Descubra novidades e participe mais</Text>
+        </View>
+
+        {myCommunities.map((community) => (
+          <View key={community.id} style={styles.communityCard}>
+            <View style={styles.communityHeader}>
+              <View style={styles.avatarSmall}>
+                <Ionicons name="people" size={16} color={Color.mainGoten} />
+              </View>
+              <View style={styles.communityTexts}>
+                <Text style={styles.communityName}>{community.name}</Text>
+                <Text style={styles.communityDescription}>{community.description}</Text>
+              </View>
+            </View>
+            <View style={styles.communityMeta}>
+              <View style={styles.communityMetaItem}>
+                <Ionicons name="person-outline" size={14} color={Color.piccolo} />
+                <Text style={styles.communityMetaLabel}>{community.members} membros</Text>
+              </View>
+              <View style={styles.communityMetaItem}>
+                <Ionicons name="notifications-outline" size={14} color={Color.supportiveChichi} />
+                <Text style={styles.communityAlertLabel}>{community.unread} novos</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.communityButton} activeOpacity={0.85}>
+              <Text style={styles.communityButtonText}>Entrar na conversa</Text>
+              <Ionicons name="arrow-forward" size={16} color={Color.mainGoten} />
+            </TouchableOpacity>
+          </View>
+        ))}
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  contentContainerContent: {
-    flexDirection: "column",
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    alignItems: "center",
-    justifyContent: "flex-start",
-    gap: 24,
-  },
-  comunidadeMeusPosts10: {
-    backgroundColor: Color.mainGohan,
+  safeArea: {
     flex: 1,
+    backgroundColor: Color.mainGohan,
   },
-  topHeader20SpaceBlock: {
+  content: {
+    paddingTop: Padding.padding_32,
+    paddingBottom: Padding.padding_32,
     paddingHorizontal: Padding.padding_24,
-    width: Width.width_375,
+    gap: Gap.gap_24,
   },
-  statusBarFlexBox: {
-    gap: Gap.gap_20,
-    justifyContent: "space-between",
-    alignItems: "center",
+  header: {
     flexDirection: "row",
-  },
-  menu1FlexBox: {
-    gap: Gap.gap_3,
     alignItems: "center",
+    gap: Gap.gap_16,
   },
-  barPosition: {
-    width: Width.width_3_2,
-    borderRadius: Border.br_1,
-    left: "50%",
-    top: "50%",
-    backgroundColor: Color.hit,
-    position: "absolute",
+  headerIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: Border.br_24,
+    backgroundColor: "rgba(0, 5, 61, 0.08)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  titleSpaceBlock: {
-    paddingHorizontal: Padding.padding_0,
-    flexDirection: "row",
+  headerTexts: {
+    flex: 1,
+    gap: Gap.gap_4,
   },
-  tabTextFlexBox: {
-    textAlign: "left",
+  title: {
+    fontSize: FontSize.fs_16,
+    lineHeight: LineHeight.lh_24,
+    fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
   },
-  mdsSpaceBlock: {
+  subtitle: {
+    fontSize: FontSize.fs_12,
+    lineHeight: LineHeight.lh_16,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+  },
+  segmentedControl: {
+    flexDirection: "row",
+    backgroundColor: Color.mainGoku,
+    padding: StyleVariable.px1,
+    borderRadius: StyleVariable.interactiveBorderRadiusRadiusIMd,
+    gap: StyleVariable.px1,
+  },
+  segmentButton: {
+    flex: 1,
     paddingVertical: StyleVariable.py2,
-    paddingHorizontal: StyleVariable.px4,
-    borderRadius: Border.br_8,
-    justifyContent: "center",
+    borderRadius: StyleVariable.interactiveBorderRadiusRadiusISm,
     alignItems: "center",
-    overflow: "hidden",
+    justifyContent: "center",
   },
-  textTypo: {
-    lineHeight: LineHeight.lh_24,
-    fontSize: FontSize.fs_14,
-    fontFamily: FontFamily.dMSansBold,
-    fontWeight: "700",
-  },
-  frameWrapperBorder: {
-    borderStyle: "solid",
+  segmentButtonActive: {
     backgroundColor: Color.mainGohan,
   },
-  suaTypo: {
-    fontFamily: FontFamily.dMSansRegular,
-    lineHeight: LineHeight.lh_24,
+  segmentLabel: {
     fontSize: FontSize.fs_14,
-  },
-  userIconLayout: {
-    maxHeight: "100%",
-    maxWidth: "100%",
-    overflow: "hidden",
-  },
-  frameContainerFlexBox: {
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  tipoFlexBox1: {
-    gap: Gap.gap_4,
-    alignItems: "center",
-  },
-  vectorIconLayout: {
-    width: 14,
-    height: 14,
-  },
-  hoje0600Clr: {
+    fontFamily: FontFamily.dMSansBold,
     color: Color.mainTrunks,
-    textAlign: "left",
   },
-  menuItemTypo: {
-    lineHeight: LineHeight.lh_16,
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
+  segmentLabelActive: {
+    color: Color.hit,
   },
-  groupFlexBox: {
-    gap: 8,
-    alignItems: "center",
+  composeCard: {
+    borderRadius: Border.br_16,
+    backgroundColor: Color.mainGohan,
+    padding: StyleVariable.px6,
+    gap: Gap.gap_16,
+    borderWidth: 1,
+    borderColor: "rgba(0, 5, 61, 0.08)",
+    shadowColor: "rgba(0, 0, 0, 0.05)",
+    shadowOpacity: 1,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  composeHeader: {
     flexDirection: "row",
-  },
-  itemLayout: {
-    gap: Gap.gap_24,
-    width: Width.width_72,
-    height: Height.height_80,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  tipoFlexBox: {
     gap: Gap.gap_8,
     alignItems: "center",
   },
-  iconLayout: {
-    height: Height.height_24,
-    width: Width.width_24,
-  },
-  nomeTypo: {
-    fontFamily: FontFamily.robotoRegular,
-    lineHeight: LineHeight.lh_18,
-    zIndex: 1,
-    textAlign: "center",
-    fontSize: FontSize.fs_14,
-  },
-  tipoPosition: {
-    color: Color.tokenColorStatusError,
-    left: 38,
-    top: 0,
-    height: Height.height_8,
-    width: Width.width_8,
-    position: "absolute",
-  },
-  marcadorPosition: {
-    borderRadius: Border.br_24,
-    left: 28,
-    height: Height.height_4,
-    width: Width.width_16,
-    top: 0,
-    zIndex: 1,
-    position: "absolute",
-  },
-  iconPosition: {
-    left: "20.42%",
-    maxHeight: "100%",
-    maxWidth: "100%",
-    position: "absolute",
-    overflow: "hidden",
-  },
-  iconPosition1: {
-    bottom: "20%",
-    top: "20.42%",
-    height: "59.58%",
-    color: Color.jiren,
-  },
-  itemLayout1: {
-    width: Width.width_72,
-    height: Height.height_80,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  view: {
-    height: Height.height_812,
-    overflow: "hidden",
-    width: "100%",
-    backgroundColor: Color.mainGohan,
-    flex: 1,
-  },
-  topHeader20: {
-    paddingVertical: Padding.padding_0,
-    backgroundColor: Color.mainGohan,
-  },
-  statusBar: {
-    width: Width.width_327,
-    paddingTop: Padding.padding_16,
-    paddingBottom: Padding.padding_8,
-  },
-  timeIcon: {
-    width: 27,
-    color: Color.hit,
-    height: 12,
-  },
-  status: {
-    paddingVertical: Padding.padding_3,
-    paddingHorizontal: Padding.padding_0,
-    flexDirection: "row",
-  },
-  sim1SingleSim: {
-    width: Width.width_20,
-    height: Height.height_14,
-    overflow: "hidden",
-  },
-  bar4: {
-    marginTop: -6,
-    marginLeft: 6.4,
-    height: Height.height_12,
-  },
-  bar3: {
-    marginTop: -3.6,
-    marginLeft: 1.1,
-    height: 10,
-  },
-  bar2: {
-    marginTop: -1,
-    marginLeft: -4.2,
-    height: 7,
-  },
-  bar1: {
-    marginTop: 1.4,
-    marginLeft: -9.6,
-    height: 5,
-  },
-  networkWifiFull: {
-    height: Height.height_12,
-    width: Width.width_20,
-  },
-  batteryFullUncharged: {
-    width: Width.width_28,
-    height: Height.height_14,
-  },
-  titleWrapper: {
-    justifyContent: "center",
-    alignSelf: "stretch",
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  title: {
-    paddingVertical: Padding.padding_16,
-    justifyContent: "center",
-    flex: 1,
-  },
-  comunidadeQuinze: {
-    fontSize: FontSize.fs_24,
-    lineHeight: LineHeight.lh_32,
-    fontFamily: FontFamily.dMSansBold,
-    fontWeight: "700",
-    textAlign: "left",
-    flex: 1,
-  },
-  illustrationIcon: {
-    width: Width.width_80,
-    height: 96,
-    display: "none",
-  },
-  content: {
-    maxWidth: 375,
-    width: Width.width_375,
-    flex: 1,
-  },
-  mdsPublicTwSegmentedContro: {
-    borderRadius: StyleVariable.interactiveBorderRadiusRadiusIMd,
-    padding: StyleVariable.px1,
-    gap: StyleVariable.gap1,
-    maxHeight: StyleVariable.heightH12,
-    backgroundColor: Color.mainGoku,
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  mdsPublicTwTabs: {
-    backgroundColor: Color.white,
-  },
-  tabText: {
-    textAlign: "left",
-    color: Color.hit,
-  },
-  comunidadeMeusPosts10MdsPublicTwTabs: {
-    backgroundColor: Color.mainGoku,
-  },
-  frameParent: {
-    paddingVertical: 6,
-    gap: 16,
-  },
-  frameWrapper: {
-    borderColor: Color.piccolo,
-    borderWidth: 1,
-    padding: 14,
-    borderRadius: Border.br_8,
-    borderStyle: "solid",
-    alignSelf: "stretch",
-  },
-  frameGroup: {
-    gap: 14,
-    alignSelf: "stretch",
-  },
-  image205Parent: {
-    gap: 12,
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  image205Icon: {
-    height: Height.height_32,
-    width: Width.width_32,
-    borderRadius: Border.br_18,
-  },
-  escrevaSuaPostagem: {
-    textAlign: "left",
-    color: Color.hit,
-  },
-  frameChild: {
-    height: Height.height_1,
-    color: Color.piccolo,
-    alignSelf: "stretch",
-  },
-  frameContainer: {
-    gap: 3,
-    alignSelf: "stretch",
-  },
-  frameView: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  vectorParent: {
-    justifyContent: "center",
-    flexDirection: "row",
-  },
-  vectorIcon: {
-    color: Color.lightTextTertiary,
-  },
-  adicioneSuaPostagem: {
-    fontFamily: FontFamily.dMSansRegular,
-    lineHeight: LineHeight.lh_24,
-    fontSize: FontSize.fs_14,
-  },
-  icFluentChevronDown24ReguIcon: {
-    height: 16,
-    width: 16,
-  },
-  mdsPublicTwButton: {
-    borderRadius: StyleVariable.interactiveBorderRadiusRadiusISm,
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: Border.br_58,
     backgroundColor: Color.piccolo,
-    paddingHorizontal: StyleVariable.paddingsGapsP3,
-    paddingVertical: StyleVariable.paddingsGapsP1,
-    justifyContent: "center",
     alignItems: "center",
-    flexDirection: "row",
-    overflow: "hidden",
+    justifyContent: "center",
   },
-  buttonText: {
+  avatarLabel: {
+    fontSize: FontSize.fs_16,
+    fontFamily: FontFamily.dMSansBold,
     color: Color.mainGoten,
-    textAlign: "center",
   },
-  comunidadeMeusPosts10FrameParent: {
-    gap: 16,
-    alignSelf: "stretch",
-  },
-  frameParent2: {
-    gap: Gap.gap_16,
-    justifyContent: "center",
-    alignSelf: "stretch",
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  hoje0600Wrapper: {
-    justifyContent: "flex-end",
-    flexDirection: "row",
+  composeTexts: {
     flex: 1,
+    gap: Gap.gap_4,
   },
-  hoje0600: {
-    color: Color.mainTrunks,
-    textAlign: "left",
-  },
-  vocSabiaQue: {
-    textAlign: "left",
+  composeTitle: {
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_24,
+    fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
-    alignSelf: "stretch",
   },
-  frameParent3: {
-    alignSelf: "stretch",
+  composeSubtitle: {
+    fontSize: FontSize.fs_12,
+    lineHeight: LineHeight.lh_16,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
   },
-  frameParent4: {
-    gap: 16,
+  publishButton: {
+    alignSelf: "flex-end",
     flexDirection: "row",
+    alignItems: "center",
+    gap: Gap.gap_8,
+    backgroundColor: Color.piccolo,
+    paddingVertical: StyleVariable.py2,
+    paddingHorizontal: StyleVariable.px4,
+    borderRadius: StyleVariable.interactiveBorderRadiusRadiusISm,
   },
-  vectorGroup: {
+  publishButtonText: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainGoten,
+  },
+  sectionHeader: {
+    gap: Gap.gap_4,
+  },
+  sectionTitle: {
+    fontSize: FontSize.fs_16,
+    lineHeight: LineHeight.lh_24,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.hit,
+  },
+  sectionSubtitle: {
+    fontSize: FontSize.fs_12,
+    lineHeight: LineHeight.lh_16,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+  },
+  postCard: {
+    borderRadius: Border.br_16,
+    backgroundColor: Color.mainGohan,
+    padding: StyleVariable.px6,
+    gap: Gap.gap_16,
+    borderWidth: 1,
+    borderColor: "rgba(0, 5, 61, 0.08)",
+    shadowColor: "rgba(0, 0, 0, 0.05)",
+    shadowOpacity: 1,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  postHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Gap.gap_8,
+  },
+  avatarSmall: {
+    width: 40,
+    height: 40,
+    borderRadius: Border.br_58,
+    backgroundColor: Color.piccolo,
+    alignItems: "center",
     justifyContent: "center",
   },
-  comunidadeMeusPosts10VectorIcon: {
-    color: Color.supportiveChichi,
-    width: 16,
-    height: 14,
+  postHeaderTexts: {
+    flex: 1,
+    gap: Gap.gap_4,
   },
-  vectorIcon2: {
+  postAuthor: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
   },
-  frameInner: {
-    width: 12,
-    height: 12,
+  postTimestamp: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
   },
-  menuDeNavegao10: {
-    borderColor: Color.colorGainsboro,
-    borderTopWidth: 1,
-    paddingHorizontal: StyleVariable.padding24,
-    paddingBottom: StyleVariable.padding8,
-    gap: -52,
-    justifyContent: "space-between",
-    alignItems: "center",
+  moreButton: {
+    padding: StyleVariable.px2,
+  },
+  postContent: {
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_24,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.hit,
+  },
+  postActions: {
     flexDirection: "row",
-    width: Width.width_375,
+    alignItems: "center",
+    gap: Gap.gap_16,
   },
-  item: {
-    display: "none",
+  postActionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Gap.gap_4,
   },
-  tipo: {
-    zIndex: 0,
-    alignSelf: "stretch",
-  },
-  home02Icon: {
-    color: Color.tokenColorBrandPrimaryPrimary,
-    zIndex: 0,
-  },
-  nome: {
-    zIndex: 1,
+  postActionLabel: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
     color: Color.hit,
   },
-  tipoChild: {
-    zIndex: 2,
+  postShare: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Gap.gap_4,
+    marginLeft: "auto",
   },
-  marcador: {
-    backgroundColor: Color.tokenColorBrandPrimaryPrimary,
+  postShareLabel: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.piccolo,
   },
-  comunidadeMeusPosts10Tipo: {
-    width: "100%",
+  communityCard: {
+    borderRadius: Border.br_16,
+    backgroundColor: Color.mainGohan,
+    padding: StyleVariable.px6,
+    gap: Gap.gap_16,
+    borderWidth: 1,
+    borderColor: "rgba(0, 5, 61, 0.08)",
   },
-  menu1: {
-    width: Width.width_54,
-    height: Height.height_51,
-    zIndex: 0,
+  communityHeader: {
+    flexDirection: "row",
+    gap: Gap.gap_8,
+    alignItems: "center",
   },
-  homeIcon: {
-    color: Color.jiren,
-    bottom: "20%",
-    top: "20.42%",
-    height: "59.58%",
-    right: "20%",
-    width: "59.58%",
-    left: "20.42%",
+  communityTexts: {
+    flex: 1,
+    gap: Gap.gap_4,
   },
-  menuItemText: {
-    color: Color.jiren,
-    textAlign: "center",
-  },
-  tipoItem: {
-    zIndex: 1,
-  },
-  calendarDateIcon: {
-    width: "59.17%",
-    right: "20.42%",
-    color: Color.jiren,
-    bottom: "20%",
-    top: "20.42%",
-    height: "59.58%",
-  },
-  tipo3: {
-    zIndex: 0,
-    alignSelf: "stretch",
-  },
-  usersIcon: {
-    height: "50%",
-    top: "25%",
-    bottom: "25%",
-    right: "20%",
-    width: "59.58%",
-    left: "20.42%",
+  communityName: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
   },
-  menuItemText2: {
-    textAlign: "center",
+  communityDescription: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+  },
+  communityMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Gap.gap_16,
+  },
+  communityMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Gap.gap_4,
+  },
+  communityMetaLabel: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
     color: Color.hit,
   },
-  comunidadeMeusPosts10Marcador: {
-    backgroundColor: Color.hit,
-    borderRadius: Border.br_24,
-    left: 28,
-    height: Height.height_4,
-    width: Width.width_16,
+  communityAlertLabel: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.supportiveChichi,
   },
-  userIcon: {
-    width: "55%",
-    right: "22.5%",
-    left: "22.5%",
-    color: Color.jiren,
-    maxHeight: "100%",
-    maxWidth: "100%",
-    overflow: "hidden",
-    position: "absolute",
-    top: "20.42%",
-    height: "59.58%",
+  communityButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: Gap.gap_8,
+    backgroundColor: Color.piccolo,
+  paddingVertical: StyleVariable.py2,
+    paddingHorizontal: StyleVariable.px4,
+    borderRadius: Border.br_16,
   },
-  item5: {
-    display: "none",
-  },
-  tipo5: {
-    width: "100%",
-  },
-  building02Icon: {
-    color: Color.tokenColorNeutralMedium,
-    zIndex: 0,
-  },
-  comunidadeMeusPosts10Nome: {
-    color: Color.tokenColorNeutralMedium,
-    zIndex: 1,
+  communityButtonText: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainGoten,
   },
 });
 
