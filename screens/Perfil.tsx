@@ -1,36 +1,35 @@
-import * as React from "react";
-import { StyleSheet, View, ScrollView, Text } from "react-native";
 import { Image } from "expo-image";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Time from "../assets/Time.svg";
-import NetworkWiFiFull from "../assets/Network-WiFi-Full.svg";
-import Illustration from "../assets/Illustration.svg";
 import Bell1 from "../assets/bell1.svg";
-import Calendaradd from "../assets/calendar-add.svg";
-import Multibet from "../assets/multi-bet.svg";
-import Users3 from "../assets/users3.svg";
-import Topright2 from "../assets/top-right2.svg";
-import Home02 from "../assets/home-02.svg";
-import Ellipse11 from "../assets/Ellipse-11.svg";
-import Home from "../assets/home.svg";
-import Calendardate from "../assets/calendar-date.svg";
-import Users1 from "../assets/users1.svg";
-import User from "../assets/user.svg";
 import Building02 from "../assets/building-02.svg";
+import Calendaradd from "../assets/calendar-add.svg";
+import Calendardate from "../assets/calendar-date.svg";
+import Ellipse11 from "../assets/Ellipse-11.svg";
+import Home02 from "../assets/home-02.svg";
+import Home from "../assets/home.svg";
+import Illustration from "../assets/Illustration.svg";
+import Multibet from "../assets/multi-bet.svg";
+import NetworkWiFiFull from "../assets/Network-WiFi-Full.svg";
+import Time from "../assets/Time.svg";
+import Topright2 from "../assets/top-right2.svg";
+import User from "../assets/user.svg";
+import Users1 from "../assets/users1.svg";
+import Users3 from "../assets/users3.svg";
 import {
-  Gap,
-  Width,
-  Border,
-  Color,
-  FontFamily,
-  LineHeight,
-  FontSize,
-  StyleVariable,
-  Height,
-  Padding,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    Height,
+    LineHeight,
+    Padding,
+    StyleVariable,
+    Width,
 } from "../GlobalStyles";
 
-const Perfil10 = () => {
+const PerfilScreen = () => {
   return (
     <SafeAreaView style={styles.card2Bg}>
       <View style={styles.view}>
@@ -785,4 +784,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Perfil10;
+export default PerfilScreen;

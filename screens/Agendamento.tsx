@@ -1,34 +1,31 @@
-import * as React from "react";
-import { StyleSheet, View, Text } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Cap1 from "../assets/Cap1.svg";
-import Wifipath from "../assets/Wifi-path.svg";
-import Wifipath1 from "../assets/Wifi-path.svg";
-import Wifipath2 from "../assets/Wifi-path.svg";
-import CellularConnection1 from "../assets/Cellular-Connection1.svg";
-import Calendar from "../assets/calendar.svg";
-import Topright1 from "../assets/top-right1.svg";
-import Home02 from "../assets/home-02.svg";
-import Ellipse11 from "../assets/Ellipse-11.svg";
-import Home1 from "../assets/home1.svg";
-import Calendardate1 from "../assets/calendar-date1.svg";
-import Users1 from "../assets/users1.svg";
-import User from "../assets/user.svg";
 import Building02 from "../assets/building-02.svg";
+import Calendardate1 from "../assets/calendar-date1.svg";
+import Calendar from "../assets/calendar.svg";
+import Cap1 from "../assets/Cap1.svg";
+import CellularConnection1 from "../assets/Cellular-Connection1.svg";
+import Ellipse11 from "../assets/Ellipse-11.svg";
+import Home02 from "../assets/home-02.svg";
+import Home1 from "../assets/home1.svg";
+import Topright1 from "../assets/top-right1.svg";
+import User from "../assets/user.svg";
+import Users1 from "../assets/users1.svg";
+import { default as Wifipath, default as Wifipath1, default as Wifipath2 } from "../assets/Wifi-path.svg";
 import {
-  Color,
-  StyleVariable,
-  Border,
-  FontFamily,
-  LineHeight,
-  FontSize,
-  Width,
-  Height,
-  Gap,
-  Padding,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    Height,
+    LineHeight,
+    Padding,
+    StyleVariable,
+    Width,
 } from "../GlobalStyles";
 
-const Agendamento11 = () => {
+const AgendamentoScreen = () => {
   return (
     <SafeAreaView style={styles.agendamento11}>
       <View style={styles.view}>
@@ -742,4 +739,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Agendamento11;
+export default AgendamentoScreen;

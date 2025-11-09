@@ -1,27 +1,26 @@
-import * as React from "react";
-import { StyleSheet, View, Text } from "react-native";
 import { Image } from "expo-image";
+import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Time from "../assets/Time.svg";
-import NetworkWiFiFull from "../assets/Network-WiFi-Full.svg";
-import Car011 from "../assets/car-011.svg";
-import Topright from "../assets/top-right.svg";
-import Illustration from "../assets/Illustration.svg";
-import Chevrondown from "../assets/chevron-down.svg";
 import {
-  Color,
-  Padding,
-  Width,
-  Border,
-  Height,
-  FontFamily,
-  Gap,
-  LineHeight,
-  FontSize,
-  StyleVariable,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    Height,
+    LineHeight,
+    Padding,
+    StyleVariable,
+    Width,
 } from "../GlobalStyles";
+import Illustration from "../assets/Illustration.svg";
+import NetworkWiFiFull from "../assets/Network-WiFi-Full.svg";
+import Time from "../assets/Time.svg";
+import Car011 from "../assets/car-011.svg";
+import Chevrondown from "../assets/chevron-down.svg";
+import Topright from "../assets/top-right.svg";
 
-const Cadastro10 = () => {
+const CadastroScreen = () => {
   return (
     <SafeAreaView style={styles.cadastro10}>
       <View style={styles.view}>
@@ -44,24 +43,26 @@ const Cadastro10 = () => {
                 <Image
                   style={styles.batteryFullUncharged}
                   contentFit="cover"
-                  source={require("../assets/Battery-Full-Uncharged.png")}
+                  source={require("../assets/Battery-Full-Uncharged@3x.png")}
                 />
               </View>
             </View>
             <View style={[styles.navigation, styles.titleSpaceBlock]}>
               <View style={[styles.button20, styles.buttonFlexBox]}>
                 <Car011
-                  style={[styles.car01Icon, styles.iconLayout1]}
+                  style={styles.iconLayout1}
                   width={Width.width_24}
                   height={Height.height_24}
+                  color={Color.hit}
                 />
                 <View style={[styles.labelWrapper, styles.labelWrapperFlexBox]}>
                   <Text style={styles.label}>Entenda os prazos</Text>
                 </View>
                 <Car011
-                  style={[styles.car01Icon, styles.iconLayout1]}
+                  style={styles.iconLayout1}
                   width={Width.width_24}
                   height={Height.height_24}
+                  color={Color.hit}
                 />
               </View>
               <View
@@ -362,9 +363,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     justifyContent: "center",
   },
-  car01Icon: {
-    color: Color.hit,
-  },
   labelWrapper: {
     borderColor: Color.hit,
     borderBottomWidth: 1,
@@ -517,4 +515,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Cadastro10;
+export default CadastroScreen;

@@ -1,132 +1,225 @@
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
-import { useRouter } from 'expo-router';
-import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
+import type { AxiosError } from 'axios';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { useState } from 'react';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import {
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  LineHeight,
+  Padding,
+  StyleVariable,
+} from '../GlobalStyles';
+import { login } from '../services/auth';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async () => {
-    try {
-      const response = await axios.post('http://localhost:8080/api/v1/auth/login', {
-        email,
-        password,
-      });
+  const isFormValid = email.trim().length > 0 && password.trim().length > 0;
 
-      const { accessToken, refreshToken } = response.data;
+  const handleLogin = async () => {
+    if (!isFormValid) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { accessToken, refreshToken } = await login({ email, password });
 
       await SecureStore.setItemAsync('accessToken', accessToken);
       await SecureStore.setItemAsync('refreshToken', refreshToken);
 
-      router.replace('/(tabs)');
+  router.replace('/home');
     } catch (error) {
-      Alert.alert('Erro no Login', 'Credenciais inválidas, tente novamente');
+      const err = error as AxiosError<{ message?: string }>;
+      const serverMessage = err.response?.data?.message;
+      Alert.alert('Erro no Login', serverMessage ?? 'Credenciais inválidas, tente novamente');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Image
-          source={require('../assets/images/icon.png')}
-          style={styles.logo}
-        />
-      <Text style={styles.title}>Bem-vindo ao Clube Quinze</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        onChangeText={setEmail}
-        value={email}
-      />
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={styles.passwordInput}
-          placeholder="Senha"
-          secureTextEntry={!showPassword}
-          onChangeText={setPassword}
-          value={password}
-        />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={24} color="gray" />
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Image
+            source={require('../assets/images/icon.png')}
+            style={styles.logo}
+            contentFit="contain"
+          />
+          <Text style={styles.title}>Bem-vindo de volta</Text>
+          <Text style={styles.subtitle}>Faça login para acessar o Clube Quinze</Text>
+        </View>
+
+        <View style={styles.form}>
+          <View style={styles.field}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="seuemail@dominio.com"
+              placeholderTextColor={Color.mainTrunks}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              onChangeText={setEmail}
+              value={email}
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Senha</Text>
+            <View style={styles.passwordWrapper}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="••••••••"
+                placeholderTextColor={Color.mainTrunks}
+                secureTextEntry={!showPassword}
+                onChangeText={setPassword}
+                value={password}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword((prev) => !prev)}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={20}
+                  color={Color.mainTrunks}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.loginButton, (!isFormValid || isLoading) && styles.loginButtonDisabled]}
+          onPress={handleLogin}
+          disabled={!isFormValid || isLoading}
+        >
+          <Text style={styles.loginButtonText}>{isLoading ? 'Entrando...' : 'Entrar'}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.secondaryAction} onPress={() => router.push('/register')}>
+          <Text style={styles.secondaryText}>Criar conta</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Entrar</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push('/register')}>
-        <Text style={styles.link}>Criar conta</Text>
-      </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Color.mainGohan,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: Padding.padding_24,
+    paddingVertical: Padding.padding_32,
     justifyContent: 'center',
+  },
+  header: {
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
+    gap: StyleVariable.gap2,
+    marginBottom: StyleVariable.px6,
   },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 20,
+    width: 96,
+    height: 96,
+    borderRadius: Border.br_24,
+    marginBottom: StyleVariable.gap2,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30,
+    fontSize: FontSize.fs_24,
+    lineHeight: LineHeight.lh_32,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.hit,
     textAlign: 'center',
   },
-  input: {
-    width: '100%',
-    height: 50,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    fontSize: 16,
+  subtitle: {
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_24,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+    textAlign: 'center',
   },
-  passwordContainer: {
-    width: '100%',
-    height: 50,
-    borderColor: '#ccc',
+  form: {
+    gap: StyleVariable.px4,
+  },
+  field: {
+    gap: StyleVariable.px2,
+  },
+  label: {
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_18,
+    color: Color.mainBulma,
+    fontFamily: FontFamily.dMSansRegular,
+  },
+  input: {
+    borderRadius: StyleVariable.interactiveBorderRadiusRadiusISm,
     borderWidth: 1,
-    borderRadius: 10,
+    borderColor: Color.mainBeerus,
+    paddingHorizontal: StyleVariable.px4,
+    paddingVertical: StyleVariable.py2,
+    fontSize: FontSize.fs_16,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainBulma,
+    backgroundColor: Color.mainGohan,
+  },
+  passwordWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 15,
-    marginBottom: 20,
+    borderRadius: StyleVariable.interactiveBorderRadiusRadiusISm,
+    borderWidth: 1,
+    borderColor: Color.mainBeerus,
+    paddingHorizontal: StyleVariable.px4,
+    backgroundColor: Color.mainGohan,
   },
   passwordInput: {
     flex: 1,
-    fontSize: 16,
+    paddingVertical: StyleVariable.py2,
+    fontSize: FontSize.fs_16,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainBulma,
   },
-  button: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#4B0082',
-    justifyContent: 'center',
+  loginButton: {
+    marginTop: StyleVariable.px6,
+    paddingVertical: StyleVariable.py4,
+    borderRadius: StyleVariable.interactiveBorderRadiusRadiusISm,
+    backgroundColor: Color.piccolo,
     alignItems: 'center',
-    borderRadius: 10,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+  loginButtonDisabled: {
+    backgroundColor: Color.mainBeerus,
   },
-  link: {
-    marginTop: 20,
-    color: '#4B0082',
-    fontSize: 16,
+  loginButtonText: {
+    fontSize: FontSize.fs_16,
+    lineHeight: LineHeight.lh_24,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainGoten,
+  },
+  secondaryAction: {
+    marginTop: StyleVariable.px4,
+    alignItems: 'center',
+  },
+  secondaryText: {
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_24,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.piccolo,
+    textDecorationLine: 'underline',
   },
 });

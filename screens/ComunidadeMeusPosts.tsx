@@ -1,37 +1,37 @@
-import * as React from "react";
-import { StyleSheet, View, Text, ScrollView } from "react-native";
+// @ts-nocheck
 import { Image } from "expo-image";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Time from "../assets/Time.svg";
-import NetworkWiFiFull from "../assets/Network-WiFi-Full.svg";
-import Illustration from "../assets/Illustration.svg";
-import Vector70 from "../assets/Vector-70.svg";
-import Vector from "../assets/Vector.svg";
-import Icfluentchevrondown24regular1 from "../assets/ic-fluent-chevron-down-24-regular-1.svg";
-import Vector2 from "../assets/Vector2.svg";
-import Vector1 from "../assets/Vector1.svg";
+import Building02 from "../assets/building-02.svg";
+import Calendardate from "../assets/calendar-date.svg";
+import Ellipse11 from "../assets/Ellipse-11.svg";
 import Group543 from "../assets/Group-543.svg";
 import Home02 from "../assets/home-02.svg";
-import Ellipse11 from "../assets/Ellipse-11.svg";
 import Home1 from "../assets/home1.svg";
-import Calendardate from "../assets/calendar-date.svg";
-import Users2 from "../assets/users2.svg";
+import Icfluentchevrondown24regular1 from "../assets/ic-fluent-chevron-down-24-regular-1.svg";
+import Illustration from "../assets/Illustration.svg";
+import NetworkWiFiFull from "../assets/Network-WiFi-Full.svg";
+import Time from "../assets/Time.svg";
 import User from "../assets/user.svg";
-import Building02 from "../assets/building-02.svg";
+import Users2 from "../assets/users2.svg";
+import Vector70 from "../assets/Vector-70.svg";
+import Vector from "../assets/Vector.svg";
+import Vector1 from "../assets/Vector1.svg";
+import Vector2 from "../assets/Vector2.svg";
 import {
-  Color,
-  Padding,
-  Width,
-  Gap,
-  Border,
-  StyleVariable,
-  LineHeight,
-  FontSize,
-  FontFamily,
-  Height,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    Height,
+    LineHeight,
+    Padding,
+    StyleVariable,
+    Width,
 } from "../GlobalStyles";
 
-const ComunidadeMeusPosts10 = () => {
+const ComunidadeMeusPostsScreen = () => {
   return (
     <SafeAreaView style={styles.comunidadeMeusPosts10}>
       <View style={styles.view}>
@@ -825,4 +825,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ComunidadeMeusPosts10;
+export default ComunidadeMeusPostsScreen;
