@@ -6,18 +6,18 @@ import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useState } from 'react';
 import {
-  Alert,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import * as Animatable from 'react-native-animatable';
 import MaskInput from 'react-native-mask-input';
-import type { RegisterRequest } from '../services/auth';
-import { registerUser } from '../services/auth';
+import { register } from '../services/auth';
+import type { RegisterRequest } from '../types/api';
 
 const MEMBERSHIP_OPTIONS = [
   { label: 'Club 15', value: 'CLUB_15' },
@@ -59,7 +59,7 @@ export default function RegisterScreen() {
         phone: phoneDigits ? phoneDigits : undefined,
       };
 
-      const { accessToken, refreshToken } = await registerUser(payload);
+  const { accessToken, refreshToken } = await register(payload);
 
       await SecureStore.setItemAsync('accessToken', accessToken);
       await SecureStore.setItemAsync('refreshToken', refreshToken);

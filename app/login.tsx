@@ -6,42 +6,56 @@ import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  Border,
-  Color,
-  FontFamily,
-  FontSize,
-  LineHeight,
-  Padding,
-  StyleVariable,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    LineHeight,
+    Padding,
+    StyleVariable,
 } from '../GlobalStyles';
 import { login } from '../services/auth';
+import { isMockEnabled, setMockEnabled } from '../services/mock/settings';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [useMock, setUseMock] = useState(isMockEnabled());
   const router = useRouter();
 
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
 
   useEffect(() => {
+    setMockEnabled(useMock);
+    if (useMock) {
+      setEmail('aluis283@gmail.com');
+      setPassword('1234');
+    }
+  }, [useMock]);
+
+  useEffect(() => {
     let isMounted = true;
 
     const checkExistingSession = async () => {
+      if (useMock) {
+        return;
+      }
+
       try {
         const token = await SecureStore.getItemAsync('accessToken');
         if (token && isMounted) {
@@ -57,7 +71,18 @@ export default function LoginScreen() {
     return () => {
       isMounted = false;
     };
-  }, [router]);
+  }, [router, useMock]);
+
+  const handleToggleMock = () => {
+    setUseMock((prev) => {
+      const next = !prev;
+      if (next) {
+        SecureStore.deleteItemAsync('accessToken').catch(() => undefined);
+        SecureStore.deleteItemAsync('refreshToken').catch(() => undefined);
+      }
+      return next;
+    });
+  };
 
   const handleLogin = async () => {
     if (!isFormValid) {
@@ -161,6 +186,18 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <TouchableOpacity
+        style={[styles.mockToggle, useMock ? styles.mockToggleActive : null]}
+        onPress={handleToggleMock}
+        activeOpacity={0.85}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: useMock }}
+        accessibilityLabel="Alternar dados mockados"
+      >
+        <Ionicons name={useMock ? 'cloud-offline' : 'cloud-outline'} size={18} color={Color.mainGoten} />
+        <Text style={styles.mockToggleText}>{useMock ? 'Mocks ativos' : 'Mocks inativos'}</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -272,5 +309,26 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
     textDecorationLine: 'underline',
+  },
+  mockToggle: {
+    position: 'absolute',
+    right: Padding.padding_24,
+    bottom: Padding.padding_24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: StyleVariable.gap1,
+    paddingHorizontal: StyleVariable.px4,
+    paddingVertical: StyleVariable.py2,
+    borderRadius: Border.br_16,
+    backgroundColor: 'rgba(52, 59, 69, 0.85)',
+  },
+  mockToggleActive: {
+    backgroundColor: Color.piccolo,
+  },
+  mockToggleText: {
+    fontSize: FontSize.fs_12,
+    lineHeight: LineHeight.lh_16,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainGoten,
   },
 });
