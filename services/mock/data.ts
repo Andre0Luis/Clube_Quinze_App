@@ -1,4 +1,5 @@
 import {
+    AdminDashboardResponse,
     AppointmentRequest,
     AppointmentRescheduleRequest,
     AppointmentResponse,
@@ -6,6 +7,7 @@ import {
     AppointmentTier,
     CommentRequest,
     CommentResponse,
+    DashboardMetric,
     FeedbackAverageResponse,
     FeedbackRequest,
     FeedbackResponse,
@@ -22,6 +24,7 @@ import {
     RefreshTokenRequest,
     RegisterRequest,
     UpdateUserRequest,
+    UserPerformanceSummary,
     UserProfileResponse
 } from '../../types/api';
 
@@ -152,6 +155,18 @@ const baseUser: UserProfileResponse = {
   lastLogin: nowIso,
   nextAppointment: appointments.find((item) => item.status === 'SCHEDULED' && new Date(item.scheduledAt) >= new Date()) ?? baseAppointment,
   preferences: basePreferences,
+  profilePictureUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80',
+  profilePictureBase64: undefined,
+  gallery: [
+    {
+      position: 1,
+      imageUrl: 'https://images.unsplash.com/photo-1504805572947-34fad45aed93?auto=format&fit=crop&w=800&q=80',
+    },
+    {
+      position: 2,
+      imageUrl: 'https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=800&q=80',
+    },
+  ],
 };
 
 const sortByScheduleAsc = (first: AppointmentResponse, second: AppointmentResponse) =>
@@ -201,8 +216,12 @@ const posts: PostResponse[] = [
     authorId: 1,
     title: 'Bem-vindo ao Clube Quinze',
     content: 'Compartilhe experiencias e descubra novidades com outros membros.',
-    imageUrl: undefined,
-    imageBase64: undefined,
+    media: [
+      {
+        position: 1,
+        imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
+      },
+    ],
     createdAt: nowIso,
     updatedAt: nowIso,
     likeCount: 3,
@@ -230,8 +249,16 @@ const posts: PostResponse[] = [
     authorId: 3,
     title: 'Agenda especial de fim de semana',
     content: 'Abrimos horarios extras no sabado para membros Select.',
-    imageUrl: undefined,
-    imageBase64: undefined,
+    media: [
+      {
+        position: 1,
+        imageUrl: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80',
+      },
+      {
+        position: 2,
+        imageUrl: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=800&q=80',
+      },
+    ],
     createdAt: addDays(-1, 9, 30),
     updatedAt: addDays(-1, 9, 30),
     likeCount: 5,
@@ -251,8 +278,7 @@ const posts: PostResponse[] = [
     authorId: 4,
     title: 'Lembrete de avaliacao',
     content: 'Avalie seu atendimento e ajude a melhorar nossos servicos.',
-    imageUrl: undefined,
-    imageBase64: undefined,
+    media: [],
     createdAt: addDays(-5, 12, 0),
     updatedAt: addDays(-5, 12, 0),
     likeCount: 2,
@@ -323,6 +349,78 @@ const likes: LikeResponse[] = [
   },
 ];
 
+const calculateUserAverage = (userId: number) => {
+  const userFeedback = feedbackEntries.filter((entry) => entry.userId === userId);
+  if (!userFeedback.length) {
+    return 0;
+  }
+  const sum = userFeedback.reduce((total, entry) => total + (entry.rating ?? 0), 0);
+  return Number((sum / userFeedback.length).toFixed(2));
+};
+
+const countCompletedAppointments = (userId: number) =>
+  appointments.filter((item) => item.clientId === userId && item.status === 'COMPLETED').length;
+
+const countUpcomingAppointments = (userId: number) => {
+  const now = Date.now();
+  return appointments.filter((item) => {
+    if (item.clientId !== userId || item.status !== 'SCHEDULED') {
+      return false;
+    }
+    const scheduledDate = new Date(item.scheduledAt).getTime();
+    return !Number.isNaN(scheduledDate) && scheduledDate >= now;
+  }).length;
+};
+
+const getLastFeedbackDate = (userId: number) => {
+  const userFeedback = feedbackEntries
+    .filter((entry) => entry.userId === userId)
+    .sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime());
+  return userFeedback[0]?.createdAt ?? null;
+};
+
+const calculateServiceRatings = () => {
+  const serviceStats = new Map<string, { total: number; count: number }>();
+
+  feedbackEntries.forEach((entry) => {
+    const appointment = appointments.find((item) => item.id === entry.appointmentId);
+    if (!appointment) {
+      return;
+    }
+    const serviceKey = appointment.serviceType ?? 'servico';
+    const rating = entry.rating ?? 0;
+    if (!rating) {
+      return;
+    }
+    const next = serviceStats.get(serviceKey) ?? { total: 0, count: 0 };
+    next.total += rating;
+    next.count += 1;
+    serviceStats.set(serviceKey, next);
+  });
+
+  if (!serviceStats.size) {
+    const fallback = new Map<string, { total: number; count: number }>();
+    appointments.forEach((appointment) => {
+      const serviceKey = appointment.serviceType ?? 'servico';
+      const next = fallback.get(serviceKey) ?? { total: 0, count: 0 };
+      next.total += 4.5;
+      next.count += 1;
+      fallback.set(serviceKey, next);
+    });
+    return Array.from(fallback.entries()).map(([service, stats]) => ({
+      service,
+      average: Number((stats.total / stats.count).toFixed(2)),
+    }));
+  }
+
+  return Array.from(serviceStats.entries())
+    .map(([service, { total, count }]) => ({
+      service,
+      average: Number((total / count).toFixed(2)),
+    }))
+    .sort((first, second) => second.average - first.average);
+};
+
 const userPage = <T>(items: T[]): PageResponse<T> => ({
   content: items,
   totalElements: items.length,
@@ -345,6 +443,22 @@ export const mockData = {
         baseUser.plan = plan;
       }
     }
+    if (payload.profilePictureUrl !== undefined) {
+      baseUser.profilePictureUrl = payload.profilePictureUrl ?? undefined;
+    }
+    if (payload.profilePictureBase64 !== undefined) {
+      baseUser.profilePictureBase64 = payload.profilePictureBase64 ?? undefined;
+    }
+    if (payload.gallery !== undefined) {
+      const sanitizedGallery = payload.gallery
+        .filter((item) => item.imageUrl || item.imageBase64)
+        .map((item, index) => ({
+          position: index + 1,
+          imageUrl: item.imageUrl ?? null,
+          imageBase64: item.imageBase64 ?? null,
+        }));
+      baseUser.gallery = sanitizedGallery;
+    }
     return baseUser;
   },
   getCurrentUser: () => baseUser,
@@ -359,6 +473,22 @@ export const mockData = {
       if (plan) {
         baseUser.plan = plan;
       }
+    }
+    if (payload.profilePictureUrl !== undefined) {
+      baseUser.profilePictureUrl = payload.profilePictureUrl ?? undefined;
+    }
+    if (payload.profilePictureBase64 !== undefined) {
+      baseUser.profilePictureBase64 = payload.profilePictureBase64 ?? undefined;
+    }
+    if (payload.gallery !== undefined) {
+      const sanitizedGallery = payload.gallery
+        .filter((item) => item.imageUrl || item.imageBase64)
+        .map((item, index) => ({
+          position: index + 1,
+          imageUrl: item.imageUrl ?? null,
+          imageBase64: item.imageBase64 ?? null,
+        }));
+      baseUser.gallery = sanitizedGallery;
     }
     return baseUser;
   },
@@ -504,13 +634,76 @@ export const mockData = {
   },
   listFeedback: () => userPage(feedbackEntries),
   listMyFeedback: () => userPage(feedbackEntries),
-  getUserAverage: (userId: number) => {
-    const userFeedback = feedbackEntries.filter((entry) => entry.userId === userId);
-    if (!userFeedback.length) {
-      return 0;
-    }
-    const sum = userFeedback.reduce((total, entry) => total + (entry.rating ?? 0), 0);
-    return Number((sum / userFeedback.length).toFixed(2));
+  getUserAverage: (userId: number) => calculateUserAverage(userId),
+  getUserSummary: (userId: number): UserPerformanceSummary => {
+    return {
+      averageRating: calculateUserAverage(userId),
+      completedAppointments: countCompletedAppointments(userId),
+      upcomingAppointments: countUpcomingAppointments(userId),
+      lastFeedbackAt: getLastFeedbackDate(userId),
+    };
+  },
+  getAdminDashboard: (): AdminDashboardResponse => {
+    const now = Date.now();
+    const uniqueMembers = new Set(appointments.map((item) => item.clientId)).size || 1;
+    const upcomingAppointmentsCount = appointments.filter((item) => {
+      if (item.status !== 'SCHEDULED') {
+        return false;
+      }
+      const date = new Date(item.scheduledAt).getTime();
+      return !Number.isNaN(date) && date >= now;
+    }).length;
+    const completedAppointmentsCount = appointments.filter((item) => item.status === 'COMPLETED').length;
+    const canceledAppointmentsCount = appointments.filter((item) => item.status === 'CANCELED').length;
+    const satisfactionScore = feedbackEntries.length
+      ? Number(
+          (
+            feedbackEntries.reduce((total, entry) => total + (entry.rating ?? 0), 0) /
+            feedbackEntries.length
+          ).toFixed(2),
+        )
+      : 0;
+    const pendingFeedbackCount = Math.max(0, completedAppointmentsCount - feedbackEntries.length);
+
+    const metrics: DashboardMetric[] = [
+      {
+        id: 'appointments_total',
+        label: 'Atendimentos',
+        value: appointments.length,
+      },
+      {
+        id: 'appointments_completed',
+        label: 'Concluidos',
+        value: completedAppointmentsCount,
+      },
+      {
+        id: 'appointments_canceled',
+        label: 'Cancelados',
+        value: canceledAppointmentsCount,
+      },
+      {
+        id: 'feedback_total',
+        label: 'Feedbacks coletados',
+        value: feedbackEntries.length,
+      },
+    ];
+
+    const topServices = calculateServiceRatings().slice(0, 4);
+
+    const recentAppointments = [...appointments]
+      .sort((first, second) => new Date(second.scheduledAt).getTime() - new Date(first.scheduledAt).getTime())
+      .slice(0, 5);
+
+    return {
+      totalMembers: Math.max(uniqueMembers, 28),
+      activePlans: plans.length,
+      upcomingAppointments: upcomingAppointmentsCount,
+      pendingFeedback: pendingFeedbackCount,
+      satisfactionScore,
+      metrics,
+      topServices,
+      recentAppointments,
+    };
   },
   getAverageByService: () => <FeedbackAverageResponse[]>[
     { target: 'corte_de_cabelo', average: 4.9 },
@@ -524,8 +717,7 @@ export const mockData = {
       authorId: 1,
       title: payload.title,
       content: payload.content,
-      imageUrl: payload.imageUrl,
-      imageBase64: payload.imageBase64,
+      media: payload.media ? [...payload.media].sort((first, second) => first.position - second.position) : [],
       createdAt: nowIso,
       updatedAt: nowIso,
       likeCount: 0,

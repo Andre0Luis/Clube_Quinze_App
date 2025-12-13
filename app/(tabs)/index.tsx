@@ -56,7 +56,6 @@ const quickActions: QuickAction[] = [
     href: "/appointments",
     params: { tab: "history" },
   },
-  { label: "Agendar horario", icon: "calendar-outline", href: "/schedule" },
 ];
 
 const getStatusMeta = (status?: string) => {
@@ -106,6 +105,7 @@ export default function HomeScreen() {
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
   const [nextAppointment, setNextAppointment] = useState<AppointmentResponse | null>(null);
   const [isLoadingNext, setIsLoadingNext] = useState(true);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -135,6 +135,16 @@ export default function HomeScreen() {
           return;
         }
 
+        if (currentUser?.role === "CLUB_ADMIN") {
+          setIsAdmin(true);
+          setIsLoadingNext(false);
+          setNextAppointment(null);
+          router.replace("/admin-dashboard");
+          return;
+        }
+
+        setIsAdmin(false);
+
         setProfile(currentUser);
         if (currentUser?.name) {
           setUserName(currentUser.name);
@@ -151,6 +161,7 @@ export default function HomeScreen() {
         }
         setProfile(null);
         setIsLoadingNext(false);
+        setIsAdmin(false);
         console.error("Failed to fetch user profile", error);
       }
     };
@@ -160,10 +171,14 @@ export default function HomeScreen() {
     return () => {
       isMounted = false;
     };
-  }, [mockActive]);
+  }, [mockActive, router]);
 
   useFocusEffect(
     useCallback(() => {
+      if (isAdmin !== false) {
+        return () => undefined;
+      }
+
       let isActive = true;
 
       const loadNextAppointment = async () => {
@@ -203,7 +218,7 @@ export default function HomeScreen() {
       return () => {
         isActive = false;
       };
-    }, [mockActive]),
+    }, [isAdmin, mockActive]),
   );
 
   const handleLogout = useCallback(async () => {
@@ -314,20 +329,22 @@ export default function HomeScreen() {
                 activeOpacity={0.9}
                 onPress={() => handleNavigate(action.href, action.params)}
               >
-                <Card
-                  buttonText={action.label}
-                  size="32px"
-                  time="calendar"
-                  type="stroke"
-                  calendar={
-                    <Ionicons
-                      name={action.icon}
-                      size={22}
-                      color={Color.piccolo}
-                    />
-                  }
-                  timePosition="relative"
-                />
+                <View style={styles.quickActionCardContent}>
+                  <Card
+                    buttonText={action.label}
+                    size="32px"
+                    time="calendar"
+                    type="stroke"
+                    calendar={
+                      <Ionicons
+                        name={action.icon}
+                        size={22}
+                        color={Color.piccolo}
+                      />
+                    }
+                    timePosition="relative"
+                  />
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -448,8 +465,9 @@ const styles = StyleSheet.create({
     marginHorizontal: Padding.padding_8,
   },
   quickActionCard: {
-    width: "47%",
-    marginHorizontal: Gap.gap_4 / 2,
+    flexBasis: "48%",
+    maxWidth: "48%",
+    aspectRatio: 1,
     borderRadius: Border.br_16,
     overflow: "visible",
     shadowColor: "rgba(0, 0, 0, 0.04)",
@@ -458,6 +476,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
     backgroundColor: Color.mainGohan,
+    padding: StyleVariable.px2,
+  },
+  quickActionCardContent: {
+    flex: 1,
   },
   logoutButton: {
     position: "absolute",

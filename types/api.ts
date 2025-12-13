@@ -30,6 +30,9 @@ export interface UpdateUserRequest {
   birthDate?: string;
   membershipTier: MembershipTier;
   planId?: number;
+  profilePictureUrl?: string | null;
+  profilePictureBase64?: string | null;
+  gallery?: GalleryItem[];
 }
 
 export interface UserProfileResponse {
@@ -45,6 +48,9 @@ export interface UserProfileResponse {
   lastLogin?: string;
   nextAppointment?: AppointmentResponse | null;
   preferences: PreferenceResponse[];
+  profilePictureUrl?: string | null;
+  profilePictureBase64?: string | null;
+  gallery?: GalleryItem[];
 }
 
 export interface PreferenceRequest {
@@ -114,11 +120,24 @@ export interface FeedbackAverageResponse {
   average: number;
 }
 
+export interface MediaAsset {
+  id?: number;
+  position: number;
+  imageUrl?: string | null;
+  imageBase64?: string | null;
+}
+
+export interface GalleryItem {
+  id?: number;
+  position: number;
+  imageUrl?: string | null;
+  imageBase64?: string | null;
+}
+
 export interface PostRequest {
   title: string;
   content: string;
-  imageUrl?: string;
-  imageBase64?: string;
+  media?: MediaAsset[];
 }
 
 export interface CommentRequest {
@@ -130,8 +149,7 @@ export interface PostResponse {
   authorId: number;
   title: string;
   content: string;
-  imageUrl?: string;
-  imageBase64?: string;
+  media?: MediaAsset[];
   createdAt: string;
   updatedAt: string;
   likeCount: number;
@@ -185,4 +203,35 @@ export interface PageResponse<T> {
   totalPages: number;
   page: number;
   size: number;
+}
+
+export interface UserPerformanceSummary {
+  averageRating: number;
+  completedAppointments: number;
+  upcomingAppointments: number;
+  lastFeedbackAt?: string | null;
+}
+
+export interface DashboardMetric {
+  id: string;
+  label: string;
+  value: number;
+  unit?: string;
+  trend?: number;
+}
+
+export interface DashboardServiceRating {
+  service: string;
+  average: number;
+}
+
+export interface AdminDashboardResponse {
+  totalMembers: number;
+  activePlans: number;
+  upcomingAppointments: number;
+  pendingFeedback: number;
+  satisfactionScore: number;
+  metrics: DashboardMetric[];
+  topServices: DashboardServiceRating[];
+  recentAppointments: AppointmentResponse[];
 }

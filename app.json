@@ -4,7 +4,7 @@
     "slug": "ProjetoQuinze",
     "version": "1.0.0",
     "orientation": "portrait",
-  "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/images/icon.png",
@@ -21,6 +21,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.andre0luis.clubequinze",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
@@ -29,11 +30,23 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-  "scheme": "clubequinze",
-  "plugins": [
+    "scheme": "clubequinze",
+    "plugins": [
       "expo-font",
       "expo-router",
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Precisamos acessar sua galeria para anexar imagens aos posts e perfil."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "65023eb1-bfbe-480c-9781-4441576253d9"
+      }
+    }
   }
 }
