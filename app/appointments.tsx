@@ -175,7 +175,21 @@ export default function AppointmentsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.headerSpacer}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          activeOpacity={0.85}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
+          <Ionicons name="arrow-back" size={18} color={Color.piccolo} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Agendamentos</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <View style={styles.tabSwitcherWrapper}>
         <View style={styles.tabSwitcher}>
           {TABS.map((tab) => {
             const isActive = tab.id === activeTab;
@@ -285,8 +299,32 @@ const styles = StyleSheet.create({
     backgroundColor: Color.mainGohan,
   },
   headerSpacer: {
-    paddingTop: Padding.padding_16,
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Padding.padding_24,
+    paddingTop: Padding.padding_16,
+    gap: StyleVariable.gap1,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: StyleVariable.interactiveBorderRadiusRadiusIMd,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EEF5FF",
+  },
+  headerTitle: {
+    fontSize: FontSize.fs_16,
+    lineHeight: LineHeight.lh_24,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainBulma,
+  },
+  tabSwitcherWrapper: {
+    paddingHorizontal: Padding.padding_24,
+    paddingTop: Padding.padding_16,
   },
   tabSwitcher: {
     flexDirection: "row",

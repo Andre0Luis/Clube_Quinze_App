@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
     ActivityIndicator,
+    Linking,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -23,17 +24,40 @@ import {
     StyleVariable,
 } from "../../GlobalStyles";
 import { listPlans } from "../../services/plans";
-import { getCurrentUser, updateCurrentUser } from "../../services/users";
+import { getCurrentUser } from "../../services/users";
 import type { PlanResponse, UserProfileResponse } from "../../types/api";
 
-const formatCurrency = (value?: number) => {
-  if (value == null || Number.isNaN(value)) {
+const formatDateLabel = (value?: string) => {
+  if (!value) {
     return null;
   }
-  if (typeof Intl !== "undefined" && typeof Intl.NumberFormat === "function") {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
   }
-  return `R$ ${value.toFixed(2)}`;
+  const supportsRelative = typeof Intl !== "undefined" && "RelativeTimeFormat" in Intl;
+  if (supportsRelative) {
+    const formatter = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
+    const diffDays = Math.round((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (Math.abs(diffDays) < 7) {
+      return formatter.format(diffDays, "day");
+    }
+  }
+  return date.toLocaleDateString("pt-BR", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  });
+};
+
+const addMonths = (value: string, months: number) => {
+  const base = new Date(value);
+  if (Number.isNaN(base.getTime())) {
+    return null;
+  }
+  const next = new Date(base);
+  next.setMonth(next.getMonth() + months);
+  return next;
 };
 
 export default function PlansScreen() {
@@ -42,8 +66,6 @@ export default function PlansScreen() {
   const [plans, setPlans] = useState<PlanResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [pendingPlanId, setPendingPlanId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -109,51 +131,16 @@ export default function PlansScreen() {
 
   const currentPlanId = profile?.plan?.id ?? null;
 
-  const handleSelectPlan = useCallback(
-    async (plan: PlanResponse) => {
-      if (!profile) {
-        return;
-      }
-      if (plan.id === currentPlanId) {
-        setSuccessMessage("Este ja e o seu plano ativo.");
-        return;
-      }
-      if (isUpdating) {
-        return;
-      }
-      if (!profile.name || !profile.email) {
-        setErrorMessage("Complete seus dados pessoais antes de atualizar o plano.");
-        return;
-      }
-
-      setIsUpdating(true);
-      setPendingPlanId(plan.id);
-      setErrorMessage(null);
-      setSuccessMessage(null);
-
-      try {
-        const updated = await updateCurrentUser({
-          name: profile.name,
-          email: profile.email,
-          phone: profile.phone ?? undefined,
-          birthDate: profile.birthDate ?? undefined,
-          membershipTier: profile.membershipTier,
-          planId: plan.id,
-        });
-        setProfile(updated);
-        setSuccessMessage(`Plano ${plan.name} ativado com sucesso.`);
-      } catch (error) {
-        console.error("Failed to update plan", error);
-        setErrorMessage("Nao foi possivel atualizar seu plano.");
-      } finally {
-        setIsUpdating(false);
-        setPendingPlanId(null);
-      }
-    },
-    [currentPlanId, isUpdating, profile],
-  );
-
-  const currentPlanPrice = useMemo(() => formatCurrency(profile?.plan?.price), [profile?.plan?.price]);
+  const currentPlanExpiration = useMemo(() => {
+    if (!profile?.plan?.durationMonths || !profile?.createdAt) {
+      return null;
+    }
+    const computed = addMonths(profile.createdAt, profile.plan.durationMonths);
+    if (!computed) {
+      return null;
+    }
+    return formatDateLabel(computed.toISOString());
+  }, [profile?.createdAt, profile?.plan?.durationMonths]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
@@ -208,11 +195,25 @@ export default function PlansScreen() {
           <Text style={styles.currentPlanDescription}>
             {profile?.plan?.description ?? "Escolha um plano para desbloquear beneficios exclusivos."}
           </Text>
-          {currentPlanPrice ? (
-            <Text style={styles.currentPlanPrice}>
-              {currentPlanPrice} / {profile?.plan?.durationMonths ?? 12} meses
-            </Text>
+          {currentPlanExpiration ? (
+            <Text style={styles.currentPlanMeta}>Vencimento: {currentPlanExpiration}</Text>
           ) : null}
+          <Text style={styles.currentPlanQuestion}>Deseja trocar de plano?</Text>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            activeOpacity={0.85}
+            onPress={() => Linking.openURL("https://wa.me/5511999999999?text=Ol%C3%A1%20Quinze,%20quero%20falar%20sobre%20planos")}
+          >
+            <Text style={styles.primaryButtonText}>Entrar em contato</Text>
+          </TouchableOpacity>
+          <Text style={styles.currentPlanQuestion}>Renovar seu plano?</Text>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            activeOpacity={0.85}
+            onPress={() => Linking.openURL("https://wa.me/5511999999999?text=Ol%C3%A1%20Quinze,%20quero%20renovar%20meu%20plano")}
+          >
+            <Text style={styles.secondaryButtonText}>Fazer Renovacao</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.listCard}>
@@ -222,16 +223,8 @@ export default function PlansScreen() {
           ) : (
             plans.map((plan) => {
               const isActive = plan.id === currentPlanId;
-              const isPending = pendingPlanId === plan.id;
-              const priceLabel = formatCurrency(plan.price);
               return (
-                <TouchableOpacity
-                  key={plan.id}
-                  style={[styles.planCard, isActive && styles.planCardActive]}
-                  onPress={() => handleSelectPlan(plan)}
-                  disabled={isUpdating}
-                  activeOpacity={0.85}
-                >
+                <View key={plan.id} style={[styles.planCard, isActive && styles.planCardActive]}>
                   <View style={styles.planHeader}>
                     <Text style={styles.planName}>{plan.name}</Text>
                     {isActive ? (
@@ -242,29 +235,29 @@ export default function PlansScreen() {
                     ) : null}
                   </View>
                   <Text style={styles.planDescription}>{plan.description}</Text>
-                  {priceLabel ? (
-                    <Text style={styles.planPrice}>{priceLabel} / {plan.durationMonths} meses</Text>
-                  ) : null}
-                  <View style={styles.planActions}>
-                    <TouchableOpacity
-                      style={[styles.planActionButton, isActive && styles.planActionButtonDisabled]}
-                      onPress={() => handleSelectPlan(plan)}
-                      disabled={isActive || isUpdating}
-                      activeOpacity={0.85}
-                    >
-                      {isPending ? (
-                        <ActivityIndicator size="small" color={Color.mainGoten} />
-                      ) : (
-                        <Text style={styles.planActionButtonText}>
-                          {isActive ? "Plano atual" : "Ativar plano"}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
+                </View>
               );
             })
           )}
+        </View>
+
+        <View style={styles.ctaCard}>
+          <Text style={styles.sectionTitle}>Deseja trocar de plano?</Text>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            activeOpacity={0.85}
+            onPress={() => Linking.openURL("https://wa.me/5511999999999?text=Ol%C3%A1%20Quinze,%20quero%20falar%20sobre%20planos")}
+          >
+            <Text style={styles.primaryButtonText}>Entrar em contato</Text>
+          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Renovar seu plano?</Text>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            activeOpacity={0.85}
+            onPress={() => Linking.openURL("https://wa.me/5511999999999?text=Ol%C3%A1%20Quinze,%20quero%20renovar%20meu%20plano")}
+          >
+            <Text style={styles.secondaryButtonText}>Fazer Renovacao</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -272,196 +265,215 @@ export default function PlansScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: Color.mainGohan,
-  },
-  content: {
-    paddingTop: Padding.padding_24,
-    paddingBottom: Padding.padding_32,
-    paddingHorizontal: Padding.padding_24,
-    gap: Gap.gap_20,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: Border.br_58,
-    borderWidth: 1,
-    borderColor: "rgba(0, 5, 61, 0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Color.mainGohan,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: FontSize.fs_16,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  headerSpacer: {
-    width: 40,
-    height: 40,
-  },
-  loader: {
-    borderRadius: Border.br_16,
-    borderWidth: 1,
-    borderColor: "rgba(0, 5, 61, 0.08)",
-    backgroundColor: Color.mainGohan,
-    paddingVertical: StyleVariable.py4,
-    paddingHorizontal: StyleVariable.px6,
-    alignItems: "center",
-    gap: Gap.gap_8,
-  },
-  loaderLabel: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  feedbackBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Gap.gap_8,
-    borderRadius: Border.br_16,
-    borderWidth: 1,
-    paddingVertical: StyleVariable.py1,
-    paddingHorizontal: StyleVariable.px4,
-  },
-  feedbackError: {
-    borderColor: Color.supportiveChichi,
-    backgroundColor: "rgba(255, 78, 100, 0.1)",
-  },
-  feedbackSuccess: {
-    borderColor: Color.supportiveRoshi,
-    backgroundColor: "rgba(46, 125, 50, 0.12)",
-  },
-  feedbackText: {
-    flex: 1,
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  sectionTitle: {
-    fontSize: FontSize.fs_14,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  currentPlanCard: {
-    borderRadius: Border.br_16,
-    borderWidth: 1,
-    borderColor: "rgba(0, 5, 61, 0.08)",
-    backgroundColor: Color.mainGohan,
-    paddingHorizontal: StyleVariable.px6,
-    paddingVertical: StyleVariable.py4,
-    gap: Gap.gap_16,
-    shadowColor: "rgba(0, 0, 0, 0.05)",
-    shadowOpacity: 1,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 16,
-    elevation: 3,
-  },
-  currentPlanName: {
-    fontSize: FontSize.fs_16,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  currentPlanDescription: {
-    fontSize: FontSize.fs_12,
-    lineHeight: LineHeight.lh_16,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  currentPlanPrice: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  listCard: {
-    borderRadius: Border.br_16,
-    borderWidth: 1,
-    borderColor: "rgba(0, 5, 61, 0.08)",
-    backgroundColor: Color.mainGohan,
-    paddingHorizontal: StyleVariable.px6,
-    paddingVertical: StyleVariable.py4,
-    gap: Gap.gap_16,
-  },
-  emptyState: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  planCard: {
-    borderRadius: Border.br_16,
-    borderWidth: 1,
-    borderColor: "rgba(0, 5, 61, 0.08)",
-    backgroundColor: Color.mainGohan,
-    paddingHorizontal: StyleVariable.px4,
-    paddingVertical: StyleVariable.py4,
-    gap: Gap.gap_16,
-  },
-  planCardActive: {
-    borderColor: Color.piccolo,
-    backgroundColor: "rgba(0, 5, 61, 0.05)",
-  },
-  planHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  planName: {
-    fontSize: FontSize.fs_14,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  planBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Gap.gap_4,
-    paddingHorizontal: StyleVariable.px2,
-    paddingVertical: StyleVariable.py1,
-    borderRadius: Border.br_16,
-    backgroundColor: Color.piccolo,
-  },
-  planBadgeText: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.mainGoten,
-  },
-  planDescription: {
-    fontSize: FontSize.fs_12,
-    lineHeight: LineHeight.lh_16,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  planPrice: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  planActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
-  planActionButton: {
-    borderRadius: Border.br_16,
-    backgroundColor: Color.piccolo,
-    paddingVertical: StyleVariable.py2,
-    paddingHorizontal: StyleVariable.px4,
-    minWidth: 120,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  planActionButtonDisabled: {
-    backgroundColor: "rgba(0, 5, 61, 0.12)",
-  },
-  planActionButtonText: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.mainGoten,
-  },
+	safeArea: {
+		flex: 1,
+		backgroundColor: Color.mainGohan,
+	},
+	content: {
+		paddingTop: Padding.padding_24,
+		paddingBottom: Padding.padding_32,
+		paddingHorizontal: Padding.padding_24,
+		gap: Gap.gap_20,
+	},
+	header: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+	},
+	backButton: {
+		width: 40,
+		height: 40,
+		borderRadius: Border.br_58,
+		borderWidth: 1,
+		borderColor: "rgba(0, 5, 61, 0.08)",
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: Color.mainGohan,
+	},
+	headerTitle: {
+		flex: 1,
+		textAlign: "center",
+		fontSize: FontSize.fs_16,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.hit,
+	},
+	headerSpacer: {
+		width: 40,
+		height: 40,
+	},
+	loader: {
+		borderRadius: Border.br_16,
+		borderWidth: 1,
+		borderColor: "rgba(0, 5, 61, 0.08)",
+		backgroundColor: Color.mainGohan,
+		paddingVertical: StyleVariable.py4,
+		paddingHorizontal: StyleVariable.px6,
+		alignItems: "center",
+		gap: Gap.gap_8,
+	},
+	loaderLabel: {
+		fontSize: FontSize.fs_12,
+		fontFamily: FontFamily.dMSansRegular,
+		color: Color.mainTrunks,
+	},
+	feedbackBanner: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: Gap.gap_8,
+		borderRadius: Border.br_16,
+		borderWidth: 1,
+		paddingVertical: StyleVariable.py1,
+		paddingHorizontal: StyleVariable.px4,
+	},
+	feedbackError: {
+		borderColor: Color.supportiveChichi,
+		backgroundColor: "rgba(255, 78, 100, 0.1)",
+	},
+	feedbackSuccess: {
+		borderColor: Color.supportiveRoshi,
+		backgroundColor: "rgba(46, 125, 50, 0.12)",
+	},
+	feedbackText: {
+		flex: 1,
+		fontSize: FontSize.fs_12,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.hit,
+	},
+	sectionTitle: {
+		fontSize: FontSize.fs_14,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.hit,
+	},
+	currentPlanCard: {
+		borderRadius: Border.br_16,
+		borderWidth: 1,
+		borderColor: "rgba(0, 5, 61, 0.08)",
+		backgroundColor: Color.mainGohan,
+		paddingHorizontal: StyleVariable.px6,
+		paddingVertical: StyleVariable.py4,
+		gap: Gap.gap_16,
+		shadowColor: "rgba(0, 0, 0, 0.05)",
+		shadowOpacity: 1,
+		shadowOffset: { width: 0, height: 10 },
+		shadowRadius: 16,
+		elevation: 3,
+	},
+	currentPlanName: {
+		fontSize: FontSize.fs_16,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.hit,
+	},
+	currentPlanDescription: {
+		fontSize: FontSize.fs_12,
+		lineHeight: LineHeight.lh_16,
+		fontFamily: FontFamily.dMSansRegular,
+		color: Color.mainTrunks,
+	},
+	currentPlanMeta: {
+		fontSize: FontSize.fs_12,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.hit,
+	},
+	currentPlanQuestion: {
+		fontSize: FontSize.fs_12,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.hit,
+	},
+	listCard: {
+		borderRadius: Border.br_16,
+		borderWidth: 1,
+		borderColor: "rgba(0, 5, 61, 0.08)",
+		backgroundColor: Color.mainGohan,
+		paddingHorizontal: StyleVariable.px6,
+		paddingVertical: StyleVariable.py4,
+		gap: Gap.gap_16,
+	},
+	emptyState: {
+		fontSize: FontSize.fs_12,
+		fontFamily: FontFamily.dMSansRegular,
+		color: Color.mainTrunks,
+	},
+	planCard: {
+		borderRadius: Border.br_16,
+		borderWidth: 1,
+		borderColor: "rgba(0, 5, 61, 0.08)",
+		backgroundColor: Color.mainGohan,
+		paddingHorizontal: StyleVariable.px4,
+		paddingVertical: StyleVariable.py3,
+		gap: Gap.gap_12,
+	},
+	planCardActive: {
+		borderColor: Color.piccolo,
+		backgroundColor: "rgba(71, 82, 214, 0.05)",
+	},
+	planHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: Gap.gap_8,
+	},
+	planName: {
+		fontSize: FontSize.fs_14,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.hit,
+	},
+	planBadge: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: Gap.gap_4,
+		paddingHorizontal: StyleVariable.px2,
+		paddingVertical: StyleVariable.py1,
+		borderRadius: Border.br_16,
+		backgroundColor: Color.piccolo,
+	},
+	planBadgeText: {
+		fontSize: FontSize.fs_12,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.mainGoten,
+	},
+	planDescription: {
+		fontSize: FontSize.fs_12,
+		lineHeight: LineHeight.lh_16,
+		fontFamily: FontFamily.dMSansRegular,
+		color: Color.mainTrunks,
+	},
+	ctaCard: {
+		borderRadius: Border.br_16,
+		borderWidth: 1,
+		borderColor: "rgba(0, 5, 61, 0.08)",
+		backgroundColor: Color.mainGohan,
+		paddingHorizontal: StyleVariable.px6,
+		paddingVertical: StyleVariable.py4,
+		gap: Gap.gap_12,
+	},
+	primaryButton: {
+		marginTop: Gap.gap_4,
+		backgroundColor: Color.piccolo,
+		borderRadius: Border.br_16,
+		paddingVertical: StyleVariable.py3,
+		paddingHorizontal: StyleVariable.px4,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	primaryButtonText: {
+		fontSize: FontSize.fs_14,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.mainGoten,
+	},
+	secondaryButton: {
+		marginTop: Gap.gap_4,
+		backgroundColor: Color.mainGoten,
+		borderRadius: Border.br_16,
+		paddingVertical: StyleVariable.py3,
+		paddingHorizontal: StyleVariable.px4,
+		alignItems: "center",
+		justifyContent: "center",
+		borderWidth: 1,
+		borderColor: "rgba(0, 5, 61, 0.08)",
+	},
+	secondaryButtonText: {
+		fontSize: FontSize.fs_14,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.piccolo,
+	},
 });

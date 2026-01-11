@@ -26,7 +26,7 @@ import {
 } from "../../GlobalStyles";
 import { logout as logoutService } from "../../services/auth";
 import { getCurrentUser } from "../../services/users";
-import type { GalleryItem, UserProfileResponse } from "../../types/api";
+import type { UserProfileResponse } from "../../types/api";
 
 type ProfileOption = {
 	id: string;
@@ -79,12 +79,6 @@ const roleLabels: Record<UserProfileResponse["role"], string> = {
 	CLUB_ADMIN: "Administrador",
 };
 
-const appointmentStatusLabels: Record<string, string> = {
-	SCHEDULED: "Agendado",
-	COMPLETED: "Concluido",
-	CANCELED: "Cancelado",
-};
-
 const formatDateLabel = (value?: string) => {
 	if (!value) {
 		return null;
@@ -106,41 +100,6 @@ const formatDateLabel = (value?: string) => {
 		month: "short",
 		day: "2-digit",
 	});
-};
-
-const formatDateTimeLabel = (value?: string) => {
-	if (!value) {
-		return null;
-	}
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) {
-		return null;
-	}
-	return date.toLocaleString("pt-BR", {
-		day: "2-digit",
-		month: "short",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
-};
-
-const formatCurrency = (value?: number) => {
-	if (value == null || Number.isNaN(value)) {
-		return null;
-	}
-	if (typeof Intl !== "undefined" && typeof Intl.NumberFormat === "function") {
-		return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-	}
-	return `R$ ${value.toFixed(2)}`;
-};
-
-const formatServiceType = (value?: string | null) => {
-	if (!value) {
-		return null;
-	}
-	return value
-		.replace(/_/g, " ")
-		.replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
 export default function ProfileScreen() {
@@ -189,7 +148,7 @@ export default function ProfileScreen() {
 			return () => {
 				isActive = false;
 			};
-		}, [fetchProfile]),
+		}, [fetchProfile])
 	);
 
 	const handleRefresh = useCallback(async () => {
@@ -217,7 +176,6 @@ export default function ProfileScreen() {
 	);
 	const lastLoginLabel = useMemo(() => formatDateLabel(profile?.lastLogin), [profile?.lastLogin]);
 	const memberSinceLabel = useMemo(() => formatDateLabel(profile?.createdAt), [profile?.createdAt]);
-	const currentPlanPrice = profile?.plan?.price != null ? formatCurrency(profile.plan.price) : null;
 	const preferencePreview = useMemo(() => (profile?.preferences ?? []).slice(0, 4), [profile?.preferences]);
 	const avatarUri = useMemo(() => {
 		if (profile?.profilePictureBase64) {
@@ -225,36 +183,6 @@ export default function ProfileScreen() {
 		}
 		return profile?.profilePictureUrl ?? null;
 	}, [profile?.profilePictureBase64, profile?.profilePictureUrl]);
-	const galleryItems = useMemo(() => {
-		const items = (profile?.gallery ?? []).filter((item): item is GalleryItem => Boolean(item.imageUrl || item.imageBase64));
-		return [...items].sort((first, second) => first.position - second.position);
-	}, [profile?.gallery]);
-	const upcomingAppointment = useMemo(() => profile?.nextAppointment ?? null, [profile?.nextAppointment]);
-	const nextAppointmentDateLabel = useMemo(
-		() => formatDateTimeLabel(upcomingAppointment?.scheduledAt),
-		[upcomingAppointment?.scheduledAt],
-	);
-	const nextAppointmentRelativeLabel = useMemo(
-		() => formatDateLabel(upcomingAppointment?.scheduledAt),
-		[upcomingAppointment?.scheduledAt],
-	);
-	const nextAppointmentServiceLabel = useMemo(
-		() => formatServiceType(upcomingAppointment?.serviceType) ?? "Atendimento agendado",
-		[upcomingAppointment?.serviceType],
-	);
-	const nextAppointmentTierLabel = useMemo(() => {
-		if (!upcomingAppointment) {
-			return null;
-		}
-		const key = upcomingAppointment.appointmentTier as UserProfileResponse["membershipTier"];
-		return membershipLabels[key] ?? upcomingAppointment.appointmentTier;
-	}, [upcomingAppointment]);
-	const nextAppointmentStatusLabel = useMemo(() => {
-		if (!upcomingAppointment?.status) {
-			return null;
-		}
-		return appointmentStatusLabels[upcomingAppointment.status] ?? upcomingAppointment.status;
-	}, [upcomingAppointment]);
 
 	const headerSubtitle = useMemo(() => {
 		const defaultMessage = "Tenha uma experiencia personalizada e mantenha seus dados sempre atualizados.";
@@ -285,14 +213,12 @@ export default function ProfileScreen() {
 				return { ...option, description: label };
 			}
 			if (option.id === "plans") {
-				const label = profile?.plan
-					? `${profile.plan.name}${currentPlanPrice ? ` • ${currentPlanPrice}` : ""}`
-					: "Conheca os planos disponiveis.";
+				const label = profile?.plan ? profile.plan.name : "Conheca os planos disponiveis.";
 				return { ...option, description: label };
 			}
 			return option;
 		});
-	}, [currentPlanPrice, profile]);
+	}, [profile]);
 
 	const handleOptionPress = useCallback(
 		(option: ProfileOption) => {
@@ -386,60 +312,6 @@ export default function ProfileScreen() {
 						</View>
 					</View>
 
-					<View style={styles.appointmentCard}>
-						<View style={styles.appointmentHeader}>
-							<Ionicons name="calendar-clear-outline" size={18} color={Color.piccolo} />
-							<Text style={styles.appointmentTitle}>Proximo agendamento</Text>
-						</View>
-						{upcomingAppointment ? (
-							<>
-								<Text style={styles.appointmentService}>{nextAppointmentServiceLabel}</Text>
-								{nextAppointmentDateLabel ? (
-									<View style={styles.appointmentMetaRow}>
-										<Ionicons name="time-outline" size={16} color={Color.mainTrunks} />
-										<View style={styles.appointmentMetaTexts}>
-											<Text style={styles.appointmentMetaPrimary}>{nextAppointmentDateLabel}</Text>
-											{nextAppointmentRelativeLabel && nextAppointmentRelativeLabel !== nextAppointmentDateLabel ? (
-												<Text style={styles.appointmentMetaHint}>{nextAppointmentRelativeLabel}</Text>
-											) : null}
-										</View>
-									</View>
-								) : null}
-								{nextAppointmentTierLabel ? (
-									<View style={styles.appointmentMetaRow}>
-										<Ionicons name="star-outline" size={16} color={Color.mainTrunks} />
-										<Text style={styles.appointmentMetaPrimary}>{nextAppointmentTierLabel}</Text>
-									</View>
-								) : null}
-								{nextAppointmentStatusLabel ? (
-									<View style={styles.appointmentMetaRow}>
-										<Ionicons name="checkmark-circle-outline" size={16} color={Color.mainTrunks} />
-										<Text style={styles.appointmentMetaPrimary}>{nextAppointmentStatusLabel}</Text>
-									</View>
-								) : null}
-								{upcomingAppointment.notes ? (
-									<Text style={styles.appointmentMetaHint} numberOfLines={2}>
-										{upcomingAppointment.notes}
-									</Text>
-								) : null}
-							</>
-						) : (
-							<Text style={styles.appointmentEmpty}>
-								Nenhum agendamento futuro encontrado. Agende um horario quando estiver pronto.
-							</Text>
-						)}
-						<TouchableOpacity
-							style={styles.appointmentAction}
-							onPress={() => router.push("/(tabs)/reserve")}
-							activeOpacity={0.85}
-						>
-							<Text style={styles.appointmentActionText}>
-								{upcomingAppointment ? "Ver agenda completa" : "Agendar agora"}
-							</Text>
-							<Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
-						</TouchableOpacity>
-					</View>
-
 					<View style={styles.infoCard}>
 						<Text style={styles.infoTitle}>Dados de contato</Text>
 						<View style={styles.infoRow}>
@@ -499,41 +371,6 @@ export default function ProfileScreen() {
 						)}
 					</View>
 
-					<View style={styles.galleryCard}>
-						<View style={styles.galleryHeader}>
-							<Text style={styles.galleryTitle}>Galeria pessoal</Text>
-							<TouchableOpacity
-								style={styles.galleryAction}
-								onPress={() => router.push("/profile/personal-data")}
-								activeOpacity={0.85}
-							>
-								<Text style={styles.galleryActionText}>Atualizar</Text>
-								<Ionicons name="open-outline" size={16} color={Color.piccolo} />
-							</TouchableOpacity>
-						</View>
-						{galleryItems.length === 0 ? (
-							<Text style={styles.galleryEmpty}>
-								Adicione fotos para mostrar seu estilo dentro do app em Dados pessoais.
-							</Text>
-						) : (
-							<View style={styles.galleryGrid}>
-								{galleryItems.map((item) => {
-									const uri = item.imageBase64
-										? `data:image/jpeg;base64,${item.imageBase64}`
-										: item.imageUrl;
-									if (!uri) {
-										return null;
-									}
-									return (
-										<View key={`${item.position}-${uri}`} style={styles.galleryImageWrapper}>
-											<Image source={{ uri }} style={styles.galleryImage} contentFit="cover" />
-										</View>
-									);
-								})}
-							</View>
-						)}
-					</View>
-
 					<View style={styles.optionList}>
 						{enhancedOptions.map((option) => (
 							<TouchableOpacity
@@ -552,31 +389,6 @@ export default function ProfileScreen() {
 								<Ionicons name="chevron-forward" size={20} color={Color.mainTrunks} />
 							</TouchableOpacity>
 						))}
-					</View>
-
-					<View style={styles.highlightCard}>
-						<View style={styles.highlightBadge}>
-							<Text style={styles.highlightBadgeText}>Plano atual</Text>
-						</View>
-						<Text style={styles.highlightTitle}>{profile?.plan?.name ?? "Sem plano ativo"}</Text>
-						<Text style={styles.highlightDescription}>
-							{profile?.plan?.description ?? "Escolha um plano para desbloquear beneficios exclusivos."}
-						</Text>
-						{currentPlanPrice ? (
-							<Text style={styles.highlightPrice}>
-								{currentPlanPrice} / {profile?.plan?.durationMonths ?? 12} meses
-							</Text>
-						) : null}
-						<TouchableOpacity
-							style={styles.highlightLink}
-							activeOpacity={0.8}
-							onPress={() => router.push("/profile/plans")}
-						>
-							<Text style={styles.highlightLinkText}>
-								{profile?.plan ? "Alterar plano" : "Quero participar"}
-							</Text>
-							<Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
-						</TouchableOpacity>
 					</View>
 
 					<TouchableOpacity
@@ -661,69 +473,6 @@ const styles = StyleSheet.create({
 		shadowOffset: { width: 0, height: 10 },
 		shadowRadius: 16,
 		elevation: 3,
-	},
-	appointmentCard: {
-		borderRadius: Border.br_16,
-		backgroundColor: Color.mainGohan,
-		borderWidth: 1,
-		borderColor: "rgba(0, 5, 61, 0.08)",
-		paddingHorizontal: StyleVariable.px6,
-		paddingVertical: StyleVariable.py4,
-		gap: Gap.gap_12,
-		shadowColor: "rgba(0, 0, 0, 0.04)",
-		shadowOpacity: 1,
-		shadowOffset: { width: 0, height: 8 },
-		shadowRadius: 12,
-		elevation: 2,
-	},
-	appointmentHeader: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: Gap.gap_8,
-	},
-	appointmentTitle: {
-		fontSize: FontSize.fs_14,
-		fontFamily: FontFamily.dMSansBold,
-		color: Color.hit,
-	},
-	appointmentService: {
-		fontSize: FontSize.fs_14,
-		fontFamily: FontFamily.dMSansBold,
-		color: Color.piccolo,
-	},
-	appointmentMetaRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: Gap.gap_8,
-	},
-	appointmentMetaTexts: {
-		gap: Gap.gap_4,
-	},
-	appointmentMetaPrimary: {
-		fontSize: FontSize.fs_12,
-		fontFamily: FontFamily.dMSansBold,
-		color: Color.hit,
-	},
-	appointmentMetaHint: {
-		fontSize: FontSize.fs_12,
-		fontFamily: FontFamily.dMSansRegular,
-		color: Color.mainTrunks,
-	},
-	appointmentEmpty: {
-		fontSize: FontSize.fs_12,
-		fontFamily: FontFamily.dMSansRegular,
-		color: Color.mainTrunks,
-	},
-	appointmentAction: {
-		marginTop: Gap.gap_4,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: Gap.gap_4,
-	},
-	appointmentActionText: {
-		fontSize: FontSize.fs_12,
-		fontFamily: FontFamily.dMSansBold,
-		color: Color.piccolo,
 	},
 	headerTexts: {
 		flex: 1,
@@ -926,62 +675,12 @@ const styles = StyleSheet.create({
 		fontFamily: FontFamily.dMSansRegular,
 		color: Color.hit,
 	},
-	galleryCard: {
-		borderRadius: Border.br_16,
-		backgroundColor: Color.mainGohan,
-		borderWidth: 1,
-		borderColor: "rgba(0, 5, 61, 0.08)",
-		paddingHorizontal: StyleVariable.px6,
-		paddingVertical: StyleVariable.py4,
-		gap: StyleVariable.px3,
-	},
-	galleryHeader: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-	},
-	galleryTitle: {
-		fontSize: FontSize.fs_14,
-		fontFamily: FontFamily.dMSansBold,
-		color: Color.hit,
-	},
-	galleryAction: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: Gap.gap_4,
-	},
-	galleryActionText: {
-		fontSize: FontSize.fs_12,
-		fontFamily: FontFamily.dMSansBold,
-		color: Color.piccolo,
-	},
-	galleryEmpty: {
-		fontSize: FontSize.fs_12,
-		fontFamily: FontFamily.dMSansRegular,
-		color: Color.mainTrunks,
-	},
-	galleryGrid: {
-		flexDirection: "row",
-		flexWrap: "wrap",
-		gap: StyleVariable.px3,
-	},
-	galleryImageWrapper: {
-		width: 104,
-		height: 104,
-		borderRadius: Border.br_16,
-		overflow: "hidden",
-		backgroundColor: Color.mainGoku,
-	},
-	galleryImage: {
-		width: "100%",
-		height: "100%",
-	},
 	highlightCard: {
 		borderRadius: Border.br_16,
 		backgroundColor: "rgba(0, 5, 61, 0.06)",
 		paddingHorizontal: StyleVariable.px6,
 		paddingVertical: StyleVariable.py4,
-		gap: Gap.gap_16,
+		gap: Gap.gap_12,
 		borderWidth: 1,
 		borderColor: "rgba(0, 5, 61, 0.08)",
 	},
@@ -1010,18 +709,43 @@ const styles = StyleSheet.create({
 		fontFamily: FontFamily.dMSansRegular,
 		color: Color.mainTrunks,
 	},
-	highlightPrice: {
+	highlightMeta: {
 		fontSize: FontSize.fs_12,
 		fontFamily: FontFamily.dMSansBold,
 		color: Color.hit,
 	},
-	highlightLink: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: Gap.gap_8,
-	},
-	highlightLinkText: {
+	highlightQuestion: {
 		fontSize: FontSize.fs_12,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.hit,
+	},
+	primaryButton: {
+		marginTop: Gap.gap_4,
+		backgroundColor: Color.piccolo,
+		borderRadius: Border.br_16,
+		paddingVertical: StyleVariable.py3,
+		paddingHorizontal: StyleVariable.px4,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	primaryButtonText: {
+		fontSize: FontSize.fs_14,
+		fontFamily: FontFamily.dMSansBold,
+		color: Color.mainGoten,
+	},
+	secondaryButton: {
+		marginTop: Gap.gap_4,
+		backgroundColor: Color.mainGoten,
+		borderRadius: Border.br_16,
+		paddingVertical: StyleVariable.py3,
+		paddingHorizontal: StyleVariable.px4,
+		alignItems: "center",
+		justifyContent: "center",
+		borderWidth: 1,
+		borderColor: "rgba(0, 5, 61, 0.08)",
+	},
+	secondaryButtonText: {
+		fontSize: FontSize.fs_14,
 		fontFamily: FontFamily.dMSansBold,
 		color: Color.piccolo,
 	},

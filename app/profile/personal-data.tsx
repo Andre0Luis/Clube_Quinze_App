@@ -15,7 +15,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { MaskedTextInput, Masks } from "react-native-mask-input";
+import MaskedTextInput, { Masks } from "react-native-mask-input";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -814,7 +814,7 @@ export default function PersonalDataScreen() {
               <MaskedTextInput
                 style={styles.fieldInput}
                 value={form.phone}
-                onChangeText={(masked) => handleFieldChange("phone", masked)}
+                onChangeText={(masked: string) => handleFieldChange("phone", masked)}
                 mask={Masks.BRL_PHONE}
                 placeholder="(11) 99999-0000"
                 placeholderTextColor={Color.mainTrunks}
@@ -826,7 +826,7 @@ export default function PersonalDataScreen() {
               <MaskedTextInput
                 style={styles.fieldInput}
                 value={form.birthDate}
-                onChangeText={(masked) => handleFieldChange("birthDate", masked)}
+                onChangeText={(masked: string) => handleFieldChange("birthDate", masked)}
                 mask={Masks.DATE_YYYYMMDD}
                 placeholder="AAAA-MM-DD"
                 placeholderTextColor={Color.mainTrunks}

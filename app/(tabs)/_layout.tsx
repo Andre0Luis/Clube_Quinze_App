@@ -1,11 +1,16 @@
 
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Tabs } from "expo-router";
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import MenuDeNavegao, { MenuItem } from "../../components/MenuDeNavegao";
+import { getCurrentUser } from "../../services/users";
+
+type CustomTabBarProps = BottomTabBarProps & {
+  canSeeCommunity: boolean;
+};
 
 const routeConfig: Record<string, MenuItem> = {
   index: { key: "index", label: "Home", icon: "home-outline" },
@@ -14,25 +19,34 @@ const routeConfig: Record<string, MenuItem> = {
   profile: { key: "profile", label: "Perfil", icon: "person-outline" },
 };
 
-const CustomTabBar = memo(({ state, descriptors, navigation }: BottomTabBarProps) => {
+const CustomTabBar = memo(({ state, navigation, canSeeCommunity }: CustomTabBarProps) => {
   const insets = useSafeAreaInsets();
 
   const items = useMemo(() => {
-    return state.routes
+    const baseItems = state.routes
       .map((route) => routeConfig[route.name])
       .filter((item): item is MenuItem => Boolean(item));
-  }, [state.routes]);
+    if (!canSeeCommunity) {
+      return baseItems.filter((item) => item.key !== "community");
+    }
+    return baseItems;
+  }, [canSeeCommunity, state.routes]);
 
-  const activeRouteName = state.routes[state.index]?.name;
+  const activeRouteName = useMemo(() => {
+    const current = state.routes[state.index]?.name;
+    if (current === "community" && !canSeeCommunity) {
+      // Force fallback to home if community is hidden
+      return "index";
+    }
+    return current;
+  }, [canSeeCommunity, state.index, state.routes]);
 
   const handleSelectTab = (key: string) => {
-    const targetIndex = state.routes.findIndex((route) => route.name === key);
-    if (targetIndex === -1) {
+    const targetRoute = state.routes.find((route) => route.name === key);
+    if (!targetRoute) {
       console.warn(`Rota não encontrada para a aba: ${key}`);
       return;
     }
-
-    const targetRoute = state.routes[targetIndex];
     const event = navigation.emit({
       type: "tabPress",
       target: targetRoute.key,
@@ -59,8 +73,34 @@ const CustomTabBar = memo(({ state, descriptors, navigation }: BottomTabBarProps
 });
 
 export default function TabLayout() {
+  const [canSeeCommunity, setCanSeeCommunity] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadUser = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (!isMounted) return;
+        const allowed = user?.role === "CLUB_ADMIN" || user?.membershipTier === "QUINZE_SELECT";
+        setCanSeeCommunity(Boolean(allowed));
+      } catch (error) {
+        // fallback: hide community for unknown user
+        if (isMounted) {
+          setCanSeeCommunity(false);
+        }
+      }
+    };
+
+    loadUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
-    <Tabs tabBar={(props) => <CustomTabBar {...props} />}>
+    <Tabs tabBar={(props) => <CustomTabBar {...props} canSeeCommunity={canSeeCommunity} />}>
       <Tabs.Screen
         name="index"
         options={{
@@ -75,13 +115,15 @@ export default function TabLayout() {
           headerShown: false,
         }}
       />
-      <Tabs.Screen
-        name="community"
-        options={{
-          title: "Comunidade",
-          headerShown: false,
-        }}
-      />
+      {canSeeCommunity ? (
+        <Tabs.Screen
+          name="community"
+          options={{
+            title: "Comunidade",
+            headerShown: false,
+          }}
+        />
+      ) : null}
       <Tabs.Screen
         name="profile"
         options={{

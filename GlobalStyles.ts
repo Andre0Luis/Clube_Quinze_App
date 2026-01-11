@@ -12,6 +12,7 @@ export const FontSize = {
   fs_14: 14,
   fs_15: 15,
   fs_16: 16,
+  fs_18: 18,
   fs_24: 24,
   fs_32: 32,
 };
@@ -66,7 +67,9 @@ export const StyleVariable = {
   px6: 24,
   py1: 4,
   py2: 8,
+  py3: 12,
   py4: 16,
+  py6: 24,
   surfaceBorderRadiusRadiusSLg: 16,
   surfaceBorderRadiusRadiusSRounded: 9999,
 };
@@ -78,6 +81,7 @@ export const Gap = {
   gap_3: 3,
   gap_4: 4,
   gap_8: 8,
+  gap_12: 12,
 };
 /* Paddings */
 export const Padding = {
@@ -98,6 +102,7 @@ export const Border = {
   br_24: 24,
   br_58: 58,
   br_8: 8,
+  br_10: 10,
 };
 /* width */
 export const Width = {

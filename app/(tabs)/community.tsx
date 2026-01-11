@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     RefreshControl,
@@ -73,11 +73,38 @@ const formatDateLabel = (value?: string) => {
 
 export default function CommunityScreen() {
 	const router = useRouter();
+	const [authorized, setAuthorized] = useState<boolean | null>(null);
 	const [activeTab, setActiveTab] = useState<TabName>("posts");
 	const [postsPage, setPostsPage] = useState<PageResponse<PostResponse> | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	useEffect(() => {
+		let isMounted = true;
+		const checkAccess = async () => {
+			try {
+				const user = await getCurrentUser();
+				if (!isMounted) return;
+				const allowed = user?.role === "CLUB_ADMIN" || user?.membershipTier === "QUINZE_SELECT";
+				setAuthorized(Boolean(allowed));
+				if (!allowed) {
+					router.replace("/");
+				}
+			} catch (error) {
+				if (isMounted) {
+					setAuthorized(false);
+					router.replace("/");
+				}
+			}
+		};
+
+		checkAccess();
+
+		return () => {
+			isMounted = false;
+		};
+	}, [router]);
 	const [isPickingMedia, setIsPickingMedia] = useState(false);
 	const [postContent, setPostContent] = useState("");
 	const [selectedMedia, setSelectedMedia] = useState<ComposerMedia[]>([]);
@@ -116,9 +143,12 @@ export default function CommunityScreen() {
 	);
 
 	useFocusEffect(
-		useCallback(() => {
-			fetchCommunityData();
-		}, [fetchCommunityData]),
+			useCallback(() => {
+				if (!authorized) {
+					return;
+				}
+				fetchCommunityData();
+			}, [fetchCommunityData, authorized]),
 	);
 
 	const handleRefresh = useCallback(() => fetchCommunityData({ silent: true }), [fetchCommunityData]);
@@ -286,6 +316,20 @@ export default function CommunityScreen() {
 		},
 		[router],
 	);
+
+	if (authorized === null) {
+		return (
+			<SafeAreaView style={styles.safeArea}>
+				<View style={styles.loadingState}>
+					<ActivityIndicator color={Color.piccolo} size="large" />
+				</View>
+			</SafeAreaView>
+		);
+	}
+
+	if (!authorized) {
+		return null;
+	}
 
 	return (
 		<SafeAreaView style={styles.safeArea}>
@@ -534,6 +578,12 @@ const styles = StyleSheet.create({
 	safeArea: {
 		flex: 1,
 		backgroundColor: Color.mainGohan,
+	},
+	loadingState: {
+		flex: 1,
+		alignItems: "center",
+		justifyContent: "center",
+		padding: StyleVariable.px6,
 	},
 	content: {
 		paddingTop: Padding.padding_32,

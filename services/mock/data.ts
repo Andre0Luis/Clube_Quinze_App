@@ -68,6 +68,56 @@ const selectPlan: PlanResponse = {
 
 const plans: PlanSummary[] = [basePlan, premiumPlan, selectPlan];
 
+export type MockPersona = 'ADMIN' | 'CLUB_15' | 'QUINZE_SELECT';
+
+type PersonaPreset = {
+  id: MockPersona;
+  label: string;
+  role: UserProfileResponse['role'];
+  membershipTier: UserProfileResponse['membershipTier'];
+  plan: PlanResponse;
+  email: string;
+  name: string;
+  phone: string;
+  description: string;
+};
+
+const personaPresets: Record<MockPersona, PersonaPreset> = {
+  ADMIN: {
+    id: 'ADMIN',
+    label: 'Admin',
+    role: 'CLUB_ADMIN',
+    membershipTier: 'CLUB_15',
+    plan: premiumPlan,
+    email: 'admin@clubequinze.com',
+    name: 'Admin Clube Quinze',
+    phone: '+55 11 90000-0001',
+    description: 'Perfil administrativo para testar dashboards e gestão',
+  },
+  CLUB_15: {
+    id: 'CLUB_15',
+    label: 'Clube 15',
+    role: 'CLIENT',
+    membershipTier: 'CLUB_15',
+    plan: basePlan,
+    email: 'cliente@clubequinze.com',
+    name: 'Cliente Clube 15',
+    phone: '+55 11 90000-0015',
+    description: 'Cliente convencional do Clube 15',
+  },
+  QUINZE_SELECT: {
+    id: 'QUINZE_SELECT',
+    label: 'Quinze Select',
+    role: 'CLIENT',
+    membershipTier: 'QUINZE_SELECT',
+    plan: selectPlan,
+    email: 'select@clubequinze.com',
+    name: 'Cliente Quinze Select',
+    phone: '+55 11 90000-0029',
+    description: 'Cliente Select com beneficios e agenda prioritaria',
+  },
+};
+
 const basePreferences: PreferenceResponse[] = [
   {
     id: 1,
@@ -138,36 +188,83 @@ const appointments: AppointmentResponse[] = [
     serviceType: 'barba',
     notes: 'Cancelado pelo cliente via aplicativo.',
   },
+  {
+    id: 6,
+    clientId: 1,
+    scheduledAt: addDays(5, 17, 15),
+    appointmentTier: 'QUINZE_SELECT',
+    status: 'SCHEDULED',
+    serviceType: 'ajuste_de_barba_select',
+    notes: 'Cliente Select prefere finalizacao com oleo quente.',
+  },
+  {
+    id: 7,
+    clientId: 1,
+    scheduledAt: addDays(-7, 13, 0),
+    appointmentTier: 'CLUB_15',
+    status: 'COMPLETED',
+    serviceType: 'limpeza_de_pele',
+    notes: 'Sessao completa de skincare com esfoliacao.',
+  },
+  {
+    id: 8,
+    clientId: 1,
+    scheduledAt: addDays(12, 19, 0),
+    appointmentTier: 'QUINZE_SELECT',
+    status: 'SCHEDULED',
+    serviceType: 'barbearia_noturna',
+    notes: 'Horario extra premium para Select apos expediente.',
+  },
+  {
+    id: 9,
+    clientId: 1,
+    scheduledAt: addDays(-20, 10, 30),
+    appointmentTier: 'CLUB_15',
+    status: 'CANCELED',
+    serviceType: 'corte_rapido',
+    notes: 'Cancelado por manutencao do espaco.',
+  },
 ];
 
 const baseAppointment: AppointmentResponse = appointments[0];
 
-const baseUser: UserProfileResponse = {
-  id: 1,
-  name: 'Andre Luis',
-  email: 'aluis283@gmail.com',
-  phone: '+55 11 99999-1234',
-  birthDate: '1992-08-15',
-  membershipTier: 'CLUB_15',
-  role: 'CLUB_ADMIN',
-  plan: premiumPlan,
-  createdAt: nowIso,
-  lastLogin: nowIso,
-  nextAppointment: appointments.find((item) => item.status === 'SCHEDULED' && new Date(item.scheduledAt) >= new Date()) ?? baseAppointment,
-  preferences: basePreferences,
-  profilePictureUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80',
-  profilePictureBase64: undefined,
-  gallery: [
-    {
-      position: 1,
-      imageUrl: 'https://images.unsplash.com/photo-1504805572947-34fad45aed93?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-      position: 2,
-      imageUrl: 'https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=800&q=80',
-    },
-  ],
+let currentPersona: MockPersona = 'CLUB_15';
+
+const buildBaseUser = (persona: MockPersona): UserProfileResponse => {
+  const preset = personaPresets[persona];
+  return {
+    id: 1,
+    name: preset.name,
+    email: preset.email,
+    phone: preset.phone,
+    birthDate: '1992-08-15',
+    membershipTier: preset.membershipTier,
+    role: preset.role,
+    plan: preset.plan,
+    createdAt: nowIso,
+    lastLogin: nowIso,
+    nextAppointment:
+      appointments.find((item) => item.status === 'SCHEDULED' && new Date(item.scheduledAt) >= new Date()) ?? baseAppointment,
+    preferences: basePreferences,
+    profilePictureUrl:
+      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80',
+    profilePictureBase64: undefined,
+    gallery: [
+      {
+        position: 1,
+        imageUrl:
+          'https://images.unsplash.com/photo-1504805572947-34fad45aed93?auto=format&fit=crop&w=800&q=80',
+      },
+      {
+        position: 2,
+        imageUrl:
+          'https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=800&q=80',
+      },
+    ],
+  };
 };
+
+let baseUser: UserProfileResponse = buildBaseUser(currentPersona);
 
 const sortByScheduleAsc = (first: AppointmentResponse, second: AppointmentResponse) =>
   new Date(first.scheduledAt).getTime() - new Date(second.scheduledAt).getTime();
@@ -182,6 +279,29 @@ const updateNextAppointment = () => {
 };
 
 updateNextAppointment();
+
+export const getMockPersona = () => currentPersona;
+
+export const setMockPersona = (persona: MockPersona) => {
+  currentPersona = persona;
+  baseUser = buildBaseUser(persona);
+  updateNextAppointment();
+};
+
+export const getMockPersonaOptions = () =>
+  Object.values(personaPresets).map((preset) => ({
+    id: preset.id,
+    label: preset.label,
+    description: preset.description,
+    membershipTier: preset.membershipTier,
+    role: preset.role,
+    email: preset.email,
+  }));
+
+export const getMockPersonaCredentials = (persona: MockPersona) => ({
+  email: personaPresets[persona].email,
+  password: '1234',
+});
 
 const feedbackEntries: FeedbackResponse[] = [
   {
@@ -207,6 +327,14 @@ const feedbackEntries: FeedbackResponse[] = [
     rating: 5,
     comment: 'Tratamento capilar deixou o cabelo otimo.',
     createdAt: addDays(-1, 19, 15),
+  },
+  {
+    id: 4,
+    appointmentId: 7,
+    userId: 1,
+    rating: 3,
+    comment: 'Atendimento bom, mas poderia ser mais rapido.',
+    createdAt: addDays(-6, 10, 45),
   },
 ];
 
@@ -284,6 +412,31 @@ const posts: PostResponse[] = [
     likeCount: 2,
     comments: [],
   },
+  {
+    id: 4,
+    authorId: 2,
+    title: 'Nova barbearia conceito',
+    content: 'Conheca o novo ambiente com cabines privativas e mixologia autoral.',
+    media: [
+      {
+        position: 1,
+        imageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80',
+      },
+    ],
+    createdAt: addDays(-8, 16, 45),
+    updatedAt: addDays(-8, 16, 45),
+    likeCount: 7,
+    comments: [
+      {
+        id: 4,
+        postId: 4,
+        authorId: 5,
+        content: 'Ja quero agendar uma visita!',
+        createdAt: addDays(-8, 17, 5),
+        updatedAt: addDays(-8, 17, 5),
+      },
+    ],
+  },
 ];
 
 const likes: LikeResponse[] = [
@@ -346,6 +499,18 @@ const likes: LikeResponse[] = [
     postId: 3,
     userId: 2,
     createdAt: addDays(-5, 14, 10),
+  },
+  {
+    id: 11,
+    postId: 4,
+    userId: 2,
+    createdAt: addDays(-8, 17, 10),
+  },
+  {
+    id: 12,
+    postId: 4,
+    userId: 3,
+    createdAt: addDays(-8, 17, 20),
   },
 ];
 

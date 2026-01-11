@@ -28,7 +28,16 @@ import {
     StyleVariable,
 } from '../GlobalStyles';
 import { login } from '../services/auth';
+import type { MockPersona } from '../services/mock/data';
+import {
+    getMockPersona,
+    getMockPersonaCredentials,
+    getMockPersonaOptions,
+    setMockPersona as setMockPersonaSetting,
+} from '../services/mock/data';
 import { isMockEnabled, setMockEnabled } from '../services/mock/settings';
+
+const mockPersonaOptions = getMockPersonaOptions();
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -36,6 +45,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [useMock, setUseMock] = useState(isMockEnabled());
+  const [mockPersona, setMockPersonaState] = useState<MockPersona>(getMockPersona());
   const router = useRouter();
 
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
@@ -43,10 +53,15 @@ export default function LoginScreen() {
   useEffect(() => {
     setMockEnabled(useMock);
     if (useMock) {
-      setEmail('aluis283@gmail.com');
-      setPassword('1234');
+      const credentials = getMockPersonaCredentials(mockPersona);
+      setEmail(credentials.email);
+      setPassword(credentials.password);
     }
-  }, [useMock]);
+  }, [useMock, mockPersona]);
+
+  useEffect(() => {
+    setMockPersonaSetting(mockPersona);
+  }, [mockPersona]);
 
   useEffect(() => {
     let isMounted = true;
@@ -82,6 +97,15 @@ export default function LoginScreen() {
       }
       return next;
     });
+  };
+
+  const handleSelectPersona = (persona: MockPersona) => {
+    setMockPersonaState(persona);
+    if (useMock) {
+      const credentials = getMockPersonaCredentials(persona);
+      setEmail(credentials.email);
+      setPassword(credentials.password);
+    }
   };
 
   const handleLogin = async () => {
@@ -183,6 +207,34 @@ export default function LoginScreen() {
             <TouchableOpacity style={styles.secondaryAction} onPress={() => router.push('/register')}>
               <Text style={styles.secondaryText}>Criar conta</Text>
             </TouchableOpacity>
+
+            <View style={styles.mockControls}>
+              <View style={styles.mockHeaderRow}>
+                <Text style={styles.mockLabel}>Perfil para mocks</Text>
+                <Text style={styles.mockHint}>Escolha antes de ativar</Text>
+              </View>
+              <View style={styles.personaChips}>
+                {mockPersonaOptions.map((option) => {
+                  const isActive = mockPersona === option.id;
+                  return (
+                    <TouchableOpacity
+                      key={option.id}
+                      style={[styles.personaChip, isActive ? styles.personaChipActive : null]}
+                      onPress={() => handleSelectPersona(option.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Selecionar perfil ${option.label}`}
+                    >
+                      <Text style={[styles.personaChipLabel, isActive ? styles.personaChipLabelActive : null]}>
+                        {option.label}
+                      </Text>
+                      <Text style={[styles.personaChipSub, isActive ? styles.personaChipLabelActive : null]}>
+                        {option.membershipTier === 'QUINZE_SELECT' ? 'Select' : 'Clube 15'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -309,6 +361,65 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
     textDecorationLine: 'underline',
+  },
+  mockControls: {
+    marginTop: StyleVariable.px6,
+    padding: StyleVariable.px4,
+    borderRadius: Border.br_16,
+    backgroundColor: '#F5F7FB',
+    borderWidth: 1,
+    borderColor: Color.mainBeerus,
+    gap: StyleVariable.px3,
+  },
+  mockHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  mockLabel: {
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_18,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.hit,
+  },
+  mockHint: {
+    fontSize: FontSize.fs_12,
+    lineHeight: LineHeight.lh_16,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+  },
+  personaChips: {
+    flexDirection: 'row',
+    gap: StyleVariable.px2,
+    flexWrap: 'wrap',
+  },
+  personaChip: {
+    paddingVertical: StyleVariable.py2,
+    paddingHorizontal: StyleVariable.px3,
+    borderRadius: Border.br_16,
+    borderWidth: 1,
+    borderColor: Color.mainBeerus,
+    backgroundColor: Color.mainGoten,
+    gap: StyleVariable.px1,
+  },
+  personaChipActive: {
+    borderColor: Color.piccolo,
+    backgroundColor: 'rgba(28, 145, 214, 0.12)',
+  },
+  personaChipLabel: {
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_18,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainBulma,
+  },
+  personaChipLabelActive: {
+    color: Color.piccolo,
+  },
+  personaChipSub: {
+    fontSize: FontSize.fs_12,
+    lineHeight: LineHeight.lh_16,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
   },
   mockToggle: {
     position: 'absolute',

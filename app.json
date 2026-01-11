@@ -28,7 +28,7 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/images/icon.png"
     },
     "scheme": "clubequinze",
     "plugins": [
@@ -40,7 +40,8 @@
         {
           "photosPermission": "Precisamos acessar sua galeria para anexar imagens aos posts e perfil."
         }
-      ]
+      ],
+      ["expo-notifications"]
     ],
     "extra": {
       "router": {},

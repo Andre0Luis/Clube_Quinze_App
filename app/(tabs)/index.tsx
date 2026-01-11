@@ -1,16 +1,17 @@
 
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -18,18 +19,20 @@ import Card from "../../components/Card";
 import Card1 from "../../components/Card1";
 import FrameComponent1 from "../../components/FrameComponent1";
 import {
-  Border,
-  Color,
-  FontFamily,
-  FontSize,
-  Gap,
-  LineHeight,
-  Padding,
-  StyleVariable,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    LineHeight,
+    Padding,
+    StyleVariable,
 } from "../../GlobalStyles";
+import { usePushNotifications } from "../../hooks/use-push-notifications";
 import { listMyAppointments } from "../../services/appointments";
 import { logout as logoutService } from "../../services/auth";
 import { isMockEnabled } from "../../services/mock/settings";
+import { registerPushToken } from "../../services/push-tokens";
 import { getCurrentUser } from "../../services/users";
 import type { AppointmentResponse, UserProfileResponse } from "../../types/api";
 
@@ -100,6 +103,8 @@ const findNextAppointment = (items: AppointmentResponse[]) => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { expoPushToken, appVersion, error: notificationsError } = usePushNotifications();
+  const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(null);
   const mockActive = isMockEnabled();
   const [userName, setUserName] = useState<string>("");
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
@@ -108,7 +113,29 @@ export default function HomeScreen() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
+    if (notificationsError) {
+      console.warn("Falha ao registrar notificacoes", notificationsError);
+    }
+  }, [notificationsError]);
+
+  useEffect(() => {
+    if (expoPushToken) {
+      console.log("Expo push token obtido", expoPushToken);
+      if (expoPushToken !== registeredPushToken) {
+        registerPushToken(expoPushToken, appVersion).finally(() => {
+          setRegisteredPushToken(expoPushToken);
+        });
+      }
+    }
+  }, [expoPushToken, registeredPushToken, appVersion]);
+
+  useEffect(() => {
     let isMounted = true;
+
+    const clearStoredTokens = async () => {
+      await SecureStore.deleteItemAsync("accessToken");
+      await SecureStore.deleteItemAsync("refreshToken");
+    };
 
     const fetchUserData = async () => {
       try {
@@ -120,13 +147,28 @@ export default function HomeScreen() {
               setUserName("");
               setIsLoadingNext(false);
               setNextAppointment(null);
+              setIsAdmin(false);
             }
             return;
           }
 
-          const decodedToken = jwtDecode<DecodedToken>(token);
-          if (decodedToken?.name && isMounted) {
-            setUserName(decodedToken.name);
+          try {
+            const decodedToken = jwtDecode<DecodedToken>(token);
+            if (decodedToken?.name && isMounted) {
+              setUserName(decodedToken.name);
+            }
+          } catch (decodeError) {
+            console.warn("Invalid access token detected", decodeError);
+            await clearStoredTokens();
+            if (isMounted) {
+              setProfile(null);
+              setUserName("");
+              setNextAppointment(null);
+              setIsLoadingNext(false);
+              setIsAdmin(false);
+              router.replace("/login");
+            }
+            return;
           }
         }
 
@@ -159,6 +201,22 @@ export default function HomeScreen() {
         if (!isMounted) {
           return;
         }
+        const status =
+          typeof error === "object" && error !== null && "response" in error
+            ? (error as { response?: { status?: number } }).response?.status
+            : undefined;
+
+        if (!mockActive && status === 401) {
+          await clearStoredTokens();
+          setProfile(null);
+          setUserName("");
+          setNextAppointment(null);
+          setIsLoadingNext(false);
+          setIsAdmin(false);
+          router.replace("/login");
+          return;
+        }
+
         setProfile(null);
         setIsLoadingNext(false);
         setIsAdmin(false);
@@ -351,7 +409,15 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <Card1 onPress={() => handleNavigate("/community")} />
+          <View style={styles.communityWrapper}>
+            <Card1 onPress={() => handleNavigate("/community")} />
+          </View>
+          <Image
+            source={require("../../assets/passos_magicos.jpg")}
+            style={styles.magicStepsImage}
+            contentFit="cover"
+            accessibilityLabel="Passos Magicos"
+          />
         </View>
       </ScrollView>
 
@@ -384,6 +450,17 @@ const styles = StyleSheet.create({
   section: {
     alignItems: "center",
     gap: Gap.gap_16,
+  },
+  communityWrapper: {
+    width: "100%",
+  },
+  magicStepsImage: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    borderRadius: Border.br_16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#E6EAF1",
   },
   nextAppointmentSection: {
     gap: Gap.gap_16,
