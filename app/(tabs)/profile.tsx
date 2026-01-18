@@ -176,7 +176,6 @@ export default function ProfileScreen() {
 	);
 	const lastLoginLabel = useMemo(() => formatDateLabel(profile?.lastLogin), [profile?.lastLogin]);
 	const memberSinceLabel = useMemo(() => formatDateLabel(profile?.createdAt), [profile?.createdAt]);
-	const preferencePreview = useMemo(() => (profile?.preferences ?? []).slice(0, 4), [profile?.preferences]);
 	const avatarUri = useMemo(() => {
 		if (profile?.profilePictureBase64) {
 			return `data:image/jpeg;base64,${profile.profilePictureBase64}`;
@@ -310,65 +309,6 @@ export default function ProfileScreen() {
 								<Ionicons name="person-circle-outline" size={48} color={Color.piccolo} />
 							)}
 						</View>
-					</View>
-
-					<View style={styles.infoCard}>
-						<Text style={styles.infoTitle}>Dados de contato</Text>
-						<View style={styles.infoRow}>
-							<View style={styles.infoIcon}>
-								<Ionicons name="mail-outline" size={18} color={Color.piccolo} />
-							</View>
-							<View style={styles.infoTexts}>
-								<Text style={styles.infoLabel}>Email</Text>
-								<Text style={styles.infoValue}>{profile?.email ?? "Nao informado"}</Text>
-							</View>
-						</View>
-						<View style={styles.infoRow}>
-							<View style={styles.infoIcon}>
-								<Ionicons name="call-outline" size={18} color={Color.piccolo} />
-							</View>
-							<View style={styles.infoTexts}>
-								<Text style={styles.infoLabel}>Telefone</Text>
-								<Text style={styles.infoValue}>{profile?.phone ?? "Nao informado"}</Text>
-							</View>
-						</View>
-						<View style={styles.infoRow}>
-							<View style={styles.infoIcon}>
-								<Ionicons name="calendar-outline" size={18} color={Color.piccolo} />
-							</View>
-							<View style={styles.infoTexts}>
-								<Text style={styles.infoLabel}>Data de nascimento</Text>
-								<Text style={styles.infoValue}>{profile?.birthDate ?? "Nao informada"}</Text>
-							</View>
-						</View>
-					</View>
-
-					<View style={styles.preferencesCard}>
-						<View style={styles.preferenceHeader}>
-							<Text style={styles.preferenceTitle}>Preferencias recentes</Text>
-							<TouchableOpacity
-								style={styles.preferenceAction}
-								onPress={() => router.push("/profile/preferences")}
-								activeOpacity={0.85}
-							>
-								<Text style={styles.preferenceActionText}>Gerenciar</Text>
-								<Ionicons name="chevron-forward" size={16} color={Color.piccolo} />
-							</TouchableOpacity>
-						</View>
-						{preferencePreview.length === 0 ? (
-							<Text style={styles.preferenceEmpty}>Nenhuma preferencia cadastrada ainda.</Text>
-						) : (
-							<View style={styles.preferenceList}>
-								{preferencePreview.map((preference) => (
-									<View key={preference.id} style={styles.preferenceChip}>
-										<Ionicons name="sparkles-outline" size={14} color={Color.piccolo} />
-										<Text style={styles.preferenceChipText}>
-											{preference.key}: {preference.value}
-										</Text>
-									</View>
-								))}
-							</View>
-						)}
 					</View>
 
 					<View style={styles.optionList}>
@@ -532,53 +472,6 @@ const styles = StyleSheet.create({
 		height: "100%",
 		borderRadius: Border.br_58,
 	},
-	infoCard: {
-		borderRadius: Border.br_16,
-		backgroundColor: Color.mainGohan,
-		borderWidth: 1,
-		borderColor: "rgba(0, 5, 61, 0.08)",
-		paddingHorizontal: StyleVariable.px6,
-		paddingVertical: StyleVariable.py4,
-		gap: Gap.gap_16,
-		shadowColor: "rgba(0, 0, 0, 0.04)",
-		shadowOpacity: 1,
-		shadowOffset: { width: 0, height: 6 },
-		shadowRadius: 12,
-		elevation: 2,
-	},
-	infoTitle: {
-		fontSize: FontSize.fs_14,
-		fontFamily: FontFamily.dMSansBold,
-		color: Color.hit,
-	},
-	infoRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: Gap.gap_16,
-	},
-	infoIcon: {
-		width: 40,
-		height: 40,
-		borderRadius: Border.br_58,
-		backgroundColor: "rgba(0, 5, 61, 0.08)",
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	infoTexts: {
-		flex: 1,
-		gap: Gap.gap_4,
-	},
-	infoLabel: {
-		fontSize: FontSize.fs_12,
-		fontFamily: FontFamily.dMSansBold,
-		color: Color.mainTrunks,
-	},
-	infoValue: {
-		fontSize: FontSize.fs_14,
-		lineHeight: LineHeight.lh_24,
-		fontFamily: FontFamily.dMSansRegular,
-		color: Color.hit,
-	},
 	optionList: {
 		gap: Gap.gap_16,
 	},
@@ -621,59 +514,6 @@ const styles = StyleSheet.create({
 		lineHeight: LineHeight.lh_16,
 		fontFamily: FontFamily.dMSansRegular,
 		color: Color.mainTrunks,
-	},
-	preferencesCard: {
-		borderRadius: Border.br_16,
-		backgroundColor: Color.mainGohan,
-		borderWidth: 1,
-		borderColor: "rgba(0, 5, 61, 0.08)",
-		paddingHorizontal: StyleVariable.px6,
-		paddingVertical: StyleVariable.py4,
-		gap: Gap.gap_8,
-	},
-	preferenceHeader: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-	},
-	preferenceTitle: {
-		fontSize: FontSize.fs_14,
-		fontFamily: FontFamily.dMSansBold,
-		color: Color.hit,
-	},
-	preferenceAction: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: Gap.gap_4,
-	},
-	preferenceActionText: {
-		fontSize: FontSize.fs_12,
-		fontFamily: FontFamily.dMSansBold,
-		color: Color.piccolo,
-	},
-	preferenceEmpty: {
-		fontSize: FontSize.fs_12,
-		fontFamily: FontFamily.dMSansRegular,
-		color: Color.mainTrunks,
-	},
-	preferenceList: {
-		flexDirection: "row",
-		flexWrap: "wrap",
-		gap: Gap.gap_8,
-	},
-	preferenceChip: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: Gap.gap_4,
-		paddingHorizontal: StyleVariable.px2,
-		paddingVertical: StyleVariable.py1,
-		borderRadius: Border.br_16,
-		backgroundColor: "rgba(0, 5, 61, 0.08)",
-	},
-	preferenceChipText: {
-		fontSize: FontSize.fs_12,
-		fontFamily: FontFamily.dMSansRegular,
-		color: Color.hit,
 	},
 	highlightCard: {
 		borderRadius: Border.br_16,

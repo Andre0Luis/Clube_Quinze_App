@@ -5,28 +5,20 @@ import { useFocusEffect, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Card from "../../components/Card";
-import Card1 from "../../components/Card1";
 import FrameComponent1 from "../../components/FrameComponent1";
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    LineHeight,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  LineHeight,
+  Padding,
+  StyleVariable,
 } from "../../GlobalStyles";
 import { usePushNotifications } from "../../hooks/use-push-notifications";
 import { listMyAppointments } from "../../services/appointments";
@@ -315,122 +307,152 @@ export default function HomeScreen() {
   }, [profile?.name, userName]);
   const nextStatusMeta = useMemo(() => getStatusMeta(nextAppointment?.status), [nextAppointment?.status]);
 
+  const actionCards = useMemo<
+    Array<
+      | { kind: "next"; span: 2 }
+      | { kind: "link"; action: QuickAction; span: 1 }
+      | { kind: "community"; span: 2 }
+    >
+  >(() => {
+    return [
+      { kind: "next", span: 2 },
+      ...quickActions.map((action) => ({ kind: "link", action, span: 1 })),
+      { kind: "community", span: 2 },
+    ];
+  }, []);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
         <FrameComponent1 userName={displayName} onPressNotifications={() => handleNavigate("/notifications")} />
 
-        <View style={styles.nextAppointmentSection}>
-          <Text style={styles.sectionTitle}>Proximo agendamento</Text>
-          {isLoadingNext ? (
-            <View style={styles.nextCard}>
-              <ActivityIndicator size="small" color={Color.piccolo} />
-            </View>
-          ) : nextAppointment ? (
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => handleNavigate("/appointments/[appointmentId]", { appointmentId: String(nextAppointment.id) })}
-              style={styles.nextCard}
-            >
-              <View style={styles.cardHeader}>
-                <View style={styles.cardIconWrapper}>
-                  <Ionicons name="calendar" size={18} color={Color.piccolo} />
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: nextStatusMeta.background }]}>
-                  <Text
-                    style={[styles.statusText, { color: nextStatusMeta.text }]}
-                  >
-                    {nextStatusMeta.label}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>Seu proximo cuidado pessoal</Text>
-                <Text style={styles.cardDate}>{formatAppointmentDate(nextAppointment.scheduledAt)}</Text>
-              </View>
-
-              <View style={styles.cardFooter}>
-                <Text style={styles.cardLink}>Ver detalhes</Text>
-                <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.nextCard}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardIconWrapper}>
-                  <Ionicons name="calendar" size={18} color={Color.piccolo} />
-                </View>
-              </View>
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>Sem agendamentos disponiveis</Text>
-                <Text style={styles.cardDate}>Agende seu proximo atendimento agora.</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.cardFooter}
-                activeOpacity={0.85}
-                onPress={() => handleNavigate("/schedule")}
-              >
-                <Text style={styles.cardLink}>Agendar horario</Text>
-                <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
         <View style={styles.quickActionsWrapper}>
           <View style={styles.quickActions}>
-            {quickActions.map((action) => (
-              <TouchableOpacity
-                key={action.label}
-                style={styles.quickActionCard}
-                activeOpacity={0.9}
-                onPress={() => handleNavigate(action.href, action.params)}
-              >
-                <View style={styles.quickActionCardContent}>
-                  <Card
-                    buttonText={action.label}
-                    size="32px"
-                    time="calendar"
-                    type="stroke"
-                    calendar={
-                      <Ionicons
-                        name={action.icon}
-                        size={22}
-                        color={Color.piccolo}
+            {actionCards.map((item) => {
+              const cardStyle = [styles.quickActionCard, item.span === 2 && styles.quickActionCardFull];
+
+              if (item.kind === "link") {
+                return (
+                  <TouchableOpacity
+                    key={item.action.label}
+                    style={cardStyle}
+                    activeOpacity={0.9}
+                    onPress={() => handleNavigate(item.action.href, item.action.params)}
+                  >
+                    <View style={styles.quickActionCardContent}>
+                      <Card
+                        buttonText={item.action.label}
+                        size="32px"
+                        time="calendar"
+                        type="stroke"
+                        calendar={<Ionicons name={item.action.icon} size={22} color={Color.piccolo} />}
+                        timePosition="relative"
                       />
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+
+              if (item.kind === "community") {
+                return (
+                  <TouchableOpacity
+                    key="community"
+                    style={cardStyle}
+                    activeOpacity={0.9}
+                    onPress={() => handleNavigate("/community")}
+                  >
+                    <View style={styles.quickActionCardContent}>
+                      <View style={styles.cardHeader}>
+                        <View style={styles.cardIconWrapper}>
+                          <Ionicons name="people-outline" size={18} color={Color.piccolo} />
+                        </View>
+                      </View>
+                      <View style={styles.cardBody}>
+                        <Text style={styles.cardTitle}>Comunidade Quinze</Text>
+                        <Text style={styles.cardDate}>Descubra as ultimas novidades agora.</Text>
+                      </View>
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.cardLink}>Entrar</Text>
+                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+
+              return (
+                <TouchableOpacity
+                  key="next-appointment"
+                  style={cardStyle}
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    if (isLoadingNext) {
+                      return;
                     }
-                    timePosition="relative"
-                  />
-                </View>
-              </TouchableOpacity>
-            ))}
+                    if (nextAppointment) {
+                      handleNavigate("/appointments/[appointmentId]", { appointmentId: String(nextAppointment.id) });
+                    } else {
+                      handleNavigate("/schedule");
+                    }
+                  }}
+                >
+                  <View style={styles.quickActionCardContent}>
+                    {isLoadingNext ? (
+                      <View style={styles.centeredContent}>
+                        <ActivityIndicator size="small" color={Color.piccolo} />
+                      </View>
+                    ) : nextAppointment ? (
+                      <>
+                        <View style={styles.cardHeader}>
+                          <View style={styles.cardIconWrapper}>
+                            <Ionicons name="calendar" size={18} color={Color.piccolo} />
+                          </View>
+                          <View style={[styles.statusBadge, { backgroundColor: nextStatusMeta.background }]}>
+                            <Text style={[styles.statusText, { color: nextStatusMeta.text }]}>{nextStatusMeta.label}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.cardBody}>
+                          <Text style={styles.cardTitle}>Proximo agendamento</Text>
+                          <Text style={styles.cardDate}>{formatAppointmentDate(nextAppointment.scheduledAt)}</Text>
+                        </View>
+                        <View style={styles.cardFooter}>
+                          <Text style={styles.cardLink}>Ver detalhes</Text>
+                          <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        <View style={styles.cardHeader}>
+                          <View style={styles.cardIconWrapper}>
+                            <Ionicons name="calendar" size={18} color={Color.piccolo} />
+                          </View>
+                        </View>
+                        <View style={styles.cardBody}>
+                          <Text style={styles.cardTitle}>Sem agendamentos</Text>
+                          <Text style={styles.cardDate}>Agende seu proximo atendimento agora.</Text>
+                        </View>
+                        <View style={styles.cardFooter}>
+                          <Text style={styles.cardLink}>Agendar horario</Text>
+                          <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                        </View>
+                      </>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
         <View style={styles.section}>
-          <View style={styles.communityWrapper}>
-            <Card1 onPress={() => handleNavigate("/community")} />
-          </View>
           <Image
             source={require("../../assets/passos_magicos.jpg")}
             style={styles.magicStepsImage}
-            contentFit="cover"
+            contentFit="contain"
             accessibilityLabel="Passos Magicos"
           />
         </View>
       </ScrollView>
-
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={handleLogout}
-        accessibilityRole="button"
-        accessibilityLabel="Sair do aplicativo"
-        activeOpacity={0.8}
-      >
-        <Ionicons name="log-out-outline" size={20} color={Color.mainGoten} />
-        <Text style={styles.logoutText}>Sair</Text>
-      </TouchableOpacity>
 
     </SafeAreaView>
   );
@@ -451,9 +473,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Gap.gap_16,
   },
-  communityWrapper: {
-    width: "100%",
-  },
   magicStepsImage: {
     width: "100%",
     aspectRatio: 16 / 9,
@@ -461,14 +480,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#E6EAF1",
-  },
-  nextAppointmentSection: {
-    gap: Gap.gap_16,
-  },
-  sectionTitle: {
-    fontSize: FontSize.fs_16,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
   },
   nextCard: {
     borderRadius: Border.br_16,
@@ -544,7 +555,6 @@ const styles = StyleSheet.create({
   quickActionCard: {
     flexBasis: "48%",
     maxWidth: "48%",
-    aspectRatio: 1,
     borderRadius: Border.br_16,
     overflow: "visible",
     shadowColor: "rgba(0, 0, 0, 0.04)",
@@ -553,26 +563,24 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
     backgroundColor: Color.mainGohan,
-    padding: StyleVariable.px2,
+    padding: StyleVariable.px3,
+    minHeight: 170,
+    borderWidth: 1,
+    borderColor: "#E6EAF1",
+  },
+  quickActionCardFull: {
+    flexBasis: "100%",
+    maxWidth: "100%",
+    minHeight: 190,
   },
   quickActionCardContent: {
     flex: 1,
+    justifyContent: "space-between",
+    gap: StyleVariable.gap2,
   },
-  logoutButton: {
-    position: "absolute",
-    right: Padding.padding_24,
-    top: Padding.padding_24,
-    flexDirection: "row",
+  centeredContent: {
+    flex: 1,
     alignItems: "center",
-    gap: Gap.gap_8,
-    paddingHorizontal: StyleVariable.px3,
-    paddingVertical: StyleVariable.py1,
-    borderRadius: Border.br_24,
-    backgroundColor: Color.piccolo,
-  },
-  logoutText: {
-    fontSize: FontSize.fs_14,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.mainGoten,
+    justifyContent: "center",
   },
 });

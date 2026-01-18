@@ -198,14 +198,6 @@ export default function PlansScreen() {
           {currentPlanExpiration ? (
             <Text style={styles.currentPlanMeta}>Vencimento: {currentPlanExpiration}</Text>
           ) : null}
-          <Text style={styles.currentPlanQuestion}>Deseja trocar de plano?</Text>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            activeOpacity={0.85}
-            onPress={() => Linking.openURL("https://wa.me/5511999999999?text=Ol%C3%A1%20Quinze,%20quero%20falar%20sobre%20planos")}
-          >
-            <Text style={styles.primaryButtonText}>Entrar em contato</Text>
-          </TouchableOpacity>
           <Text style={styles.currentPlanQuestion}>Renovar seu plano?</Text>
           <TouchableOpacity
             style={styles.secondaryButton}
@@ -249,14 +241,6 @@ export default function PlansScreen() {
             onPress={() => Linking.openURL("https://wa.me/5511999999999?text=Ol%C3%A1%20Quinze,%20quero%20falar%20sobre%20planos")}
           >
             <Text style={styles.primaryButtonText}>Entrar em contato</Text>
-          </TouchableOpacity>
-          <Text style={styles.sectionTitle}>Renovar seu plano?</Text>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            activeOpacity={0.85}
-            onPress={() => Linking.openURL("https://wa.me/5511999999999?text=Ol%C3%A1%20Quinze,%20quero%20renovar%20meu%20plano")}
-          >
-            <Text style={styles.secondaryButtonText}>Fazer Renovacao</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

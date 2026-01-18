@@ -6,7 +6,6 @@ import { useCallback, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
-    Modal,
     Platform,
     ScrollView,
     StyleSheet,
@@ -24,30 +23,11 @@ import {
     FontFamily,
     FontSize,
     Gap,
-    LineHeight,
     Padding,
-    StyleVariable,
+    StyleVariable
 } from "../../GlobalStyles";
-import { listPlans } from "../../services/plans";
 import { getCurrentUser, updateCurrentUser } from "../../services/users";
-import type { MembershipTier, PlanResponse, UserProfileResponse } from "../../types/api";
-
-const membershipOptions: Array<{
-  id: MembershipTier;
-  title: string;
-  description: string;
-}> = [
-  {
-    id: "CLUB_15",
-    title: "Clube Quinze",
-    description: "Experiencia essencial com todos os servicos do clube.",
-  },
-  {
-    id: "QUINZE_SELECT",
-    title: "Quinze Select",
-    description: "Agenda preferencial e vantagens exclusivas para membros Select.",
-  },
-];
+import type { UserProfileResponse } from "../../types/api";
 
 const MAX_GALLERY_ITEMS = 4;
 
@@ -97,18 +77,6 @@ type ProfileFormState = {
   email: string;
   phone: string;
   birthDate: string;
-  membershipTier: MembershipTier;
-  planId?: number;
-};
-
-const formatCurrency = (value?: number) => {
-  if (value == null || Number.isNaN(value)) {
-    return null;
-  }
-  if (typeof Intl !== "undefined" && typeof Intl.NumberFormat === "function") {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-  }
-  return `R$ ${value.toFixed(2)}`;
 };
 
 export default function PersonalDataScreen() {
@@ -119,8 +87,6 @@ export default function PersonalDataScreen() {
     email: "",
     phone: "",
     birthDate: "",
-    membershipTier: "CLUB_15",
-    planId: undefined,
   });
   const [avatar, setAvatar] = useState<ProfileMedia | null>(null);
   const [galleryMedia, setGalleryMedia] = useState<ProfileMedia[]>([]);
@@ -130,19 +96,10 @@ export default function PersonalDataScreen() {
   const [isPickingGallery, setIsPickingGallery] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [plans, setPlans] = useState<PlanResponse[]>([]);
-  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
-  const [planErrorMessage, setPlanErrorMessage] = useState<string | null>(null);
-  const [isPlanModalVisible, setIsPlanModalVisible] = useState(false);
 
   const loadProfile = useCallback(async () => {
     const currentUser = await getCurrentUser();
     return currentUser;
-  }, []);
-
-  const loadPlans = useCallback(async () => {
-    const availablePlans = await listPlans();
-    return availablePlans;
   }, []);
 
   useFocusEffect(
@@ -153,23 +110,19 @@ export default function PersonalDataScreen() {
         setIsLoading(true);
         setErrorMessage(null);
         setSuccessMessage(null);
-        setIsLoadingPlans(true);
-        setPlanErrorMessage(null);
-        const [userResult, plansResult] = await Promise.allSettled([loadProfile(), loadPlans()]);
+        const userResult = await loadProfile();
         if (!isActive) {
           return;
         }
 
-        if (userResult.status === "fulfilled") {
-          const currentUser = userResult.value;
+        try {
+          const currentUser = userResult;
           setProfile(currentUser);
           setForm({
             name: currentUser.name ?? "",
             email: currentUser.email ?? "",
             phone: formatPhoneInput(currentUser.phone),
             birthDate: currentUser.birthDate ?? "",
-            membershipTier: currentUser.membershipTier,
-            planId: currentUser.plan?.id,
           });
           const avatarMedia = currentUser.profilePictureBase64
             ? {
@@ -198,22 +151,13 @@ export default function PersonalDataScreen() {
             }))
             .filter((item) => Boolean(item.uri));
           setGalleryMedia(galleryItems);
-        } else {
-          console.error("Failed to load personal data", userResult.reason);
+        } catch (error) {
+          console.error("Failed to load personal data", error);
           setProfile(null);
           setErrorMessage("Nao foi possivel carregar seus dados.");
         }
 
-        if (plansResult.status === "fulfilled") {
-          setPlans(plansResult.value);
-        } else {
-          console.error("Failed to load plans", plansResult.reason);
-          setPlans([]);
-          setPlanErrorMessage("Nao foi possivel carregar os planos disponiveis.");
-        }
-
         setIsLoading(false);
-        setIsLoadingPlans(false);
       };
 
       fetchData();
@@ -221,27 +165,9 @@ export default function PersonalDataScreen() {
       return () => {
         isActive = false;
       };
-    }, [loadPlans, loadProfile]),
+    }, [loadProfile]),
   );
 
-  const activePlan = useMemo<PlanResponse | null>(() => {
-    if (form.planId != null) {
-      const selected = plans.find((item) => item.id === form.planId);
-      if (selected) {
-        return selected;
-      }
-    }
-    return profile?.plan ?? null;
-  }, [form.planId, plans, profile?.plan]);
-
-  const hasPendingPlanChange = useMemo(() => {
-    if (form.planId == null) {
-      return false;
-    }
-    return form.planId !== profile?.plan?.id;
-  }, [form.planId, profile?.plan?.id]);
-
-  const currentPlanPrice = useMemo(() => formatCurrency(activePlan?.price), [activePlan?.price]);
   const galleryCountLabel = useMemo(() => `${galleryMedia.length}/${MAX_GALLERY_ITEMS}`, [galleryMedia.length]);
   const isGalleryFull = galleryMedia.length >= MAX_GALLERY_ITEMS;
 
@@ -489,30 +415,6 @@ export default function PersonalDataScreen() {
     router.back();
   }, [router]);
 
-  const handleOpenPlanModal = useCallback(() => {
-    setSuccessMessage(null);
-    setErrorMessage(null);
-    setIsPlanModalVisible(true);
-  }, []);
-
-  const handleClosePlanModal = useCallback(() => {
-    setIsPlanModalVisible(false);
-  }, []);
-
-  const handleSelectPlanOption = useCallback((plan: PlanResponse) => {
-    setForm((prev) => ({ ...prev, planId: plan.id }));
-    setIsPlanModalVisible(false);
-    setSuccessMessage(null);
-    setErrorMessage(null);
-  }, []);
-
-  const handleClearPlanSelection = useCallback(() => {
-    setForm((prev) => ({ ...prev, planId: undefined }));
-    setIsPlanModalVisible(false);
-    setSuccessMessage(null);
-    setErrorMessage(null);
-  }, []);
-
   const handleSubmit = useCallback(async () => {
     if (isSaving) {
       return;
@@ -550,8 +452,6 @@ export default function PersonalDataScreen() {
         email: form.email.trim(),
         phone: sanitizedPhone,
         birthDate: normalizedBirthDate,
-        membershipTier: form.membershipTier,
-        planId: form.planId ?? profile?.plan?.id,
         profilePictureBase64: avatar
           ? avatarBase64
           : null,
@@ -570,8 +470,6 @@ export default function PersonalDataScreen() {
         email: updated.email ?? payload.email,
         phone: formatPhoneInput(updated.phone),
         birthDate: updated.birthDate ?? "",
-        membershipTier: updated.membershipTier,
-        planId: updated.plan?.id,
       });
       const updatedAvatar = updated.profilePictureBase64
         ? {
@@ -606,7 +504,7 @@ export default function PersonalDataScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [avatar, form, galleryMedia, isSaving, profile?.plan?.id]);
+  }, [avatar, form, galleryMedia, isSaving]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
@@ -835,76 +733,6 @@ export default function PersonalDataScreen() {
             </View>
           </View>
 
-          <View style={styles.formCard}>
-            <Text style={styles.sectionTitle}>Tipo de assinatura</Text>
-            <View style={styles.membershipOptions}>
-              {membershipOptions.map((option) => {
-                const isActive = form.membershipTier === option.id;
-                return (
-                  <TouchableOpacity
-                    key={option.id}
-                    style={[styles.membershipCard, isActive && styles.membershipCardActive]}
-                    onPress={() => handleFieldChange("membershipTier", option.id)}
-                    activeOpacity={0.88}
-                  >
-                    <View style={styles.membershipHeader}>
-                      <Ionicons
-                        name={isActive ? "radio-button-on" : "radio-button-off"}
-                        size={20}
-                        color={isActive ? Color.piccolo : Color.mainTrunks}
-                      />
-                      <Text style={styles.membershipTitle}>{option.title}</Text>
-                    </View>
-                    <Text style={styles.membershipDescription}>{option.description}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.formCard}>
-            <View style={styles.planHeader}>
-              <Text style={styles.sectionTitle}>Plano atual</Text>
-              <View style={styles.planActions}>
-                {isLoadingPlans ? <ActivityIndicator size="small" color={Color.piccolo} /> : null}
-                <TouchableOpacity
-                  style={[styles.planManageButton, isLoadingPlans && styles.planManageButtonDisabled]}
-                  onPress={handleOpenPlanModal}
-                  activeOpacity={0.85}
-                  disabled={isLoadingPlans}
-                >
-                  <Text style={styles.planManageText}>Selecionar plano</Text>
-                  <Ionicons name="swap-horizontal" size={16} color={Color.piccolo} />
-                </TouchableOpacity>
-              </View>
-            </View>
-            <Text style={styles.planName}>{activePlan?.name ?? "Nenhum plano selecionado"}</Text>
-            <Text style={styles.planDescription}>
-              {activePlan?.description ?? "Escolha um plano para aproveitar beneficios exclusivos."}
-            </Text>
-            {currentPlanPrice ? (
-              <Text style={styles.planPrice}>{currentPlanPrice} por {activePlan?.durationMonths ?? 12} meses</Text>
-            ) : null}
-            {hasPendingPlanChange ? (
-              <View style={styles.planPendingBanner}>
-                <Ionicons name="time-outline" size={16} color={Color.piccolo} />
-                <View style={styles.planPendingTexts}>
-                  <Text style={styles.planPendingTitle}>Nova selecao aguardando confirmacao</Text>
-                  <Text style={styles.planPendingDescription}>Finalize salvando os dados para concluir a troca.</Text>
-                </View>
-              </View>
-            ) : null}
-            {planErrorMessage ? <Text style={styles.planError}>{planErrorMessage}</Text> : null}
-            <TouchableOpacity
-              style={styles.planSecondaryAction}
-              onPress={() => router.push("/profile/plans")}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.planSecondaryActionText}>Ver detalhes dos planos</Text>
-              <Ionicons name="open-outline" size={14} color={Color.piccolo} />
-            </TouchableOpacity>
-          </View>
-
           <TouchableOpacity
             style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
             onPress={handleSubmit}
@@ -919,81 +747,6 @@ export default function PersonalDataScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-      <Modal
-        visible={isPlanModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={handleClosePlanModal}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecione um plano</Text>
-              <TouchableOpacity onPress={handleClosePlanModal} accessibilityLabel="Fechar">
-                <Ionicons name="close" size={20} color={Color.mainTrunks} />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.modalSubtitle}>
-              Compare as opcoes e confirme a que melhor combina com voce.
-            </Text>
-            {isLoadingPlans ? (
-              <View style={styles.modalLoading}>
-                <ActivityIndicator size="small" color={Color.piccolo} />
-              </View>
-            ) : planErrorMessage ? (
-              <Text style={styles.modalError}>{planErrorMessage}</Text>
-            ) : (
-              <ScrollView style={styles.modalPlanList} showsVerticalScrollIndicator={false}>
-                {plans.length === 0 ? (
-                  <Text style={styles.modalEmpty}>Nenhum plano disponivel no momento.</Text>
-                ) : (
-                  plans.map((plan) => {
-                    const isSelected = (form.planId ?? profile?.plan?.id) === plan.id;
-                    return (
-                      <TouchableOpacity
-                        key={plan.id}
-                        style={[styles.modalPlanOption, isSelected && styles.modalPlanOptionSelected]}
-                        onPress={() => handleSelectPlanOption(plan)}
-                        activeOpacity={0.85}
-                      >
-                        <View style={styles.modalPlanTexts}>
-                          <Text style={styles.modalPlanTitle}>{plan.name}</Text>
-                          <Text style={styles.modalPlanDescription}>{plan.description}</Text>
-                        </View>
-                        <View style={styles.modalPlanMeta}>
-                          <Text style={styles.modalPlanPrice}>{formatCurrency(plan.price)}</Text>
-                          <Text style={styles.modalPlanDuration}>{`${plan.durationMonths} meses`}</Text>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })
-                )}
-              </ScrollView>
-            )}
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.modalSecondaryButton}
-                onPress={handleClearPlanSelection}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="refresh" size={16} color={Color.mainTrunks} />
-                <Text style={styles.modalSecondaryButtonText}>Manter plano atual</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalPrimaryLink}
-                onPress={() => {
-                  handleClosePlanModal();
-                  router.push("/profile/plans");
-                }}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.modalPrimaryLinkText}>Ver comparativo completo</Text>
-                <Ionicons name="open-outline" size={14} color={Color.piccolo} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -1277,244 +1030,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.fs_14,
     fontFamily: FontFamily.dMSansRegular,
     color: Color.hit,
-  },
-  membershipOptions: {
-    gap: Gap.gap_16,
-  },
-  membershipCard: {
-    borderRadius: Border.br_16,
-    borderWidth: 1,
-    borderColor: "rgba(0, 5, 61, 0.12)",
-    backgroundColor: Color.mainGohan,
-    paddingHorizontal: StyleVariable.px4,
-    paddingVertical: StyleVariable.py4,
-    gap: Gap.gap_8,
-  },
-  membershipCardActive: {
-    borderColor: Color.piccolo,
-    backgroundColor: "rgba(0, 5, 61, 0.05)",
-  },
-  membershipHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Gap.gap_8,
-  },
-  membershipTitle: {
-    fontSize: FontSize.fs_14,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  membershipDescription: {
-    fontSize: FontSize.fs_12,
-    lineHeight: LineHeight.lh_16,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  planHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  planActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Gap.gap_12,
-  },
-  planManageButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Gap.gap_4,
-    paddingHorizontal: StyleVariable.px3,
-    paddingVertical: StyleVariable.py1,
-    borderRadius: StyleVariable.interactiveBorderRadiusRadiusISm,
-    borderWidth: 1,
-    borderColor: "rgba(0, 5, 61, 0.12)",
-    backgroundColor: Color.mainGohan,
-  },
-  planManageButtonDisabled: {
-    opacity: 0.6,
-  },
-  planManageText: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.piccolo,
-  },
-  planName: {
-    fontSize: FontSize.fs_14,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  planDescription: {
-    fontSize: FontSize.fs_12,
-    lineHeight: LineHeight.lh_16,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  planPrice: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  planPendingBanner: {
-    marginTop: Gap.gap_12,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: Gap.gap_12,
-    borderRadius: Border.br_16,
-    borderWidth: 1,
-    borderColor: "rgba(0, 5, 61, 0.08)",
-    backgroundColor: "rgba(0, 78, 255, 0.08)",
-    paddingHorizontal: StyleVariable.px4,
-    paddingVertical: StyleVariable.py2,
-  },
-  planPendingTexts: {
-    flex: 1,
-    gap: Gap.gap_4,
-  },
-  planPendingTitle: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.piccolo,
-  },
-  planPendingDescription: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  planError: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.supportiveChichi,
-  },
-  planSecondaryAction: {
-    marginTop: Gap.gap_12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Gap.gap_4,
-  },
-  planSecondaryActionText: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.piccolo,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.35)",
-    justifyContent: "center",
-    paddingHorizontal: Padding.padding_24,
-  },
-  modalCard: {
-    borderRadius: Border.br_24,
-    backgroundColor: Color.mainGohan,
-    paddingHorizontal: StyleVariable.px6,
-    paddingVertical: StyleVariable.py6,
-    gap: Gap.gap_16,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  modalTitle: {
-    fontSize: FontSize.fs_16,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  modalSubtitle: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  modalLoading: {
-    paddingVertical: StyleVariable.py4,
-    alignItems: "center",
-  },
-  modalError: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.supportiveChichi,
-  },
-  modalPlanList: {
-    maxHeight: 320,
-    marginVertical: Gap.gap_8,
-  },
-  modalEmpty: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-    textAlign: "center",
-    paddingVertical: StyleVariable.py3,
-  },
-  modalPlanOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: Border.br_16,
-    borderWidth: 1,
-    borderColor: "rgba(0, 5, 61, 0.08)",
-    backgroundColor: Color.mainGohan,
-    paddingHorizontal: StyleVariable.px4,
-    paddingVertical: StyleVariable.py3,
-    gap: Gap.gap_12,
-    marginBottom: Gap.gap_12,
-  },
-  modalPlanOptionSelected: {
-    borderColor: Color.piccolo,
-    backgroundColor: "rgba(0, 5, 61, 0.05)",
-  },
-  modalPlanTexts: {
-    flex: 1,
-    gap: Gap.gap_4,
-  },
-  modalPlanTitle: {
-    fontSize: FontSize.fs_14,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  modalPlanDescription: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  modalPlanMeta: {
-    alignItems: "flex-end",
-    gap: Gap.gap_4,
-  },
-  modalPlanPrice: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.piccolo,
-  },
-  modalPlanDuration: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  modalFooter: {
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0, 5, 61, 0.08)",
-    paddingTop: StyleVariable.py3,
-    gap: Gap.gap_12,
-  },
-  modalSecondaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Gap.gap_8,
-  },
-  modalSecondaryButtonText: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.mainTrunks,
-  },
-  modalPrimaryLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Gap.gap_4,
-  },
-  modalPrimaryLinkText: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.piccolo,
   },
   submitButton: {
     borderRadius: Border.br_16,
