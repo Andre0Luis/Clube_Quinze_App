@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ProjetoQuinze",
+    "name": "Clube_Quinze_App",
     "slug": "ProjetoQuinze",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -25,7 +25,10 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -41,13 +44,16 @@
           "photosPermission": "Precisamos acessar sua galeria para anexar imagens aos posts e perfil."
         }
       ],
-      ["expo-notifications"]
+      [
+        "expo-notifications"
+      ]
     ],
     "extra": {
       "router": {},
       "eas": {
         "projectId": "65023eb1-bfbe-480c-9781-4441576253d9"
       }
-    }
+    },
+    "owner": "andre0luis"
   }
 }

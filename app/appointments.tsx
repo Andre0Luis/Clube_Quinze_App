@@ -22,6 +22,7 @@ import {
     StyleVariable,
 } from "../GlobalStyles";
 import { listMyAppointments } from "../services/appointments";
+import { getCurrentUser } from "../services/users";
 import type { AppointmentResponse } from "../types/api";
 
 const TABS = [
@@ -88,16 +89,42 @@ const sortByDateAscending = (a: AppointmentResponse, b: AppointmentResponse) =>
 
 export default function AppointmentsScreen() {
   const router = useRouter();
-  const { tab } = useLocalSearchParams<{ tab?: string | string[] }>();
+  const { tab, from, allowAdmin } = useLocalSearchParams<{ tab?: string | string[]; from?: string | string[]; allowAdmin?: string | string[] }>();
 
   const resolvedTabParam = Array.isArray(tab) ? tab[0] : tab;
   const paramTab: TabId = resolvedTabParam === "history" ? "history" : "upcoming";
+  const resolvedFromParam = Array.isArray(from) ? from[0] : from;
+  const cameFromAdmin = resolvedFromParam === "admin";
 
   const [activeTab, setActiveTab] = useState<TabId>(paramTab);
   const hasInteractedRef = useRef(false);
   const prevParamRef = useRef<TabId>(paramTab);
   const [isLoading, setIsLoading] = useState(true);
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const guardAdmin = async () => {
+      try {
+        const current = await getCurrentUser();
+        if (isActive && current?.role === "CLUB_ADMIN") {
+          const allow = Array.isArray(allowAdmin) ? allowAdmin[0] : allowAdmin;
+          if (!allow) {
+            router.replace("/admin-agenda");
+          }
+        }
+      } catch (error) {
+        // ignore guard errors to avoid blocking page load
+      }
+    };
+
+    guardAdmin();
+
+    return () => {
+      isActive = false;
+    };
+  }, [allowAdmin, router]);
 
   const handleLoadAppointments = useCallback(() => {
     let isActive = true;
@@ -168,6 +195,20 @@ export default function AppointmentsScreen() {
     });
   };
 
+  const handleBack = useCallback(() => {
+    if (cameFromAdmin) {
+      router.replace("/admin-dashboard");
+      return;
+    }
+
+    if (router.canGoBack?.()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/");
+  }, [cameFromAdmin, router]);
+
   const handleTabChange = (tabId: TabId) => {
     hasInteractedRef.current = true;
     setActiveTab(tabId);
@@ -177,7 +218,7 @@ export default function AppointmentsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.85}
           style={styles.backButton}
           accessibilityRole="button"

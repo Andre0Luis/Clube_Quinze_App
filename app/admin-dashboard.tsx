@@ -3,30 +3,30 @@ import { usePathname, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    BackHandler,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  BackHandler,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  Padding,
+  StyleVariable,
 } from "../GlobalStyles";
 import { getAdminDashboardMetrics } from "../services/dashboard";
 import { getCurrentUser } from "../services/users";
 import type {
-    AdminDashboardResponse,
-    UserProfileResponse,
+  AdminDashboardResponse,
+  UserProfileResponse,
 } from "../types/api";
 
 const AdminDashboardScreen = () => {
@@ -95,29 +95,35 @@ const AdminDashboardScreen = () => {
     };
   }, [loadDashboard]);
 
-  const startedMembers = dashboard?.totalMembers ?? 44;
-  const selectVipMembers = useMemo(() => {
-    if (dashboard?.activePlans) {
-      return Math.max(dashboard.activePlans, Math.round((dashboard.totalMembers ?? 44) * 0.18));
-    }
-    return 8;
-  }, [dashboard?.activePlans, dashboard?.totalMembers]);
+  const metricValue = useCallback(
+    (id: string, fallback = 0) => dashboard?.metrics?.find((metric) => metric.id === id)?.value ?? fallback,
+    [dashboard?.metrics],
+  );
 
-  const quickActions = useMemo(
-    () => [
-      {
-        id: "appointments",
-        label: "Meus agendamentos",
-        icon: "calendar-outline" as const,
-        onPress: () => router.push("/appointments"),
-      },
-      {
-        id: "payments",
-        label: "Proximos pagamentos",
-        icon: "document-text-outline" as const,
-        onPress: () => router.push("/profile/plans"),
-      },
-    ],
+  const membersStandard = useMemo(() => {
+    const total = dashboard?.totalMembers ?? 0;
+    return metricValue("members_standard", Math.max(0, Math.round(total * 0.7)));
+  }, [dashboard?.totalMembers, metricValue]);
+
+  const membersSelect = useMemo(() => {
+    const total = dashboard?.totalMembers ?? 0;
+    const fromMetric = dashboard?.metrics?.find((metric) => metric.id === "members_select")?.value;
+    if (typeof fromMetric === "number" && !Number.isNaN(fromMetric)) {
+      return fromMetric;
+    }
+    const fallback = total - membersStandard;
+    return Math.max(0, fallback);
+  }, [dashboard?.metrics, dashboard?.totalMembers, membersStandard]);
+
+  const upcomingPayments = useMemo(
+    () => metricValue("payments_upcoming", metricValue("payments_due", 0)),
+    [metricValue],
+  );
+
+  const handleManageMembers = useCallback(
+    (tier: "CLUB_15" | "QUINZE_SELECT") => {
+      router.push({ pathname: "/admin-members", params: { tier } });
+    },
     [router],
   );
 
@@ -148,7 +154,12 @@ const AdminDashboardScreen = () => {
   const navItems = useMemo(
     () => [
       { id: "home", label: "Home", icon: "home" as const, path: "/admin-dashboard" },
-      { id: "agenda", label: "Agenda", icon: "calendar-outline" as const, path: "/appointments" },
+      {
+        id: "agenda",
+        label: "Agenda",
+        icon: "calendar-outline" as const,
+        path: "/admin-agenda",
+      },
       { id: "community", label: "Comunidade", icon: "people-outline" as const, path: "/community" },
       { id: "profile", label: "Perfil", icon: "person-outline" as const, path: "/(tabs)/profile" },
     ],
@@ -195,33 +206,84 @@ const AdminDashboardScreen = () => {
           </View>
         ) : null}
 
-        <View style={styles.statsRow}>
-          <View style={styles.statCardSmall}>
-            <Text style={styles.statLabelSmall}>Membros</Text>
-            <Text style={styles.statValueBig}>{startedMembers.toLocaleString("pt-BR")}</Text>
-            <Text style={styles.statFootPrimary}>Started</Text>
-          </View>
-          <View style={styles.statCardSmall}>
-            <Text style={styles.statLabelSmall}>Membros</Text>
-            <Text style={styles.statValueBig}>{selectVipMembers.toLocaleString("pt-BR")}</Text>
-            <Text style={styles.statFootAccent}>Select Vip</Text>
-          </View>
+        <View style={styles.gridRow}>
+          <TouchableOpacity
+            style={styles.metricCard}
+            activeOpacity={0.9}
+            onPress={() => handleManageMembers("CLUB_15")}
+          >
+            <View style={styles.metricHeader}>
+              <View style={styles.metricPillPrimary}>
+                <Ionicons name="people-outline" size={16} color={Color.mainGoten} />
+                <Text style={styles.metricPillText}>Plano Standard</Text>
+              </View>
+            </View>
+            <Text style={styles.metricValue}>{membersStandard.toLocaleString("pt-BR")}</Text>
+            <Text style={styles.metricSubtitle}>Membros ativos</Text>
+            <View style={styles.metricFooter}>
+              <Text style={styles.metricLink}>Ver membros</Text>
+              <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.metricCard}
+            activeOpacity={0.9}
+            onPress={() => handleManageMembers("QUINZE_SELECT")}
+          >
+            <View style={styles.metricHeader}>
+              <View style={styles.metricPillAccent}>
+                <Ionicons name="star-outline" size={16} color={"#0E1D2F"} />
+                <Text style={styles.metricPillTextDark}>Quinze Select</Text>
+              </View>
+            </View>
+            <Text style={styles.metricValue}>{membersSelect.toLocaleString("pt-BR")}</Text>
+            <Text style={styles.metricSubtitle}>Membros ativos</Text>
+            <View style={styles.metricFooter}>
+              <Text style={styles.metricLink}>Ver membros</Text>
+              <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+            </View>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.actionsRow}>
-          {quickActions.map((action) => (
-            <TouchableOpacity
-              key={action.id}
-              style={styles.actionCard}
-              onPress={action.onPress}
-              activeOpacity={0.9}
-            >
-              <View style={styles.actionIcon}>
-                <Ionicons name={action.icon} size={18} color={Color.hit} />
+        <View style={styles.gridRow}>
+          <TouchableOpacity
+            style={styles.metricCard}
+            activeOpacity={0.9}
+            onPress={() => router.push("/admin-agenda")}
+          >
+            <View style={styles.metricHeader}>
+              <View style={styles.metricPillNeutral}>
+                <Ionicons name="calendar-outline" size={16} color={Color.piccolo} />
+                <Text style={styles.metricPillTextNeutral}>Meus agendamentos</Text>
               </View>
-              <Text style={styles.actionText}>{action.label}</Text>
-            </TouchableOpacity>
-          ))}
+            </View>
+            <Text style={styles.metricValue}>{(dashboard?.upcomingAppointments ?? 0).toLocaleString("pt-BR")}</Text>
+            <Text style={styles.metricSubtitle}>Atendimentos proximos</Text>
+            <View style={styles.metricFooter}>
+              <Text style={styles.metricLink}>Gerenciar agenda</Text>
+              <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.metricCard}
+            activeOpacity={0.9}
+            onPress={() => router.push("/profile/plans")}
+          >
+            <View style={styles.metricHeader}>
+              <View style={styles.metricPillNeutral}>
+                <Ionicons name="card-outline" size={16} color={Color.piccolo} />
+                <Text style={styles.metricPillTextNeutral}>Proximos pagamentos</Text>
+              </View>
+            </View>
+            <Text style={styles.metricValue}>{upcomingPayments.toLocaleString("pt-BR")}</Text>
+            <Text style={styles.metricSubtitle}>Cobrancas previstas</Text>
+            <View style={styles.metricFooter}>
+              <Text style={styles.metricLink}>Ver detalhes</Text>
+              <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.communityCard}>
@@ -248,7 +310,11 @@ const AdminDashboardScreen = () => {
             <TouchableOpacity
               key={item.id}
               style={styles.navItem}
-              onPress={() => router.replace(item.path)}
+              onPress={() =>
+                item.params
+                  ? router.replace({ pathname: item.path, params: item.params })
+                  : router.replace(item.path)
+              }
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel={item.label}
@@ -354,66 +420,93 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Gap.gap_8,
   },
-  statsRow: {
+  gridRow: {
     flexDirection: "row",
     gap: Gap.gap_12,
   },
-  statCardSmall: {
+  metricCard: {
     flex: 1,
     borderRadius: Border.br_16,
     borderWidth: 1,
     borderColor: "rgba(0, 5, 61, 0.08)",
     backgroundColor: Color.mainGoten,
     paddingHorizontal: StyleVariable.px4,
-    paddingVertical: StyleVariable.py3,
+    paddingVertical: StyleVariable.py4,
+    gap: Gap.gap_6,
+    shadowColor: "rgba(0,0,0,0.05)",
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
+  },
+  metricHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  metricPillPrimary: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: Gap.gap_4,
+    paddingHorizontal: StyleVariable.px3,
+    paddingVertical: StyleVariable.py1,
+    borderRadius: Border.br_58,
+    backgroundColor: Color.piccolo,
   },
-  statLabelSmall: {
+  metricPillAccent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Gap.gap_4,
+    paddingHorizontal: StyleVariable.px3,
+    paddingVertical: StyleVariable.py1,
+    borderRadius: Border.br_58,
+    backgroundColor: "#F4D35E",
+  },
+  metricPillNeutral: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Gap.gap_4,
+    paddingHorizontal: StyleVariable.px3,
+    paddingVertical: StyleVariable.py1,
+    borderRadius: Border.br_58,
+    backgroundColor: "#EEF5FF",
+  },
+  metricPillText: {
     fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  statValueBig: {
-    fontSize: FontSize.fs_24,
     fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
+    color: Color.mainGoten,
   },
-  statFootPrimary: {
+  metricPillTextDark: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
+    color: "#0E1D2F",
+  },
+  metricPillTextNeutral: {
     fontSize: FontSize.fs_12,
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
   },
-  statFootAccent: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansBold,
-    color: "#D4A017",
-  },
-  actionsRow: {
-    flexDirection: "row",
-    gap: Gap.gap_12,
-  },
-  actionCard: {
-    flex: 1,
-    borderRadius: Border.br_16,
-    borderWidth: 1,
-    borderColor: "rgba(0, 5, 61, 0.08)",
-    backgroundColor: Color.mainGoten,
-    paddingHorizontal: StyleVariable.px4,
-    paddingVertical: StyleVariable.py3,
-    gap: Gap.gap_8,
-  },
-  actionIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: Border.br_58,
-    backgroundColor: "rgba(0, 0, 0, 0.04)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionText: {
-    fontSize: FontSize.fs_14,
+  metricValue: {
+    fontSize: FontSize.fs_24,
     fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
+  },
+  metricSubtitle: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+  },
+  metricFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Gap.gap_4,
+    marginTop: Gap.gap_6,
+  },
+  metricLink: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.piccolo,
+    textDecorationLine: "underline",
   },
   communityCard: {
     borderRadius: Border.br_16,

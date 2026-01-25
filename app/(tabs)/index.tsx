@@ -23,10 +23,11 @@ import {
 import { usePushNotifications } from "../../hooks/use-push-notifications";
 import { listMyAppointments } from "../../services/appointments";
 import { logout as logoutService } from "../../services/auth";
+import { getAdminDashboardMetrics } from "../../services/dashboard";
 import { isMockEnabled } from "../../services/mock/settings";
 import { registerPushToken } from "../../services/push-tokens";
 import { getCurrentUser } from "../../services/users";
-import type { AppointmentResponse, UserProfileResponse } from "../../types/api";
+import type { AdminDashboardResponse, AppointmentResponse, UserProfileResponse } from "../../types/api";
 
 interface DecodedToken {
   name?: string;
@@ -39,6 +40,16 @@ type QuickAction = {
   params?: Record<string, string>;
 };
 
+type ActionCard =
+  | { kind: "next"; span: 2 }
+  | { kind: "link"; action: QuickAction; span: 1 }
+  | { kind: "community"; span: 2 }
+  | { kind: "adminMembersStandard"; span: 1 }
+  | { kind: "adminMembersSelect"; span: 1 }
+  | { kind: "adminAgenda"; span: 1 }
+  | { kind: "adminPayments"; span: 1 }
+  | { kind: "register"; span: 2 };
+
 const quickActions: QuickAction[] = [
   {
     label: "Meus agendamentos",
@@ -50,6 +61,11 @@ const quickActions: QuickAction[] = [
     icon: "time-outline",
     href: "/appointments",
     params: { tab: "history" },
+  },
+  {
+    label: "Cadastrar usuario",
+    icon: "person-add-outline",
+    href: "/register",
   },
 ];
 
@@ -103,6 +119,7 @@ export default function HomeScreen() {
   const [nextAppointment, setNextAppointment] = useState<AppointmentResponse | null>(null);
   const [isLoadingNext, setIsLoadingNext] = useState(true);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [adminDashboard, setAdminDashboard] = useState<AdminDashboardResponse | null>(null);
 
   useEffect(() => {
     if (notificationsError) {
@@ -173,7 +190,6 @@ export default function HomeScreen() {
           setIsAdmin(true);
           setIsLoadingNext(false);
           setNextAppointment(null);
-          router.replace("/admin-dashboard");
           return;
         }
 
@@ -222,6 +238,56 @@ export default function HomeScreen() {
       isMounted = false;
     };
   }, [mockActive, router]);
+
+  useEffect(() => {
+    if (isAdmin !== true) {
+      setAdminDashboard(null);
+      return;
+    }
+
+    let isActive = true;
+
+    const loadAdminMetrics = async () => {
+      const clearStoredTokens = async () => {
+        await SecureStore.deleteItemAsync("accessToken");
+        await SecureStore.deleteItemAsync("refreshToken");
+      };
+
+      try {
+        const data = await getAdminDashboardMetrics();
+        if (!isActive) {
+          return;
+        }
+        setAdminDashboard(data);
+      } catch (error) {
+        const status =
+          typeof error === "object" && error !== null && "response" in error
+            ? (error as { response?: { status?: number } }).response?.status
+            : undefined;
+
+        if (status === 401) {
+          await clearStoredTokens();
+          if (isActive) {
+            setAdminDashboard(null);
+            setIsAdmin(false);
+            router.replace("/login");
+          }
+          return;
+        }
+
+        if (isActive) {
+          setAdminDashboard(null);
+        }
+        console.error("Failed to load admin dashboard metrics", error);
+      }
+    };
+
+    loadAdminMetrics();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isAdmin, router]);
 
   useFocusEffect(
     useCallback(() => {
@@ -307,19 +373,43 @@ export default function HomeScreen() {
   }, [profile?.name, userName]);
   const nextStatusMeta = useMemo(() => getStatusMeta(nextAppointment?.status), [nextAppointment?.status]);
 
-  const actionCards = useMemo<
-    Array<
-      | { kind: "next"; span: 2 }
-      | { kind: "link"; action: QuickAction; span: 1 }
-      | { kind: "community"; span: 2 }
-    >
-  >(() => {
-    return [
-      { kind: "next", span: 2 },
-      ...quickActions.map((action) => ({ kind: "link", action, span: 1 })),
-      { kind: "community", span: 2 },
-    ];
-  }, []);
+  const membersStandardCount = useMemo(() => {
+    const total = adminDashboard?.totalMembers ?? 0;
+    const fromMetric = adminDashboard?.metrics?.find((metric) => metric.id === "members_standard")?.value;
+    if (typeof fromMetric === "number" && !Number.isNaN(fromMetric)) {
+      return fromMetric;
+    }
+    return Math.max(0, Math.round(total * 0.7));
+  }, [adminDashboard?.metrics, adminDashboard?.totalMembers]);
+
+  const membersSelectCount = useMemo(() => {
+    const total = adminDashboard?.totalMembers ?? 0;
+    const fromMetric = adminDashboard?.metrics?.find((metric) => metric.id === "members_select")?.value;
+    if (typeof fromMetric === "number" && !Number.isNaN(fromMetric)) {
+      return fromMetric;
+    }
+    const fallback = total - membersStandardCount;
+    return Math.max(0, fallback);
+  }, [adminDashboard?.metrics, adminDashboard?.totalMembers, membersStandardCount]);
+
+  const actionCards = useMemo<ActionCard[]>(() => {
+    if (isAdmin) {
+      return [
+        { kind: "adminMembersStandard", span: 1 },
+        { kind: "adminMembersSelect", span: 1 },
+        { kind: "adminAgenda", span: 1 },
+        { kind: "adminPayments", span: 1 },
+        { kind: "register", span: 2 },
+        { kind: "community", span: 2 },
+      ];
+    }
+
+    const linkActions = quickActions
+      .filter((action) => action.href !== "/register")
+      .map((action) => ({ kind: "link", action, span: 1 } as const));
+
+    return [{ kind: "next", span: 2 }, ...linkActions, { kind: "community", span: 2 }];
+  }, [isAdmin]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -369,10 +459,137 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.cardBody}>
                         <Text style={styles.cardTitle}>Comunidade Quinze</Text>
-                        <Text style={styles.cardDate}>Descubra as ultimas novidades agora.</Text>
                       </View>
                       <View style={styles.cardFooter}>
                         <Text style={styles.cardLink}>Entrar</Text>
+                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+
+              if (item.kind === "adminMembersStandard") {
+                return (
+                  <TouchableOpacity
+                    key="admin-members-standard"
+                    style={cardStyle}
+                    activeOpacity={0.9}
+                    onPress={() => handleNavigate("/admin-members", { tier: "CLUB_15" })}
+                  >
+                    <View style={styles.quickActionCardContent}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>Membros</Text>
+                      </View>
+                      <View style={styles.cardBody}>
+                        <Text style={styles.cardCount}>{membersStandardCount.toLocaleString("pt-BR")}</Text>
+                        <Text style={[styles.cardLabel, { color: Color.piccolo }]}>Plano Standard</Text>
+                      </View>
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.cardLink}>Ver lista</Text>
+                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+
+              if (item.kind === "adminMembersSelect") {
+                return (
+                  <TouchableOpacity
+                    key="admin-members-select"
+                    style={cardStyle}
+                    activeOpacity={0.9}
+                    onPress={() => handleNavigate("/admin-members", { tier: "QUINZE_SELECT" })}
+                  >
+                    <View style={styles.quickActionCardContent}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>Membros</Text>
+                      </View>
+                      <View style={styles.cardBody}>
+                        <Text style={styles.cardCount}>{membersSelectCount.toLocaleString("pt-BR")}</Text>
+                        <Text style={[styles.cardLabel, { color: "#C9A43C" }]}>Quinze Select</Text>
+                      </View>
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.cardLink}>Ver lista</Text>
+                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+
+              if (item.kind === "adminAgenda") {
+                return (
+                  <TouchableOpacity
+                    key="admin-agenda"
+                    style={cardStyle}
+                    activeOpacity={0.9}
+                    onPress={() => handleNavigate("/admin-agenda")}
+                  >
+                    <View style={styles.quickActionCardContent}>
+                      <View style={styles.cardHeader}>
+                        <View style={styles.cardIconWrapper}>
+                          <Ionicons name="calendar-outline" size={18} color={Color.piccolo} />
+                        </View>
+                      </View>
+                      <View style={styles.cardBody}>
+                        <Text style={styles.cardTitle}>Meus agendamentos</Text>
+                      </View>
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.cardLink}>Abrir agenda</Text>
+                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+
+              if (item.kind === "adminPayments") {
+                return (
+                  <TouchableOpacity
+                    key="admin-payments"
+                    style={cardStyle}
+                    activeOpacity={0.9}
+                    onPress={() => handleNavigate("/profile/plans")}
+                  >
+                    <View style={styles.quickActionCardContent}>
+                      <View style={styles.cardHeader}>
+                        <View style={styles.cardIconWrapper}>
+                          <Ionicons name="card-outline" size={18} color={Color.piccolo} />
+                        </View>
+                      </View>
+                      <View style={styles.cardBody}>
+                        <Text style={styles.cardTitle}>Proximos pagamentos</Text>
+                      </View>
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.cardLink}>Ver detalhes</Text>
+                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+
+              if (item.kind === "register") {
+                return (
+                  <TouchableOpacity
+                    key="register-user"
+                    style={cardStyle}
+                    activeOpacity={0.9}
+                    onPress={() => handleNavigate("/register")}
+                  >
+                    <View style={styles.quickActionCardContent}>
+                      <View style={styles.cardHeader}>
+                        <View style={styles.cardIconWrapper}>
+                          <Ionicons name="person-add-outline" size={18} color={Color.piccolo} />
+                        </View>
+                      </View>
+                      <View style={styles.cardBody}>
+                        <Text style={styles.cardTitle}>Cadastrar usuario</Text>
+                      </View>
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.cardLink}>Iniciar cadastro</Text>
                         <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
                       </View>
                     </View>
@@ -429,7 +646,6 @@ export default function HomeScreen() {
                         </View>
                         <View style={styles.cardBody}>
                           <Text style={styles.cardTitle}>Sem agendamentos</Text>
-                          <Text style={styles.cardDate}>Agende seu proximo atendimento agora.</Text>
                         </View>
                         <View style={styles.cardFooter}>
                           <Text style={styles.cardLink}>Agendar horario</Text>
@@ -528,6 +744,18 @@ const styles = StyleSheet.create({
     lineHeight: LineHeight.lh_24,
     fontFamily: FontFamily.dMSansBold,
     color: Color.mainBulma,
+  },
+  cardCount: {
+    fontSize: FontSize.fs_32,
+    lineHeight: LineHeight.lh_32,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainBulma,
+  },
+  cardLabel: {
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_18,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
   },
   cardFooter: {
     flexDirection: "row",

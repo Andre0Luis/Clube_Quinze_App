@@ -17,6 +17,7 @@ import {
 import * as Animatable from 'react-native-animatable';
 import MaskInput from 'react-native-mask-input';
 import { register } from '../services/auth';
+import { upsertPreference } from '../services/preferences';
 import type { RegisterRequest } from '../types/api';
 
 const MEMBERSHIP_OPTIONS = [
@@ -31,6 +32,13 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [frequencyDays, setFrequencyDays] = useState<'7' | '15'>('7');
+  const [frequencyTime, setFrequencyTime] = useState(() => {
+    const seed = new Date();
+    seed.setHours(9, 0, 0, 0);
+    return seed;
+  });
   const [membershipTier, setMembershipTier] = useState<'CLUB_15' | 'QUINZE_SELECT'>('CLUB_15');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -64,6 +72,12 @@ export default function RegisterScreen() {
       await SecureStore.setItemAsync('accessToken', accessToken);
       await SecureStore.setItemAsync('refreshToken', refreshToken);
 
+      const timeLabel = `${frequencyTime.getHours().toString().padStart(2, '0')}:${frequencyTime.getMinutes().toString().padStart(2, '0')}`;
+      void Promise.allSettled([
+        upsertPreference({ key: 'frequency_days', value: frequencyDays }),
+        upsertPreference({ key: 'frequency_time', value: timeLabel }),
+      ]);
+
   router.replace('/(tabs)');
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
@@ -88,6 +102,18 @@ export default function RegisterScreen() {
     const currentDate = selectedDate || birthDate;
     setBirthDate(currentDate);
     setShowDatePicker(Platform.OS === 'ios');
+  };
+
+  const onTimeChange = (event: DateTimePickerEvent, selected?: Date) => {
+    if (event.type === 'dismissed') {
+      if (Platform.OS !== 'ios') {
+        setShowTimePicker(false);
+      }
+      return;
+    }
+    const current = selected || frequencyTime;
+    setFrequencyTime(current);
+    setShowTimePicker(Platform.OS === 'ios');
   };
 
   return (
@@ -167,6 +193,37 @@ export default function RegisterScreen() {
             ))}
           </Picker>
         </View>
+
+        <Text style={styles.label}>Frequencia de atendimento</Text>
+        <View style={styles.frequencyRow}>
+          <TouchableOpacity
+            style={[styles.frequencyChip, frequencyDays === '7' && styles.frequencyChipActive]}
+            onPress={() => setFrequencyDays('7')}
+          >
+            <Text style={[styles.frequencyChipText, frequencyDays === '7' && styles.frequencyChipTextActive]}>1 vez / 7 dias</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.frequencyChip, frequencyDays === '15' && styles.frequencyChipActive]}
+            onPress={() => setFrequencyDays('15')}
+          >
+            <Text style={[styles.frequencyChipText, frequencyDays === '15' && styles.frequencyChipTextActive]}>1 vez / 15 dias</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.label}>Horario preferido</Text>
+        <TouchableOpacity
+          onPress={() => setShowTimePicker(true)}
+          style={styles.input}
+          accessibilityRole="button"
+          accessibilityLabel="Selecionar horario preferido"
+        >
+          <Text>
+            {frequencyTime.getHours().toString().padStart(2, '0')}:{frequencyTime.getMinutes().toString().padStart(2, '0')}
+          </Text>
+        </TouchableOpacity>
+        {showTimePicker && (
+          <DateTimePicker value={frequencyTime} mode="time" is24Hour display="default" onChange={onTimeChange} />
+        )}
       </Animatable.View>
 
       <Animatable.View animation="fadeInUp" delay={400} style={styles.footer}>
@@ -238,6 +295,34 @@ const styles = StyleSheet.create({
   },
   picker: {
       width: '100%',
+  },
+  frequencyRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  frequencyChip: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  frequencyChipActive: {
+    borderColor: '#4B0082',
+    backgroundColor: '#f2e9ff',
+  },
+  frequencyChipText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  frequencyChipTextActive: {
+    color: '#4B0082',
+    fontWeight: 'bold',
   },
   footer: {
       paddingBottom: 20,
