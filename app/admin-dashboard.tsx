@@ -3,37 +3,37 @@ import { usePathname, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  BackHandler,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    BackHandler,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  Border,
-  Color,
-  FontFamily,
-  FontSize,
-  Gap,
-  Padding,
-  StyleVariable,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    Padding,
+    StyleVariable,
 } from "../GlobalStyles";
+import AdminNavbar from "../components/admin-navbar";
 import { getAdminDashboardMetrics } from "../services/dashboard";
 import { getCurrentUser } from "../services/users";
-import type {
-  AdminDashboardResponse,
-  UserProfileResponse,
-} from "../types/api";
+import type { AdminDashboardResponse, UserProfileResponse } from "../types/api";
 
 const AdminDashboardScreen = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
-  const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(null);
+  const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -96,18 +96,24 @@ const AdminDashboardScreen = () => {
   }, [loadDashboard]);
 
   const metricValue = useCallback(
-    (id: string, fallback = 0) => dashboard?.metrics?.find((metric) => metric.id === id)?.value ?? fallback,
+    (id: string, fallback = 0) =>
+      dashboard?.metrics?.find((metric) => metric.id === id)?.value ?? fallback,
     [dashboard?.metrics],
   );
 
   const membersStandard = useMemo(() => {
     const total = dashboard?.totalMembers ?? 0;
-    return metricValue("members_standard", Math.max(0, Math.round(total * 0.7)));
+    return metricValue(
+      "members_standard",
+      Math.max(0, Math.round(total * 0.7)),
+    );
   }, [dashboard?.totalMembers, metricValue]);
 
   const membersSelect = useMemo(() => {
     const total = dashboard?.totalMembers ?? 0;
-    const fromMetric = dashboard?.metrics?.find((metric) => metric.id === "members_select")?.value;
+    const fromMetric = dashboard?.metrics?.find(
+      (metric) => metric.id === "members_select",
+    )?.value;
     if (typeof fromMetric === "number" && !Number.isNaN(fromMetric)) {
       return fromMetric;
     }
@@ -137,7 +143,10 @@ const AdminDashboardScreen = () => {
       return true;
     };
 
-    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress,
+    );
 
     return () => {
       subscription.remove();
@@ -151,23 +160,11 @@ const AdminDashboardScreen = () => {
     return "Quinze";
   }, [profile?.name]);
 
-  const navItems = useMemo(
-    () => [
-      { id: "home", label: "Home", icon: "home" as const, path: "/admin-dashboard" },
-      {
-        id: "agenda",
-        label: "Agenda",
-        icon: "calendar-outline" as const,
-        path: "/admin-agenda",
-      },
-      { id: "community", label: "Comunidade", icon: "people-outline" as const, path: "/community" },
-      { id: "profile", label: "Perfil", icon: "person-outline" as const, path: "/(tabs)/profile" },
-    ],
-    [],
-  );
-
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={["top", "left", "right", "bottom"]}
+    >
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.brandRow}>
           <View style={styles.brandCluster}>
@@ -201,7 +198,11 @@ const AdminDashboardScreen = () => {
 
         {errorMessage ? (
           <View style={[styles.feedbackBanner, styles.feedbackError]}>
-            <Ionicons name="alert-circle-outline" size={18} color={Color.supportiveChichi} />
+            <Ionicons
+              name="alert-circle-outline"
+              size={18}
+              color={Color.supportiveChichi}
+            />
             <Text style={styles.feedbackText}>{errorMessage}</Text>
           </View>
         ) : null}
@@ -214,11 +215,17 @@ const AdminDashboardScreen = () => {
           >
             <View style={styles.metricHeader}>
               <View style={styles.metricPillPrimary}>
-                <Ionicons name="people-outline" size={16} color={Color.mainGoten} />
+                <Ionicons
+                  name="people-outline"
+                  size={16}
+                  color={Color.mainGoten}
+                />
                 <Text style={styles.metricPillText}>Plano Standard</Text>
               </View>
             </View>
-            <Text style={styles.metricValue}>{membersStandard.toLocaleString("pt-BR")}</Text>
+            <Text style={styles.metricValue}>
+              {membersStandard.toLocaleString("pt-BR")}
+            </Text>
             <Text style={styles.metricSubtitle}>Membros ativos</Text>
             <View style={styles.metricFooter}>
               <Text style={styles.metricLink}>Ver membros</Text>
@@ -237,7 +244,9 @@ const AdminDashboardScreen = () => {
                 <Text style={styles.metricPillTextDark}>Quinze Select</Text>
               </View>
             </View>
-            <Text style={styles.metricValue}>{membersSelect.toLocaleString("pt-BR")}</Text>
+            <Text style={styles.metricValue}>
+              {membersSelect.toLocaleString("pt-BR")}
+            </Text>
             <Text style={styles.metricSubtitle}>Membros ativos</Text>
             <View style={styles.metricFooter}>
               <Text style={styles.metricLink}>Ver membros</Text>
@@ -254,11 +263,19 @@ const AdminDashboardScreen = () => {
           >
             <View style={styles.metricHeader}>
               <View style={styles.metricPillNeutral}>
-                <Ionicons name="calendar-outline" size={16} color={Color.piccolo} />
-                <Text style={styles.metricPillTextNeutral}>Meus agendamentos</Text>
+                <Ionicons
+                  name="calendar-outline"
+                  size={16}
+                  color={Color.piccolo}
+                />
+                <Text style={styles.metricPillTextNeutral}>
+                  Meus agendamentos
+                </Text>
               </View>
             </View>
-            <Text style={styles.metricValue}>{(dashboard?.upcomingAppointments ?? 0).toLocaleString("pt-BR")}</Text>
+            <Text style={styles.metricValue}>
+              {(dashboard?.upcomingAppointments ?? 0).toLocaleString("pt-BR")}
+            </Text>
             <Text style={styles.metricSubtitle}>Atendimentos proximos</Text>
             <View style={styles.metricFooter}>
               <Text style={styles.metricLink}>Gerenciar agenda</Text>
@@ -269,15 +286,24 @@ const AdminDashboardScreen = () => {
           <TouchableOpacity
             style={styles.metricCard}
             activeOpacity={0.9}
-            onPress={() => router.push("/profile/plans")}
+            onPress={() =>
+              router.push({
+                pathname: "/profile/plans",
+                params: { fromAdmin: "1" },
+              })
+            }
           >
             <View style={styles.metricHeader}>
               <View style={styles.metricPillNeutral}>
                 <Ionicons name="card-outline" size={16} color={Color.piccolo} />
-                <Text style={styles.metricPillTextNeutral}>Proximos pagamentos</Text>
+                <Text style={styles.metricPillTextNeutral}>
+                  Proximos pagamentos
+                </Text>
               </View>
             </View>
-            <Text style={styles.metricValue}>{upcomingPayments.toLocaleString("pt-BR")}</Text>
+            <Text style={styles.metricValue}>
+              {upcomingPayments.toLocaleString("pt-BR")}
+            </Text>
             <Text style={styles.metricSubtitle}>Cobrancas previstas</Text>
             <View style={styles.metricFooter}>
               <Text style={styles.metricLink}>Ver detalhes</Text>
@@ -291,7 +317,9 @@ const AdminDashboardScreen = () => {
             <Ionicons name="people-outline" size={22} color={Color.hit} />
             <Text style={styles.communityTitle}>Comunidade Quinze</Text>
           </View>
-          <Text style={styles.communitySubtitle}>Descubra as ultimas novidades agora</Text>
+          <Text style={styles.communitySubtitle}>
+            Descubra as ultimas novidades agora
+          </Text>
           <TouchableOpacity
             style={styles.communityCta}
             onPress={() => router.push("/community")}
@@ -303,32 +331,7 @@ const AdminDashboardScreen = () => {
         </View>
       </ScrollView>
 
-      <View style={styles.navbar}>
-        {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.path);
-          return (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.navItem}
-              onPress={() =>
-                item.params
-                  ? router.replace({ pathname: item.path, params: item.params })
-                  : router.replace(item.path)
-              }
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-            >
-              <Ionicons
-                name={item.icon}
-                size={20}
-                color={isActive ? Color.piccolo : Color.mainTrunks}
-              />
-              <Text style={[styles.navLabel, isActive ? styles.navLabelActive : null]}>{item.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <AdminNavbar activePath={pathname} />
     </SafeAreaView>
   );
 };
@@ -542,29 +545,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
     textDecorationLine: "underline",
-  },
-  navbar: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingVertical: StyleVariable.py2,
-    paddingHorizontal: StyleVariable.px4,
-    borderTopWidth: 1,
-    borderTopColor: "#E6EAF1",
-    backgroundColor: Color.mainGoten,
-  },
-  navItem: {
-    alignItems: "center",
-    gap: Gap.gap_4,
-  },
-  navLabel: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  navLabelActive: {
-    color: Color.piccolo,
-    fontFamily: FontFamily.dMSansBold,
   },
 });
 

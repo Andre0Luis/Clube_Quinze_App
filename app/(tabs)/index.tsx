@@ -1,24 +1,31 @@
-
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+    ActivityIndicator,
+    Linking,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Card from "../../components/Card";
 import FrameComponent1 from "../../components/FrameComponent1";
 import {
-  Border,
-  Color,
-  FontFamily,
-  FontSize,
-  Gap,
-  LineHeight,
-  Padding,
-  StyleVariable,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    LineHeight,
+    Padding,
+    StyleVariable,
 } from "../../GlobalStyles";
 import { usePushNotifications } from "../../hooks/use-push-notifications";
 import { listMyAppointments } from "../../services/appointments";
@@ -27,7 +34,11 @@ import { getAdminDashboardMetrics } from "../../services/dashboard";
 import { isMockEnabled } from "../../services/mock/settings";
 import { registerPushToken } from "../../services/push-tokens";
 import { getCurrentUser } from "../../services/users";
-import type { AdminDashboardResponse, AppointmentResponse, UserProfileResponse } from "../../types/api";
+import type {
+    AdminDashboardResponse,
+    AppointmentResponse,
+    UserProfileResponse,
+} from "../../types/api";
 
 interface DecodedToken {
   name?: string;
@@ -78,7 +89,11 @@ const getStatusMeta = (status?: string) => {
     case "CANCELED":
       return { label: "Cancelado", background: "#D7263D", text: "#FFFFFF" };
     default:
-      return { label: status ? status : "Desconhecido", background: Color.mainBeerus, text: Color.mainBulma };
+      return {
+        label: status ? status : "Desconhecido",
+        background: Color.mainBeerus,
+        text: Color.mainBulma,
+      };
   }
 };
 
@@ -91,7 +106,10 @@ const formatAppointmentDate = (input: string) => {
   const weekday = date.toLocaleDateString("pt-BR", { weekday: "long" });
   const day = date.toLocaleDateString("pt-BR", { day: "2-digit" });
   const month = date.toLocaleDateString("pt-BR", { month: "long" });
-  const time = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const time = date.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} • ${day} de ${month} • ${time}`;
 };
@@ -106,20 +124,31 @@ const findNextAppointment = (items: AppointmentResponse[]) => {
       const scheduledAt = new Date(appointment.scheduledAt).getTime();
       return Number.isNaN(scheduledAt) ? false : scheduledAt >= now;
     })
-    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0];
+    .sort(
+      (a, b) =>
+        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
+    )[0];
 };
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { expoPushToken, appVersion, error: notificationsError } = usePushNotifications();
-  const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(null);
+  const {
+    expoPushToken,
+    appVersion,
+    error: notificationsError,
+  } = usePushNotifications();
+  const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(
+    null,
+  );
   const mockActive = isMockEnabled();
   const [userName, setUserName] = useState<string>("");
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
-  const [nextAppointment, setNextAppointment] = useState<AppointmentResponse | null>(null);
+  const [nextAppointment, setNextAppointment] =
+    useState<AppointmentResponse | null>(null);
   const [isLoadingNext, setIsLoadingNext] = useState(true);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [adminDashboard, setAdminDashboard] = useState<AdminDashboardResponse | null>(null);
+  const [adminDashboard, setAdminDashboard] =
+    useState<AdminDashboardResponse | null>(null);
 
   useEffect(() => {
     if (notificationsError) {
@@ -371,11 +400,16 @@ export default function HomeScreen() {
     }
     return userName || "Convidado";
   }, [profile?.name, userName]);
-  const nextStatusMeta = useMemo(() => getStatusMeta(nextAppointment?.status), [nextAppointment?.status]);
+  const nextStatusMeta = useMemo(
+    () => getStatusMeta(nextAppointment?.status),
+    [nextAppointment?.status],
+  );
 
   const membersStandardCount = useMemo(() => {
     const total = adminDashboard?.totalMembers ?? 0;
-    const fromMetric = adminDashboard?.metrics?.find((metric) => metric.id === "members_standard")?.value;
+    const fromMetric = adminDashboard?.metrics?.find(
+      (metric) => metric.id === "members_standard",
+    )?.value;
     if (typeof fromMetric === "number" && !Number.isNaN(fromMetric)) {
       return fromMetric;
     }
@@ -384,13 +418,19 @@ export default function HomeScreen() {
 
   const membersSelectCount = useMemo(() => {
     const total = adminDashboard?.totalMembers ?? 0;
-    const fromMetric = adminDashboard?.metrics?.find((metric) => metric.id === "members_select")?.value;
+    const fromMetric = adminDashboard?.metrics?.find(
+      (metric) => metric.id === "members_select",
+    )?.value;
     if (typeof fromMetric === "number" && !Number.isNaN(fromMetric)) {
       return fromMetric;
     }
     const fallback = total - membersStandardCount;
     return Math.max(0, fallback);
-  }, [adminDashboard?.metrics, adminDashboard?.totalMembers, membersStandardCount]);
+  }, [
+    adminDashboard?.metrics,
+    adminDashboard?.totalMembers,
+    membersStandardCount,
+  ]);
 
   const actionCards = useMemo<ActionCard[]>(() => {
     if (isAdmin) {
@@ -406,20 +446,32 @@ export default function HomeScreen() {
 
     const linkActions = quickActions
       .filter((action) => action.href !== "/register")
-      .map((action) => ({ kind: "link", action, span: 1 } as const));
+      .map((action) => ({ kind: "link", action, span: 1 }) as const);
 
-    return [{ kind: "next", span: 2 }, ...linkActions, { kind: "community", span: 2 }];
-  }, [isAdmin]);
+    const cards: ActionCard[] = [{ kind: "next", span: 2 }, ...linkActions];
+
+    if (profile?.membershipTier === "QUINZE_SELECT") {
+      cards.push({ kind: "community", span: 2 });
+    }
+
+    return cards;
+  }, [isAdmin, profile?.membershipTier]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <FrameComponent1 userName={displayName} onPressNotifications={() => handleNavigate("/notifications")} />
+        <FrameComponent1
+          userName={displayName}
+          onPressNotifications={() => handleNavigate("/notifications")}
+        />
 
         <View style={styles.quickActionsWrapper}>
           <View style={styles.quickActions}>
             {actionCards.map((item) => {
-              const cardStyle = [styles.quickActionCard, item.span === 2 && styles.quickActionCardFull];
+              const cardStyle = [
+                styles.quickActionCard,
+                item.span === 2 && styles.quickActionCardFull,
+              ];
 
               if (item.kind === "link") {
                 return (
@@ -427,7 +479,9 @@ export default function HomeScreen() {
                     key={item.action.label}
                     style={cardStyle}
                     activeOpacity={0.9}
-                    onPress={() => handleNavigate(item.action.href, item.action.params)}
+                    onPress={() =>
+                      handleNavigate(item.action.href, item.action.params)
+                    }
                   >
                     <View style={styles.quickActionCardContent}>
                       <Card
@@ -435,7 +489,13 @@ export default function HomeScreen() {
                         size="32px"
                         time="calendar"
                         type="stroke"
-                        calendar={<Ionicons name={item.action.icon} size={22} color={Color.piccolo} />}
+                        calendar={
+                          <Ionicons
+                            name={item.action.icon}
+                            size={22}
+                            color={Color.piccolo}
+                          />
+                        }
                         timePosition="relative"
                       />
                     </View>
@@ -454,7 +514,11 @@ export default function HomeScreen() {
                     <View style={styles.quickActionCardContent}>
                       <View style={styles.cardHeader}>
                         <View style={styles.cardIconWrapper}>
-                          <Ionicons name="people-outline" size={18} color={Color.piccolo} />
+                          <Ionicons
+                            name="people-outline"
+                            size={18}
+                            color={Color.piccolo}
+                          />
                         </View>
                       </View>
                       <View style={styles.cardBody}>
@@ -462,7 +526,11 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.cardFooter}>
                         <Text style={styles.cardLink}>Entrar</Text>
-                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                        <Ionicons
+                          name="arrow-forward"
+                          size={16}
+                          color={Color.piccolo}
+                        />
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -475,19 +543,31 @@ export default function HomeScreen() {
                     key="admin-members-standard"
                     style={cardStyle}
                     activeOpacity={0.9}
-                    onPress={() => handleNavigate("/admin-members", { tier: "CLUB_15" })}
+                    onPress={() =>
+                      handleNavigate("/admin-members", { tier: "CLUB_15" })
+                    }
                   >
                     <View style={styles.quickActionCardContent}>
                       <View style={styles.cardHeader}>
                         <Text style={styles.cardTitle}>Membros</Text>
                       </View>
                       <View style={styles.cardBody}>
-                        <Text style={styles.cardCount}>{membersStandardCount.toLocaleString("pt-BR")}</Text>
-                        <Text style={[styles.cardLabel, { color: Color.piccolo }]}>Plano Standard</Text>
+                        <Text style={styles.cardCount}>
+                          {membersStandardCount.toLocaleString("pt-BR")}
+                        </Text>
+                        <Text
+                          style={[styles.cardLabel, { color: Color.piccolo }]}
+                        >
+                          Plano Standard
+                        </Text>
                       </View>
                       <View style={styles.cardFooter}>
                         <Text style={styles.cardLink}>Ver lista</Text>
-                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                        <Ionicons
+                          name="arrow-forward"
+                          size={16}
+                          color={Color.piccolo}
+                        />
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -500,19 +580,31 @@ export default function HomeScreen() {
                     key="admin-members-select"
                     style={cardStyle}
                     activeOpacity={0.9}
-                    onPress={() => handleNavigate("/admin-members", { tier: "QUINZE_SELECT" })}
+                    onPress={() =>
+                      handleNavigate("/admin-members", {
+                        tier: "QUINZE_SELECT",
+                      })
+                    }
                   >
                     <View style={styles.quickActionCardContent}>
                       <View style={styles.cardHeader}>
                         <Text style={styles.cardTitle}>Membros</Text>
                       </View>
                       <View style={styles.cardBody}>
-                        <Text style={styles.cardCount}>{membersSelectCount.toLocaleString("pt-BR")}</Text>
-                        <Text style={[styles.cardLabel, { color: "#C9A43C" }]}>Quinze Select</Text>
+                        <Text style={styles.cardCount}>
+                          {membersSelectCount.toLocaleString("pt-BR")}
+                        </Text>
+                        <Text style={[styles.cardLabel, { color: "#C9A43C" }]}>
+                          Quinze Select
+                        </Text>
                       </View>
                       <View style={styles.cardFooter}>
                         <Text style={styles.cardLink}>Ver lista</Text>
-                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                        <Ionicons
+                          name="arrow-forward"
+                          size={16}
+                          color={Color.piccolo}
+                        />
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -530,7 +622,11 @@ export default function HomeScreen() {
                     <View style={styles.quickActionCardContent}>
                       <View style={styles.cardHeader}>
                         <View style={styles.cardIconWrapper}>
-                          <Ionicons name="calendar-outline" size={18} color={Color.piccolo} />
+                          <Ionicons
+                            name="calendar-outline"
+                            size={18}
+                            color={Color.piccolo}
+                          />
                         </View>
                       </View>
                       <View style={styles.cardBody}>
@@ -538,7 +634,11 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.cardFooter}>
                         <Text style={styles.cardLink}>Abrir agenda</Text>
-                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                        <Ionicons
+                          name="arrow-forward"
+                          size={16}
+                          color={Color.piccolo}
+                        />
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -551,20 +651,32 @@ export default function HomeScreen() {
                     key="admin-payments"
                     style={cardStyle}
                     activeOpacity={0.9}
-                    onPress={() => handleNavigate("/profile/plans")}
+                    onPress={() =>
+                      handleNavigate("/profile/plans", { fromAdmin: "1" })
+                    }
                   >
                     <View style={styles.quickActionCardContent}>
                       <View style={styles.cardHeader}>
                         <View style={styles.cardIconWrapper}>
-                          <Ionicons name="card-outline" size={18} color={Color.piccolo} />
+                          <Ionicons
+                            name="card-outline"
+                            size={18}
+                            color={Color.piccolo}
+                          />
                         </View>
                       </View>
                       <View style={styles.cardBody}>
-                        <Text style={styles.cardTitle}>Proximos pagamentos</Text>
+                        <Text style={styles.cardTitle}>
+                          Proximos pagamentos
+                        </Text>
                       </View>
                       <View style={styles.cardFooter}>
                         <Text style={styles.cardLink}>Ver detalhes</Text>
-                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                        <Ionicons
+                          name="arrow-forward"
+                          size={16}
+                          color={Color.piccolo}
+                        />
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -582,7 +694,11 @@ export default function HomeScreen() {
                     <View style={styles.quickActionCardContent}>
                       <View style={styles.cardHeader}>
                         <View style={styles.cardIconWrapper}>
-                          <Ionicons name="person-add-outline" size={18} color={Color.piccolo} />
+                          <Ionicons
+                            name="person-add-outline"
+                            size={18}
+                            color={Color.piccolo}
+                          />
                         </View>
                       </View>
                       <View style={styles.cardBody}>
@@ -590,7 +706,11 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.cardFooter}>
                         <Text style={styles.cardLink}>Iniciar cadastro</Text>
-                        <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                        <Ionicons
+                          name="arrow-forward"
+                          size={16}
+                          color={Color.piccolo}
+                        />
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -607,7 +727,9 @@ export default function HomeScreen() {
                       return;
                     }
                     if (nextAppointment) {
-                      handleNavigate("/appointments/[appointmentId]", { appointmentId: String(nextAppointment.id) });
+                      handleNavigate("/appointments/[appointmentId]", {
+                        appointmentId: String(nextAppointment.id),
+                      });
                     } else {
                       handleNavigate("/schedule");
                     }
@@ -622,26 +744,54 @@ export default function HomeScreen() {
                       <>
                         <View style={styles.cardHeader}>
                           <View style={styles.cardIconWrapper}>
-                            <Ionicons name="calendar" size={18} color={Color.piccolo} />
+                            <Ionicons
+                              name="calendar"
+                              size={18}
+                              color={Color.piccolo}
+                            />
                           </View>
-                          <View style={[styles.statusBadge, { backgroundColor: nextStatusMeta.background }]}>
-                            <Text style={[styles.statusText, { color: nextStatusMeta.text }]}>{nextStatusMeta.label}</Text>
+                          <View
+                            style={[
+                              styles.statusBadge,
+                              { backgroundColor: nextStatusMeta.background },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.statusText,
+                                { color: nextStatusMeta.text },
+                              ]}
+                            >
+                              {nextStatusMeta.label}
+                            </Text>
                           </View>
                         </View>
                         <View style={styles.cardBody}>
-                          <Text style={styles.cardTitle}>Proximo agendamento</Text>
-                          <Text style={styles.cardDate}>{formatAppointmentDate(nextAppointment.scheduledAt)}</Text>
+                          <Text style={styles.cardTitle}>
+                            Proximo agendamento
+                          </Text>
+                          <Text style={styles.cardDate}>
+                            {formatAppointmentDate(nextAppointment.scheduledAt)}
+                          </Text>
                         </View>
                         <View style={styles.cardFooter}>
                           <Text style={styles.cardLink}>Ver detalhes</Text>
-                          <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                          <Ionicons
+                            name="arrow-forward"
+                            size={16}
+                            color={Color.piccolo}
+                          />
                         </View>
                       </>
                     ) : (
                       <>
                         <View style={styles.cardHeader}>
                           <View style={styles.cardIconWrapper}>
-                            <Ionicons name="calendar" size={18} color={Color.piccolo} />
+                            <Ionicons
+                              name="calendar"
+                              size={18}
+                              color={Color.piccolo}
+                            />
                           </View>
                         </View>
                         <View style={styles.cardBody}>
@@ -649,7 +799,11 @@ export default function HomeScreen() {
                         </View>
                         <View style={styles.cardFooter}>
                           <Text style={styles.cardLink}>Agendar horario</Text>
-                          <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                          <Ionicons
+                            name="arrow-forward"
+                            size={16}
+                            color={Color.piccolo}
+                          />
                         </View>
                       </>
                     )}
@@ -668,8 +822,23 @@ export default function HomeScreen() {
             accessibilityLabel="Passos Magicos"
           />
         </View>
-      </ScrollView>
 
+        <View style={styles.section}>
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => Linking.openURL("https://www.produtos15.com.br/")}
+            accessibilityRole="link"
+            accessibilityLabel="Acessar Produtos Quinze"
+          >
+            <Image
+              source={require("../../assets/images/produtos15.png")}
+              style={styles.magicStepsImage}
+              contentFit="contain"
+              accessibilityLabel="Produtos Quinze"
+            />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -775,14 +944,10 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
-    columnGap: Gap.gap_16,
-    rowGap: Gap.gap_16,
-    marginHorizontal: Padding.padding_8,
+    gap: Gap.gap_12,
   },
   quickActionCard: {
-    flexBasis: "48%",
-    maxWidth: "48%",
+    width: "47%",
     borderRadius: Border.br_16,
     overflow: "visible",
     shadowColor: "rgba(0, 0, 0, 0.04)",
@@ -797,8 +962,7 @@ const styles = StyleSheet.create({
     borderColor: "#E6EAF1",
   },
   quickActionCardFull: {
-    flexBasis: "100%",
-    maxWidth: "100%",
+    width: "100%",
     minHeight: 190,
   },
   quickActionCardContent: {

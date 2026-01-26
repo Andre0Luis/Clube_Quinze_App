@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
@@ -11,7 +10,6 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TextStyle,
     TouchableOpacity,
     View,
 } from "react-native";
@@ -24,7 +22,7 @@ import {
     FontSize,
     Gap,
     Padding,
-    StyleVariable
+    StyleVariable,
 } from "../../GlobalStyles";
 import {
     deletePreference,
@@ -34,9 +32,13 @@ import {
 } from "../../services/preferences";
 import type { PreferenceResponse } from "../../types/api";
 
-const SEARCH_TERM_STORAGE_KEY = "@preferences/searchTerm";
-
-const escapeRegExp = (value: string) => value.replace(/[-\\^$*+?.()|[\]{}]/g, "\\$&");
+const slugify = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .toLowerCase();
 
 const formatDateLabel = (value?: string) => {
   if (!value) {
@@ -46,18 +48,28 @@ const formatDateLabel = (value?: string) => {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  const supportsRelative = typeof Intl !== "undefined" && "RelativeTimeFormat" in Intl;
+  const supportsRelative =
+    typeof Intl !== "undefined" && "RelativeTimeFormat" in Intl;
   if (supportsRelative) {
     const diffMinutes = Math.round((date.getTime() - Date.now()) / 60000);
     if (Math.abs(diffMinutes) < 60) {
-      return new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" }).format(diffMinutes, "minute");
+      return new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" }).format(
+        diffMinutes,
+        "minute",
+      );
     }
     const diffHours = Math.round(diffMinutes / 60);
     if (Math.abs(diffHours) < 24) {
-      return new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" }).format(diffHours, "hour");
+      return new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" }).format(
+        diffHours,
+        "hour",
+      );
     }
     const diffDays = Math.round(diffHours / 24);
-    return new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" }).format(diffDays, "day");
+    return new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" }).format(
+      diffDays,
+      "day",
+    );
   }
   return date.toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -74,43 +86,11 @@ export default function PreferencesScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [selectedPreference, setSelectedPreference] = useState<PreferenceResponse | null>(null);
-  const [keyInput, setKeyInput] = useState("");
+  const [selectedPreference, setSelectedPreference] =
+    useState<PreferenceResponse | null>(null);
   const [valueInput, setValueInput] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const restoreSearchTerm = async () => {
-      try {
-        const stored = await AsyncStorage.getItem(SEARCH_TERM_STORAGE_KEY);
-        if (stored && isMounted) {
-          setSearchTerm(stored);
-        }
-      } catch (error) {
-        console.error("Failed to restore search term", error);
-      }
-    };
-
-    restoreSearchTerm();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const debounce = setTimeout(() => {
-      AsyncStorage.setItem(SEARCH_TERM_STORAGE_KEY, searchTerm).catch((error) => {
-        console.error("Failed to persist search term", error);
-      });
-    }, 350);
-
-    return () => clearTimeout(debounce);
-  }, [searchTerm]);
 
   const loadPreferences = useCallback(async () => {
     const data = await listPreferences();
@@ -169,24 +149,21 @@ export default function PreferencesScreen() {
     }
   }, [loadPreferences]);
 
-  const handleSelectPreference = useCallback((preference: PreferenceResponse) => {
-    setSelectedPreference(preference);
-    setKeyInput(preference.key);
-    setValueInput(preference.value);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-  }, []);
+  const handleSelectPreference = useCallback(
+    (preference: PreferenceResponse) => {
+      setSelectedPreference(preference);
+      setValueInput(preference.value);
+      setErrorMessage(null);
+      setSuccessMessage(null);
+    },
+    [],
+  );
 
   const handleResetSelection = useCallback(() => {
     setSelectedPreference(null);
-    setKeyInput("");
     setValueInput("");
     setErrorMessage(null);
     setSuccessMessage(null);
-  }, []);
-
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchTerm(value);
   }, []);
 
   const handleSubmit = useCallback(async () => {
@@ -194,20 +171,22 @@ export default function PreferencesScreen() {
       return;
     }
 
-    const trimmedKey = keyInput.trim();
     const trimmedValue = valueInput.trim();
 
-    if (!trimmedKey || !trimmedValue) {
-      setErrorMessage("Informe chave e valor para a preferencia.");
+    if (!trimmedValue) {
+      setErrorMessage("Informe a preferencia.");
       return;
     }
 
+    const generatedKey = slugify(trimmedValue) || `preferencia-${Date.now()}`;
+
     const duplicate = preferences.find(
-      (item) =>
-        item.id !== selectedPreference?.id && item.key.trim().toLowerCase() === trimmedKey.toLowerCase(),
+      (item) => item.id !== selectedPreference?.id && item.key === generatedKey,
     );
     if (duplicate) {
-      setErrorMessage("Ja existe uma preferencia com essa chave. Atualize a existente ou escolha outro nome.");
+      setErrorMessage(
+        "Ja existe uma preferencia com esse nome. Atualize a existente ou escolha outro nome.",
+      );
       return;
     }
 
@@ -218,21 +197,25 @@ export default function PreferencesScreen() {
     try {
       if (selectedPreference) {
         const updated = await updatePreference(selectedPreference.id, {
-          key: trimmedKey,
+          key: generatedKey,
           value: trimmedValue,
         });
         setPreferences((prev) =>
-          prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+          prev.map((item) =>
+            item.id === updated.id ? { ...item, ...updated } : item,
+          ),
         );
         setSelectedPreference(updated);
         setSuccessMessage("Preferencia atualizada com sucesso.");
       } else {
-        const created = await upsertPreference({ key: trimmedKey, value: trimmedValue });
+        const created = await upsertPreference({
+          key: generatedKey,
+          value: trimmedValue,
+        });
         setPreferences((prev) => [created, ...prev]);
         setSelectedPreference(created);
         setSuccessMessage("Preferencia adicionada com sucesso.");
       }
-      setKeyInput(trimmedKey);
       setValueInput(trimmedValue);
     } catch (error) {
       console.error("Failed to persist preference", error);
@@ -240,7 +223,7 @@ export default function PreferencesScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, keyInput, selectedPreference, valueInput]);
+  }, [isSaving, preferences, selectedPreference, valueInput]);
 
   const handleDelete = useCallback(async () => {
     if (!selectedPreference || isDeleting) {
@@ -253,9 +236,10 @@ export default function PreferencesScreen() {
 
     try {
       await deletePreference(selectedPreference.id);
-      setPreferences((prev) => prev.filter((item) => item.id !== selectedPreference.id));
+      setPreferences((prev) =>
+        prev.filter((item) => item.id !== selectedPreference.id),
+      );
       setSelectedPreference(null);
-      setKeyInput("");
       setValueInput("");
       setSuccessMessage("Preferencia removida com sucesso.");
     } catch (error) {
@@ -269,45 +253,6 @@ export default function PreferencesScreen() {
   const sortedPreferences = useMemo(() => {
     return [...preferences].sort((a, b) => a.key.localeCompare(b.key));
   }, [preferences]);
-
-  const filteredPreferences = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) {
-      return sortedPreferences;
-    }
-    return sortedPreferences.filter((item) => {
-      return item.key.toLowerCase().includes(term) || item.value.toLowerCase().includes(term);
-    });
-  }, [searchTerm, sortedPreferences]);
-
-  const renderHighlightedText = useCallback(
-    (text: string, style: TextStyle) => {
-      const term = searchTerm.trim();
-      if (!term) {
-        return <Text style={style}>{text}</Text>;
-      }
-
-      const termLower = term.toLowerCase();
-      const regex = new RegExp(`(${escapeRegExp(term)})`, "gi");
-      const parts = text.split(regex);
-
-      return (
-        <Text style={style}>
-          {parts.map((part, index) => {
-            if (part.toLowerCase() === termLower) {
-              return (
-                <Text key={`${part}-${index}`} style={styles.preferenceHighlight}>
-                  {part}
-                </Text>
-              );
-            }
-            return <Text key={`${part}-${index}`}>{part}</Text>;
-          })}
-        </Text>
-      );
-    },
-    [searchTerm],
-  );
 
   const renderPreferenceItem = useCallback(
     ({ item }: ListRenderItemInfo<PreferenceResponse>) => {
@@ -326,15 +271,17 @@ export default function PreferencesScreen() {
             />
           </View>
           <View style={styles.preferenceTexts}>
-            {renderHighlightedText(item.key, styles.preferenceKey)}
-            {renderHighlightedText(item.value, styles.preferenceValue)}
-            <Text style={styles.preferenceMeta}>Atualizado {formatDateLabel(item.updatedAt)}</Text>
+            <Text style={styles.preferenceKey}>{item.value}</Text>
+            <Text style={styles.preferenceValue}>{item.key}</Text>
+            <Text style={styles.preferenceMeta}>
+              Atualizado {formatDateLabel(item.updatedAt)}
+            </Text>
           </View>
           <Ionicons name="create-outline" size={18} color={Color.mainTrunks} />
         </TouchableOpacity>
       );
     },
-    [handleSelectPreference, renderHighlightedText, selectedPreference?.id],
+    [handleSelectPreference, selectedPreference?.id],
   );
 
   return (
@@ -373,14 +320,22 @@ export default function PreferencesScreen() {
 
         {errorMessage ? (
           <View style={[styles.feedbackBanner, styles.feedbackError]}>
-            <Ionicons name="alert-circle-outline" size={18} color={Color.supportiveChichi} />
+            <Ionicons
+              name="alert-circle-outline"
+              size={18}
+              color={Color.supportiveChichi}
+            />
             <Text style={styles.feedbackText}>{errorMessage}</Text>
           </View>
         ) : null}
 
         {successMessage ? (
           <View style={[styles.feedbackBanner, styles.feedbackSuccess]}>
-            <Ionicons name="checkmark-circle-outline" size={18} color={Color.supportiveRoshi} />
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={18}
+              color={Color.supportiveRoshi}
+            />
             <Text style={styles.feedbackText}>{successMessage}</Text>
           </View>
         ) : null}
@@ -389,41 +344,24 @@ export default function PreferencesScreen() {
           <View style={styles.listHeader}>
             <View style={styles.listHeaderTexts}>
               <Text style={styles.sectionTitle}>Preferencias salvas</Text>
-              <Text style={styles.listMeta}>{`${filteredPreferences.length}/${sortedPreferences.length} itens`}</Text>
-            </View>
-            <View style={styles.searchWrapper}>
-              <Ionicons name="search-outline" size={16} color={Color.mainTrunks} />
-              <TextInput
-                style={styles.searchInput}
-                value={searchTerm}
-                onChangeText={handleSearchChange}
-                placeholder="Filtrar por chave ou valor"
-                placeholderTextColor={Color.mainTrunks}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              {searchTerm ? (
-                <TouchableOpacity
-                  onPress={() => handleSearchChange("")}
-                  style={styles.searchClear}
-                  accessibilityRole="button"
-                  accessibilityLabel="Limpar filtro"
-                >
-                  <Ionicons name="close-circle" size={16} color={Color.mainTrunks} />
-                </TouchableOpacity>
-              ) : null}
+              <Text
+                style={styles.listMeta}
+              >{`${sortedPreferences.length} itens`}</Text>
             </View>
           </View>
           {sortedPreferences.length === 0 ? (
-            <Text style={styles.emptyState}>Nenhuma preferencia cadastrada ainda.</Text>
+            <Text style={styles.emptyState}>
+              Nenhuma preferencia cadastrada ainda.
+            </Text>
           ) : (
             <FlatList
-              data={filteredPreferences}
+              data={sortedPreferences}
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderPreferenceItem}
-              ItemSeparatorComponent={() => <View style={styles.preferenceSeparator} />}
+              ItemSeparatorComponent={() => (
+                <View style={styles.preferenceSeparator} />
+              )}
               scrollEnabled={false}
-              ListEmptyComponent={<Text style={styles.emptyState}>Nenhum resultado para o filtro aplicado.</Text>}
             />
           )}
         </View>
@@ -438,28 +376,23 @@ export default function PreferencesScreen() {
               onPress={handleResetSelection}
               activeOpacity={0.85}
             >
-              <Ionicons name="add-circle-outline" size={16} color={Color.piccolo} />
-              <Text style={styles.resetSelectionText}>Adicionar nova preferencia</Text>
+              <Ionicons
+                name="add-circle-outline"
+                size={16}
+                color={Color.piccolo}
+              />
+              <Text style={styles.resetSelectionText}>
+                Adicionar nova preferencia
+              </Text>
             </TouchableOpacity>
           ) : null}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Chave</Text>
-            <TextInput
-              style={styles.fieldInput}
-              value={keyInput}
-              onChangeText={setKeyInput}
-              placeholder="Ex.: bebida, musica, profissional"
-              placeholderTextColor={Color.mainTrunks}
-              autoCapitalize="none"
-            />
-          </View>
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Valor</Text>
+            <Text style={styles.fieldLabel}>Preferencia</Text>
             <TextInput
               style={styles.fieldInput}
               value={valueInput}
               onChangeText={setValueInput}
-              placeholder="Defina o valor da preferencia"
+              placeholder="Descreva a preferencia"
               placeholderTextColor={Color.mainTrunks}
             />
           </View>
@@ -475,7 +408,10 @@ export default function PreferencesScreen() {
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity
-              style={[styles.primaryButton, isSaving && styles.primaryButtonDisabled]}
+              style={[
+                styles.primaryButton,
+                isSaving && styles.primaryButtonDisabled,
+              ]}
               onPress={handleSubmit}
               disabled={isSaving}
               activeOpacity={0.85}
@@ -492,7 +428,10 @@ export default function PreferencesScreen() {
 
           {selectedPreference ? (
             <TouchableOpacity
-              style={[styles.dangerButton, isDeleting && styles.dangerButtonDisabled]}
+              style={[
+                styles.dangerButton,
+                isDeleting && styles.dangerButtonDisabled,
+              ]}
               onPress={handleDelete}
               disabled={isDeleting}
               activeOpacity={0.85}
@@ -613,27 +552,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansRegular,
     color: Color.mainTrunks,
   },
-  searchWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: Border.br_16,
-    borderWidth: 1,
-    borderColor: "rgba(0, 5, 61, 0.12)",
-    backgroundColor: Color.mainGohan,
-    paddingHorizontal: StyleVariable.px3,
-    paddingVertical: StyleVariable.py1,
-    gap: Gap.gap_8,
-  },
-  searchInput: {
-    minWidth: 140,
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.hit,
-    flex: 1,
-  },
-  searchClear: {
-    padding: StyleVariable.px1,
-  },
   emptyState: {
     fontSize: FontSize.fs_12,
     fontFamily: FontFamily.dMSansRegular,
@@ -684,9 +602,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansRegular,
     color: Color.mainTrunks,
     opacity: 0.8,
-  },
-  preferenceHighlight: {
-    color: Color.piccolo,
   },
   formCard: {
     borderRadius: Border.br_16,

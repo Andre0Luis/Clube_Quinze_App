@@ -67,11 +67,15 @@ const MenuDeNavegao = ({
             >
               <Ionicons
                 name={tab.icon}
-                size={20}
+                size={18}
                 color={isActive ? Color.mainGohan : Color.piccolo}
               />
             </View>
-            <Text style={[styles.label, isActive && styles.labelActive]}>
+            <Text
+              style={[styles.label, isActive && styles.labelActive]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -89,10 +93,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: Color.mainGohan,
+    borderWidth: 1,
+    borderColor: "rgba(0, 5, 61, 0.06)",
     borderRadius: Border.br_24,
-    paddingHorizontal: Padding.padding_16,
+    paddingHorizontal: Padding.padding_10,
     paddingVertical: Padding.padding_12,
-    gap: Gap.gap_16,
+    gap: Gap.gap_10,
     shadowColor: "rgba(0, 0, 0, 0.08)",
     shadowOpacity: 1,
     shadowOffset: { width: 0, height: 10 },
@@ -105,9 +111,9 @@ const styles = StyleSheet.create({
     gap: Gap.gap_4,
   },
   iconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: Border.br_58,
+    width: 36,
+    height: 36,
+    borderRadius: 999, // garante o formato circular mesmo em Android
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "transparent",
@@ -116,9 +122,11 @@ const styles = StyleSheet.create({
     backgroundColor: Color.piccolo,
   },
   label: {
-    fontSize: FontSize.fs_12,
+    fontSize: FontSize.fs_10,
     fontFamily: FontFamily.dMSansRegular,
     color: Color.mainTrunks,
+    textAlign: "center",
+    flexShrink: 1,
   },
   labelActive: {
     fontFamily: FontFamily.dMSansBold,
