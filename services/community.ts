@@ -1,14 +1,21 @@
-import { CommentRequest, CommentResponse, LikeResponse, PageResponse, PostRequest, PostResponse } from '../types/api';
-import api from './api';
-import { mockData } from './mock/data';
-import { isMockEnabled } from './mock/settings';
-import { clone } from './mock/utils';
-import { getAccessToken } from './storage';
+import {
+  CommentRequest,
+  CommentResponse,
+  LikeResponse,
+  PageResponse,
+  PostRequest,
+  PostResponse,
+} from "../types/api";
+import api from "./api";
+import { mockData } from "./mock/data";
+import { isMockEnabled } from "./mock/settings";
+import { clone } from "./mock/utils";
+import { getAccessToken } from "./storage";
 
 const withAuthHeader = async () => {
   const token = await getAccessToken();
   if (!token) {
-    throw new Error('Access token is not available.');
+    throw new Error("Access token is not available.");
   }
   return {
     headers: {
@@ -29,10 +36,13 @@ export const listPosts = async (params?: ListPostsParams) => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.get<PageResponse<PostResponse>>('/community/posts', {
-    ...config,
-    params,
-  });
+  const { data } = await api.get<PageResponse<PostResponse>>(
+    "/community/posts",
+    {
+      ...config,
+      params,
+    },
+  );
   return data;
 };
 
@@ -42,7 +52,11 @@ export const createPost = async (payload: PostRequest) => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.post<PostResponse>('/community/posts', payload, config);
+  const { data } = await api.post<PostResponse>(
+    "/community/posts",
+    payload,
+    config,
+  );
   return data;
 };
 
@@ -52,7 +66,10 @@ export const getPost = async (postId: number) => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.get<PostResponse>(`/community/posts/${postId}`, config);
+  const { data } = await api.get<PostResponse>(
+    `/community/posts/${postId}`,
+    config,
+  );
   return data;
 };
 
@@ -72,7 +89,11 @@ export const likePost = async (postId: number) => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.post<LikeResponse>(`/community/posts/${postId}/likes`, undefined, config);
+  const { data } = await api.post<LikeResponse>(
+    `/community/posts/${postId}/likes`,
+    undefined,
+    config,
+  );
   return data;
 };
 
@@ -98,4 +119,14 @@ export const addComment = async (postId: number, payload: CommentRequest) => {
     config,
   );
   return data;
+};
+
+export const deleteComment = async (postId: number, commentId: number) => {
+  if (isMockEnabled()) {
+    mockData.deleteComment(postId, commentId);
+    return;
+  }
+
+  const config = await withAuthHeader();
+  await api.delete(`/community/posts/${postId}/comments/${commentId}`, config);
 };

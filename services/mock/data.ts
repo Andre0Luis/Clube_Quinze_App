@@ -25,8 +25,8 @@ import {
     RegisterRequest,
     UpdateUserRequest,
     UserPerformanceSummary,
-    UserProfileResponse
-} from '../../types/api';
+    UserProfileResponse,
+} from "../../types/api";
 
 const addDays = (days: number, hour = 10, minute = 0) => {
   const date = new Date();
@@ -44,37 +44,38 @@ const canceledIso = addDays(-10, 9, 0);
 
 const basePlan: PlanResponse = {
   id: 1,
-  name: 'Plano Padrao',
-  description: 'Plano padrao para manter o autocuidado em dia',
+  name: "Plano Padrao",
+  description: "Plano padrao para manter o autocuidado em dia",
   price: 99.9,
   durationMonths: 12,
 };
 
 const premiumPlan: PlanResponse = {
   id: 2,
-  name: 'Plano Premium',
-  description: 'Inclui tratamentos exclusivos e vantagens no agendamento',
+  name: "Plano Premium",
+  description: "Inclui tratamentos exclusivos e vantagens no agendamento",
   price: 189.9,
   durationMonths: 12,
 };
 
 const selectPlan: PlanResponse = {
   id: 3,
-  name: 'Quinze Select',
-  description: 'Experiencia completa com agenda preferencial e eventos exclusivos',
+  name: "Quinze Select",
+  description:
+    "Experiencia completa com agenda preferencial e eventos exclusivos",
   price: 289.9,
   durationMonths: 12,
 };
 
 const plans: PlanSummary[] = [basePlan, premiumPlan, selectPlan];
 
-export type MockPersona = 'ADMIN' | 'CLUB_15' | 'QUINZE_SELECT';
+export type MockPersona = "ADMIN" | "CLUB_15" | "QUINZE_SELECT";
 
 type PersonaPreset = {
   id: MockPersona;
   label: string;
-  role: UserProfileResponse['role'];
-  membershipTier: UserProfileResponse['membershipTier'];
+  role: UserProfileResponse["role"];
+  membershipTier: UserProfileResponse["membershipTier"];
   plan: PlanResponse;
   email: string;
   name: string;
@@ -84,59 +85,59 @@ type PersonaPreset = {
 
 const personaPresets: Record<MockPersona, PersonaPreset> = {
   ADMIN: {
-    id: 'ADMIN',
-    label: 'Admin',
-    role: 'CLUB_ADMIN',
-    membershipTier: 'CLUB_15',
+    id: "ADMIN",
+    label: "Admin",
+    role: "CLUB_ADMIN",
+    membershipTier: "CLUB_15",
     plan: premiumPlan,
-    email: 'admin@clubequinze.com',
-    name: 'Admin Clube Quinze',
-    phone: '+55 11 90000-0001',
-    description: 'Perfil administrativo para testar dashboards e gestão',
+    email: "admin@clubequinze.com",
+    name: "Admin Clube Quinze",
+    phone: "+55 11 90000-0001",
+    description: "Perfil administrativo para testar dashboards e gestão",
   },
   CLUB_15: {
-    id: 'CLUB_15',
-    label: 'Clube 15',
-    role: 'CLIENT',
-    membershipTier: 'CLUB_15',
+    id: "CLUB_15",
+    label: "Clube 15",
+    role: "CLIENT",
+    membershipTier: "CLUB_15",
     plan: basePlan,
-    email: 'cliente@clubequinze.com',
-    name: 'Cliente Clube 15',
-    phone: '+55 11 90000-0015',
-    description: 'Cliente convencional do Clube 15',
+    email: "cliente@clubequinze.com",
+    name: "Cliente Clube 15",
+    phone: "+55 11 90000-0015",
+    description: "Cliente convencional do Clube 15",
   },
   QUINZE_SELECT: {
-    id: 'QUINZE_SELECT',
-    label: 'Quinze Select',
-    role: 'CLIENT',
-    membershipTier: 'QUINZE_SELECT',
+    id: "QUINZE_SELECT",
+    label: "Quinze Select",
+    role: "CLIENT",
+    membershipTier: "QUINZE_SELECT",
     plan: selectPlan,
-    email: 'select@clubequinze.com',
-    name: 'Cliente Quinze Select',
-    phone: '+55 11 90000-0029',
-    description: 'Cliente Select com beneficios e agenda prioritaria',
+    email: "select@clubequinze.com",
+    name: "Cliente Quinze Select",
+    phone: "+55 11 90000-0029",
+    description: "Cliente Select com beneficios e agenda prioritaria",
   },
 };
 
 const basePreferences: PreferenceResponse[] = [
   {
     id: 1,
-    key: 'bebida',
-    value: 'cafe',
+    key: "bebida",
+    value: "cafe",
     createdAt: nowIso,
     updatedAt: nowIso,
   },
   {
     id: 2,
-    key: 'musica',
-    value: 'jazz_lounge',
+    key: "musica",
+    value: "jazz_lounge",
     createdAt: nowIso,
     updatedAt: nowIso,
   },
   {
     id: 3,
-    key: 'profissional',
-    value: 'thiago_santos',
+    key: "profissional",
+    value: "thiago_santos",
     createdAt: nowIso,
     updatedAt: nowIso,
   },
@@ -147,88 +148,88 @@ const appointments: AppointmentResponse[] = [
     id: 1,
     clientId: 1,
     scheduledAt: upcomingMorningIso,
-    appointmentTier: 'CLUB_15',
-    status: 'SCHEDULED',
-    serviceType: 'corte_de_cabelo',
-    notes: 'Cliente prefere silencio e acabamento com navalha.',
+    appointmentTier: "CLUB_15",
+    status: "SCHEDULED",
+    serviceType: "corte_de_cabelo",
+    notes: "Cliente prefere silencio e acabamento com navalha.",
   },
   {
     id: 2,
     clientId: 1,
     scheduledAt: upcomingEveningIso,
-    appointmentTier: 'CLUB_15',
-    status: 'SCHEDULED',
-    serviceType: 'barba',
-    notes: 'Usar oleo refrescante e toalha quente.',
+    appointmentTier: "CLUB_15",
+    status: "SCHEDULED",
+    serviceType: "barba",
+    notes: "Usar oleo refrescante e toalha quente.",
   },
   {
     id: 3,
     clientId: 1,
     scheduledAt: selectTierIso,
-    appointmentTier: 'QUINZE_SELECT',
-    status: 'SCHEDULED',
-    serviceType: 'tratamento_capilar',
-    notes: 'Aplicar linha Select e massagem relaxante.',
+    appointmentTier: "QUINZE_SELECT",
+    status: "SCHEDULED",
+    serviceType: "tratamento_capilar",
+    notes: "Aplicar linha Select e massagem relaxante.",
   },
   {
     id: 4,
     clientId: 1,
     scheduledAt: completedIso,
-    appointmentTier: 'CLUB_15',
-    status: 'COMPLETED',
-    serviceType: 'corte_de_cabelo',
-    notes: 'Cliente avaliou com nota maxima.',
+    appointmentTier: "CLUB_15",
+    status: "COMPLETED",
+    serviceType: "corte_de_cabelo",
+    notes: "Cliente avaliou com nota maxima.",
   },
   {
     id: 5,
     clientId: 1,
     scheduledAt: canceledIso,
-    appointmentTier: 'CLUB_15',
-    status: 'CANCELED',
-    serviceType: 'barba',
-    notes: 'Cancelado pelo cliente via aplicativo.',
+    appointmentTier: "CLUB_15",
+    status: "CANCELED",
+    serviceType: "barba",
+    notes: "Cancelado pelo cliente via aplicativo.",
   },
   {
     id: 6,
     clientId: 1,
     scheduledAt: addDays(5, 17, 15),
-    appointmentTier: 'QUINZE_SELECT',
-    status: 'SCHEDULED',
-    serviceType: 'ajuste_de_barba_select',
-    notes: 'Cliente Select prefere finalizacao com oleo quente.',
+    appointmentTier: "QUINZE_SELECT",
+    status: "SCHEDULED",
+    serviceType: "ajuste_de_barba_select",
+    notes: "Cliente Select prefere finalizacao com oleo quente.",
   },
   {
     id: 7,
     clientId: 1,
     scheduledAt: addDays(-7, 13, 0),
-    appointmentTier: 'CLUB_15',
-    status: 'COMPLETED',
-    serviceType: 'limpeza_de_pele',
-    notes: 'Sessao completa de skincare com esfoliacao.',
+    appointmentTier: "CLUB_15",
+    status: "COMPLETED",
+    serviceType: "limpeza_de_pele",
+    notes: "Sessao completa de skincare com esfoliacao.",
   },
   {
     id: 8,
     clientId: 1,
     scheduledAt: addDays(12, 19, 0),
-    appointmentTier: 'QUINZE_SELECT',
-    status: 'SCHEDULED',
-    serviceType: 'barbearia_noturna',
-    notes: 'Horario extra premium para Select apos expediente.',
+    appointmentTier: "QUINZE_SELECT",
+    status: "SCHEDULED",
+    serviceType: "barbearia_noturna",
+    notes: "Horario extra premium para Select apos expediente.",
   },
   {
     id: 9,
     clientId: 1,
     scheduledAt: addDays(-20, 10, 30),
-    appointmentTier: 'CLUB_15',
-    status: 'CANCELED',
-    serviceType: 'corte_rapido',
-    notes: 'Cancelado por manutencao do espaco.',
+    appointmentTier: "CLUB_15",
+    status: "CANCELED",
+    serviceType: "corte_rapido",
+    notes: "Cancelado por manutencao do espaco.",
   },
 ];
 
 const baseAppointment: AppointmentResponse = appointments[0];
 
-let currentPersona: MockPersona = 'CLUB_15';
+let currentPersona: MockPersona = "CLUB_15";
 
 const buildBaseUser = (persona: MockPersona): UserProfileResponse => {
   const preset = personaPresets[persona];
@@ -237,28 +238,32 @@ const buildBaseUser = (persona: MockPersona): UserProfileResponse => {
     name: preset.name,
     email: preset.email,
     phone: preset.phone,
-    birthDate: '1992-08-15',
+    birthDate: "1992-08-15",
     membershipTier: preset.membershipTier,
     role: preset.role,
     plan: preset.plan,
     createdAt: nowIso,
     lastLogin: nowIso,
     nextAppointment:
-      appointments.find((item) => item.status === 'SCHEDULED' && new Date(item.scheduledAt) >= new Date()) ?? baseAppointment,
+      appointments.find(
+        (item) =>
+          item.status === "SCHEDULED" &&
+          new Date(item.scheduledAt) >= new Date(),
+      ) ?? baseAppointment,
     preferences: basePreferences,
     profilePictureUrl:
-      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80',
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80",
     profilePictureBase64: undefined,
     gallery: [
       {
         position: 1,
         imageUrl:
-          'https://images.unsplash.com/photo-1504805572947-34fad45aed93?auto=format&fit=crop&w=800&q=80',
+          "https://images.unsplash.com/photo-1504805572947-34fad45aed93?auto=format&fit=crop&w=800&q=80",
       },
       {
         position: 2,
         imageUrl:
-          'https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=800&q=80',
+          "https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=800&q=80",
       },
     ],
   };
@@ -266,14 +271,23 @@ const buildBaseUser = (persona: MockPersona): UserProfileResponse => {
 
 let baseUser: UserProfileResponse = buildBaseUser(currentPersona);
 
-const sortByScheduleAsc = (first: AppointmentResponse, second: AppointmentResponse) =>
-  new Date(first.scheduledAt).getTime() - new Date(second.scheduledAt).getTime();
+const sortByScheduleAsc = (
+  first: AppointmentResponse,
+  second: AppointmentResponse,
+) =>
+  new Date(first.scheduledAt).getTime() -
+  new Date(second.scheduledAt).getTime();
 
-const getNextAppointmentId = () => appointments.reduce((max, item) => Math.max(max, item.id), 0) + 1;
+const getNextAppointmentId = () =>
+  appointments.reduce((max, item) => Math.max(max, item.id), 0) + 1;
 
 const updateNextAppointment = () => {
   const upcoming = appointments
-    .filter((item) => item.status === 'SCHEDULED' && new Date(item.scheduledAt).getTime() >= Date.now())
+    .filter(
+      (item) =>
+        item.status === "SCHEDULED" &&
+        new Date(item.scheduledAt).getTime() >= Date.now(),
+    )
     .sort(sortByScheduleAsc);
   baseUser.nextAppointment = upcoming[0] ?? null;
 };
@@ -300,7 +314,7 @@ export const getMockPersonaOptions = () =>
 
 export const getMockPersonaCredentials = (persona: MockPersona) => ({
   email: personaPresets[persona].email,
-  password: '1234',
+  password: "1234",
 });
 
 const feedbackEntries: FeedbackResponse[] = [
@@ -309,7 +323,7 @@ const feedbackEntries: FeedbackResponse[] = [
     appointmentId: 4,
     userId: 1,
     rating: 5,
-    comment: 'Servico excelente, corte impecavel.',
+    comment: "Servico excelente, corte impecavel.",
     createdAt: nowIso,
   },
   {
@@ -317,7 +331,7 @@ const feedbackEntries: FeedbackResponse[] = [
     appointmentId: 5,
     userId: 1,
     rating: 4,
-    comment: 'Equipe atenciosa, apenas atraso na agenda.',
+    comment: "Equipe atenciosa, apenas atraso na agenda.",
     createdAt: addDays(-12, 11, 0),
   },
   {
@@ -325,7 +339,7 @@ const feedbackEntries: FeedbackResponse[] = [
     appointmentId: 3,
     userId: 1,
     rating: 5,
-    comment: 'Tratamento capilar deixou o cabelo otimo.',
+    comment: "Tratamento capilar deixou o cabelo otimo.",
     createdAt: addDays(-1, 19, 15),
   },
   {
@@ -333,7 +347,7 @@ const feedbackEntries: FeedbackResponse[] = [
     appointmentId: 7,
     userId: 1,
     rating: 3,
-    comment: 'Atendimento bom, mas poderia ser mais rapido.',
+    comment: "Atendimento bom, mas poderia ser mais rapido.",
     createdAt: addDays(-6, 10, 45),
   },
 ];
@@ -342,12 +356,14 @@ const posts: PostResponse[] = [
   {
     id: 1,
     authorId: 1,
-    title: 'Bem-vindo ao Clube Quinze',
-    content: 'Compartilhe experiencias e descubra novidades com outros membros.',
+    title: "Bem-vindo ao Clube Quinze",
+    content:
+      "Compartilhe experiencias e descubra novidades com outros membros.",
     media: [
       {
         position: 1,
-        imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
+        imageUrl:
+          "https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80",
       },
     ],
     createdAt: nowIso,
@@ -358,7 +374,7 @@ const posts: PostResponse[] = [
         id: 1,
         postId: 1,
         authorId: 2,
-        content: 'Muito bom ver a comunidade ativa!',
+        content: "Muito bom ver a comunidade ativa!",
         createdAt: nowIso,
         updatedAt: nowIso,
       },
@@ -366,7 +382,7 @@ const posts: PostResponse[] = [
         id: 2,
         postId: 1,
         authorId: 3,
-        content: 'Contem comigo para os proximos eventos.',
+        content: "Contem comigo para os proximos eventos.",
         createdAt: addDays(-2, 17, 45),
         updatedAt: addDays(-2, 17, 45),
       },
@@ -375,16 +391,18 @@ const posts: PostResponse[] = [
   {
     id: 2,
     authorId: 3,
-    title: 'Agenda especial de fim de semana',
-    content: 'Abrimos horarios extras no sabado para membros Select.',
+    title: "Agenda especial de fim de semana",
+    content: "Abrimos horarios extras no sabado para membros Select.",
     media: [
       {
         position: 1,
-        imageUrl: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80',
+        imageUrl:
+          "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80",
       },
       {
         position: 2,
-        imageUrl: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=800&q=80',
+        imageUrl:
+          "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=800&q=80",
       },
     ],
     createdAt: addDays(-1, 9, 30),
@@ -395,7 +413,7 @@ const posts: PostResponse[] = [
         id: 3,
         postId: 2,
         authorId: 1,
-        content: 'Ja garanti meu horario!',
+        content: "Ja garanti meu horario!",
         createdAt: addDays(-1, 10, 5),
         updatedAt: addDays(-1, 10, 5),
       },
@@ -404,8 +422,8 @@ const posts: PostResponse[] = [
   {
     id: 3,
     authorId: 4,
-    title: 'Lembrete de avaliacao',
-    content: 'Avalie seu atendimento e ajude a melhorar nossos servicos.',
+    title: "Lembrete de avaliacao",
+    content: "Avalie seu atendimento e ajude a melhorar nossos servicos.",
     media: [],
     createdAt: addDays(-5, 12, 0),
     updatedAt: addDays(-5, 12, 0),
@@ -415,12 +433,14 @@ const posts: PostResponse[] = [
   {
     id: 4,
     authorId: 2,
-    title: 'Nova barbearia conceito',
-    content: 'Conheca o novo ambiente com cabines privativas e mixologia autoral.',
+    title: "Nova barbearia conceito",
+    content:
+      "Conheca o novo ambiente com cabines privativas e mixologia autoral.",
     media: [
       {
         position: 1,
-        imageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80',
+        imageUrl:
+          "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80",
       },
     ],
     createdAt: addDays(-8, 16, 45),
@@ -431,7 +451,7 @@ const posts: PostResponse[] = [
         id: 4,
         postId: 4,
         authorId: 5,
-        content: 'Ja quero agendar uma visita!',
+        content: "Ja quero agendar uma visita!",
         createdAt: addDays(-8, 17, 5),
         updatedAt: addDays(-8, 17, 5),
       },
@@ -515,21 +535,28 @@ const likes: LikeResponse[] = [
 ];
 
 const calculateUserAverage = (userId: number) => {
-  const userFeedback = feedbackEntries.filter((entry) => entry.userId === userId);
+  const userFeedback = feedbackEntries.filter(
+    (entry) => entry.userId === userId,
+  );
   if (!userFeedback.length) {
     return 0;
   }
-  const sum = userFeedback.reduce((total, entry) => total + (entry.rating ?? 0), 0);
+  const sum = userFeedback.reduce(
+    (total, entry) => total + (entry.rating ?? 0),
+    0,
+  );
   return Number((sum / userFeedback.length).toFixed(2));
 };
 
 const countCompletedAppointments = (userId: number) =>
-  appointments.filter((item) => item.clientId === userId && item.status === 'COMPLETED').length;
+  appointments.filter(
+    (item) => item.clientId === userId && item.status === "COMPLETED",
+  ).length;
 
 const countUpcomingAppointments = (userId: number) => {
   const now = Date.now();
   return appointments.filter((item) => {
-    if (item.clientId !== userId || item.status !== 'SCHEDULED') {
+    if (item.clientId !== userId || item.status !== "SCHEDULED") {
       return false;
     }
     const scheduledDate = new Date(item.scheduledAt).getTime();
@@ -540,7 +567,11 @@ const countUpcomingAppointments = (userId: number) => {
 const getLastFeedbackDate = (userId: number) => {
   const userFeedback = feedbackEntries
     .filter((entry) => entry.userId === userId)
-    .sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime());
+    .sort(
+      (first, second) =>
+        new Date(second.createdAt).getTime() -
+        new Date(first.createdAt).getTime(),
+    );
   return userFeedback[0]?.createdAt ?? null;
 };
 
@@ -548,11 +579,13 @@ const calculateServiceRatings = () => {
   const serviceStats = new Map<string, { total: number; count: number }>();
 
   feedbackEntries.forEach((entry) => {
-    const appointment = appointments.find((item) => item.id === entry.appointmentId);
+    const appointment = appointments.find(
+      (item) => item.id === entry.appointmentId,
+    );
     if (!appointment) {
       return;
     }
-    const serviceKey = appointment.serviceType ?? 'servico';
+    const serviceKey = appointment.serviceType ?? "servico";
     const rating = entry.rating ?? 0;
     if (!rating) {
       return;
@@ -566,7 +599,7 @@ const calculateServiceRatings = () => {
   if (!serviceStats.size) {
     const fallback = new Map<string, { total: number; count: number }>();
     appointments.forEach((appointment) => {
-      const serviceKey = appointment.serviceType ?? 'servico';
+      const serviceKey = appointment.serviceType ?? "servico";
       const next = fallback.get(serviceKey) ?? { total: 0, count: 0 };
       next.total += 4.5;
       next.count += 1;
@@ -728,8 +761,8 @@ export const mockData = {
       clientId: payload.clientId,
       scheduledAt: payload.scheduledAt,
       appointmentTier: payload.appointmentTier,
-      status: 'SCHEDULED',
-      serviceType: payload.serviceType ?? 'corte_de_cabelo',
+      status: "SCHEDULED",
+      serviceType: payload.serviceType ?? "corte_de_cabelo",
       notes: payload.notes,
     };
     appointments.push(appointment);
@@ -739,7 +772,10 @@ export const mockData = {
   listMyAppointments: () => userPage([...appointments].sort(sortByScheduleAsc)),
   getAppointmentById: (appointmentId: number) =>
     appointments.find((item) => item.id === appointmentId) ?? baseAppointment,
-  rescheduleAppointment: (appointmentId: number, payload: AppointmentRescheduleRequest) => {
+  rescheduleAppointment: (
+    appointmentId: number,
+    payload: AppointmentRescheduleRequest,
+  ) => {
     const index = appointments.findIndex((item) => item.id === appointmentId);
     if (index < 0) {
       return appointments[0];
@@ -753,7 +789,10 @@ export const mockData = {
     updateNextAppointment();
     return updated;
   },
-  updateAppointmentStatus: (appointmentId: number, payload: AppointmentStatusUpdateRequest) => {
+  updateAppointmentStatus: (
+    appointmentId: number,
+    payload: AppointmentStatusUpdateRequest,
+  ) => {
     const index = appointments.findIndex((item) => item.id === appointmentId);
     if (index < 0) {
       return appointments[0];
@@ -775,13 +814,15 @@ export const mockData = {
     }
   },
   listAvailableSlots: (date: string, tier?: AppointmentTier) => {
-    const baseTimes = ['10:00', '11:30', '14:00', '16:30'];
-    const tierExtras = tier === 'QUINZE_SELECT' ? ['18:00', '19:30'] : [];
+    const baseTimes = ["10:00", "11:30", "14:00", "16:30"];
+    const tierExtras = tier === "QUINZE_SELECT" ? ["18:00", "19:30"] : [];
     const times = [...baseTimes, ...tierExtras];
-    const availableSlots = times.map((time) => new Date(`${date}T${time}:00-03:00`).toISOString());
+    const availableSlots = times.map((time) =>
+      new Date(`${date}T${time}:00-03:00`).toISOString(),
+    );
     return {
       date,
-      membershipTier: tier ?? 'CLUB_15',
+      membershipTier: tier ?? "CLUB_15",
       availableSlots,
     };
   },
@@ -810,45 +851,55 @@ export const mockData = {
   },
   getAdminDashboard: (): AdminDashboardResponse => {
     const now = Date.now();
-    const uniqueMembers = new Set(appointments.map((item) => item.clientId)).size || 1;
+    const uniqueMembers =
+      new Set(appointments.map((item) => item.clientId)).size || 1;
     const upcomingAppointmentsCount = appointments.filter((item) => {
-      if (item.status !== 'SCHEDULED') {
+      if (item.status !== "SCHEDULED") {
         return false;
       }
       const date = new Date(item.scheduledAt).getTime();
       return !Number.isNaN(date) && date >= now;
     }).length;
-    const completedAppointmentsCount = appointments.filter((item) => item.status === 'COMPLETED').length;
-    const canceledAppointmentsCount = appointments.filter((item) => item.status === 'CANCELED').length;
+    const completedAppointmentsCount = appointments.filter(
+      (item) => item.status === "COMPLETED",
+    ).length;
+    const canceledAppointmentsCount = appointments.filter(
+      (item) => item.status === "CANCELED",
+    ).length;
     const satisfactionScore = feedbackEntries.length
       ? Number(
           (
-            feedbackEntries.reduce((total, entry) => total + (entry.rating ?? 0), 0) /
-            feedbackEntries.length
+            feedbackEntries.reduce(
+              (total, entry) => total + (entry.rating ?? 0),
+              0,
+            ) / feedbackEntries.length
           ).toFixed(2),
         )
       : 0;
-    const pendingFeedbackCount = Math.max(0, completedAppointmentsCount - feedbackEntries.length);
+    const pendingFeedbackCount = Math.max(
+      0,
+      completedAppointmentsCount - feedbackEntries.length,
+    );
 
     const metrics: DashboardMetric[] = [
       {
-        id: 'appointments_total',
-        label: 'Atendimentos',
+        id: "appointments_total",
+        label: "Atendimentos",
         value: appointments.length,
       },
       {
-        id: 'appointments_completed',
-        label: 'Concluidos',
+        id: "appointments_completed",
+        label: "Concluidos",
         value: completedAppointmentsCount,
       },
       {
-        id: 'appointments_canceled',
-        label: 'Cancelados',
+        id: "appointments_canceled",
+        label: "Cancelados",
         value: canceledAppointmentsCount,
       },
       {
-        id: 'feedback_total',
-        label: 'Feedbacks coletados',
+        id: "feedback_total",
+        label: "Feedbacks coletados",
         value: feedbackEntries.length,
       },
     ];
@@ -856,7 +907,11 @@ export const mockData = {
     const topServices = calculateServiceRatings().slice(0, 4);
 
     const recentAppointments = [...appointments]
-      .sort((first, second) => new Date(second.scheduledAt).getTime() - new Date(first.scheduledAt).getTime())
+      .sort(
+        (first, second) =>
+          new Date(second.scheduledAt).getTime() -
+          new Date(first.scheduledAt).getTime(),
+      )
       .slice(0, 5);
 
     return {
@@ -870,11 +925,12 @@ export const mockData = {
       recentAppointments,
     };
   },
-  getAverageByService: () => <FeedbackAverageResponse[]>[
-    { target: 'corte_de_cabelo', average: 4.9 },
-    { target: 'barba', average: 4.6 },
-    { target: 'tratamento_capilar', average: 4.8 },
-  ],
+  getAverageByService: () =>
+    <FeedbackAverageResponse[]>[
+      { target: "corte_de_cabelo", average: 4.9 },
+      { target: "barba", average: 4.6 },
+      { target: "tratamento_capilar", average: 4.8 },
+    ],
   listPosts: () => userPage(posts),
   createPost: (payload: PostRequest) => {
     const post: PostResponse = {
@@ -882,7 +938,11 @@ export const mockData = {
       authorId: 1,
       title: payload.title,
       content: payload.content,
-      media: payload.media ? [...payload.media].sort((first, second) => first.position - second.position) : [],
+      media: payload.media
+        ? [...payload.media].sort(
+            (first, second) => first.position - second.position,
+          )
+        : [],
       createdAt: nowIso,
       updatedAt: nowIso,
       likeCount: 0,
@@ -891,7 +951,8 @@ export const mockData = {
     posts.push(post);
     return post;
   },
-  getPost: (postId: number) => posts.find((item) => item.id === postId) ?? posts[0],
+  getPost: (postId: number) =>
+    posts.find((item) => item.id === postId) ?? posts[0],
   deletePost: (postId: number) => {
     const index = posts.findIndex((item) => item.id === postId);
     if (index >= 0) {
@@ -913,7 +974,9 @@ export const mockData = {
     return like;
   },
   unlikePost: (postId: number) => {
-    const likeIndex = likes.findIndex((item) => item.postId === postId && item.userId === 1);
+    const likeIndex = likes.findIndex(
+      (item) => item.postId === postId && item.userId === 1,
+    );
     if (likeIndex >= 0) {
       likes.splice(likeIndex, 1);
     }
@@ -937,26 +1000,34 @@ export const mockData = {
     }
     return comment;
   },
+  deleteComment: (postId: number, commentId: number) => {
+    const post = posts.find((item) => item.id === postId);
+    if (!post) return;
+    const index = post.comments.findIndex((c) => c.id === commentId);
+    if (index >= 0) {
+      post.comments.splice(index, 1);
+    }
+  },
   register: (payload: RegisterRequest) => ({
-    accessToken: 'mock-access-token',
-    refreshToken: 'mock-refresh-token',
-    tokenType: 'Bearer',
+    accessToken: "mock-access-token",
+    refreshToken: "mock-refresh-token",
+    tokenType: "Bearer",
   }),
   login: (payload: LoginRequest) => {
-    if (payload.email !== baseUser.email || payload.password !== '1234') {
-      throw new Error('Credenciais invalidas');
+    if (payload.email !== baseUser.email || payload.password !== "1234") {
+      throw new Error("Credenciais invalidas");
     }
 
     return {
-      accessToken: 'mock-access-token',
-      refreshToken: 'mock-refresh-token',
-      tokenType: 'Bearer',
+      accessToken: "mock-access-token",
+      refreshToken: "mock-refresh-token",
+      tokenType: "Bearer",
     };
   },
   refresh: (payload: RefreshTokenRequest) => ({
-    accessToken: 'mock-access-token-2',
+    accessToken: "mock-access-token-2",
     refreshToken: payload.refreshToken,
-    tokenType: 'Bearer',
+    tokenType: "Bearer",
   }),
   logout: (payload: RefreshTokenRequest) => undefined,
 };
