@@ -1,7 +1,9 @@
-import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Text, View } from 'react-native';
+import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Image, Text, View } from "react-native";
+
+import { getCurrentUser } from "../services/users";
 
 export default function Index() {
   const [initialRoute, setInitialRoute] = useState<string | null>(null);
@@ -13,15 +15,30 @@ export default function Index() {
 
     const resolveInitialRoute = async () => {
       try {
-        const token = await SecureStore.getItemAsync('accessToken');
+        const token = await SecureStore.getItemAsync("accessToken");
         await new Promise((resolve) => setTimeout(resolve, 600));
         if (!isMounted) {
           return;
         }
-        setInitialRoute(token ? '/(tabs)' : '/login');
+        if (!token) {
+          setInitialRoute("/login");
+          return;
+        }
+
+        let target: string = "/(tabs)";
+        try {
+          const user = await getCurrentUser();
+          if (user?.role === "CLUB_ADMIN") {
+            target = "/admin-dashboard";
+          }
+        } catch {
+          // fallback stays on default
+        }
+
+        setInitialRoute(target);
       } catch {
         if (isMounted) {
-          setInitialRoute('/login');
+          setInitialRoute("/login");
         }
       }
     };
@@ -44,14 +61,14 @@ export default function Index() {
     <View
       style={{
         flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: "center",
+        justifyContent: "center",
         paddingHorizontal: 32,
-        backgroundColor: '#ffffff',
+        backgroundColor: "#ffffff",
       }}
     >
       <Image
-        source={require('../assets/images/icon.png')}
+        source={require("../assets/images/icon.png")}
         style={{ width: 150, height: 150 }}
         resizeMode="contain"
       />
@@ -59,14 +76,18 @@ export default function Index() {
         style={{
           marginTop: 72,
           fontSize: 18,
-          fontWeight: '600',
+          fontWeight: "600",
           letterSpacing: 1,
-          color: '#00053d',
+          color: "#00053d",
         }}
       >
         Far and beyond
       </Text>
-      <ActivityIndicator size="large" color="#00053d" style={{ marginTop: 40 }} />
+      <ActivityIndicator
+        size="large"
+        color="#00053d"
+        style={{ marginTop: 40 }}
+      />
     </View>
   );
 }

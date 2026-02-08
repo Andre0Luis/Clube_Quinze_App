@@ -56,7 +56,11 @@ export const AdminNavbar = memo(function AdminNavbar({
     const target = navItems.find((item) => item.key === key);
     if (target) {
       router.replace(target.path);
+      return;
     }
+
+    // fallback: always land on admin dashboard
+    router.replace("/admin-dashboard");
   };
 
   return (

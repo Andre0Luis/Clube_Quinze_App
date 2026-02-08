@@ -1,16 +1,10 @@
-
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Tabs } from "expo-router";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import MenuDeNavegao, { MenuItem } from "../../components/MenuDeNavegao";
-import { getCurrentUser } from "../../services/users";
-
-type CustomTabBarProps = BottomTabBarProps & {
-  canSeeCommunity: boolean;
-};
 
 const routeConfig: Record<string, MenuItem> = {
   index: { key: "index", label: "Home", icon: "home-outline" },
@@ -19,27 +13,19 @@ const routeConfig: Record<string, MenuItem> = {
   profile: { key: "profile", label: "Perfil", icon: "person-outline" },
 };
 
-const CustomTabBar = memo(({ state, navigation, canSeeCommunity }: CustomTabBarProps) => {
+const CustomTabBar = memo(({ state, navigation }: BottomTabBarProps) => {
   const insets = useSafeAreaInsets();
 
   const items = useMemo(() => {
-    const baseItems = state.routes
+    return state.routes
       .map((route) => routeConfig[route.name])
       .filter((item): item is MenuItem => Boolean(item));
-    if (!canSeeCommunity) {
-      return baseItems.filter((item) => item.key !== "community");
-    }
-    return baseItems;
-  }, [canSeeCommunity, state.routes]);
+  }, [state.routes]);
 
-  const activeRouteName = useMemo(() => {
-    const current = state.routes[state.index]?.name;
-    if (current === "community" && !canSeeCommunity) {
-      // Force fallback to home if community is hidden
-      return "index";
-    }
-    return current;
-  }, [canSeeCommunity, state.index, state.routes]);
+  const activeRouteName = useMemo(
+    () => state.routes[state.index]?.name,
+    [state.index, state.routes],
+  );
 
   const handleSelectTab = (key: string) => {
     const targetRoute = state.routes.find((route) => route.name === key);
@@ -61,7 +47,8 @@ const CustomTabBar = memo(({ state, navigation, canSeeCommunity }: CustomTabBarP
   };
 
   return (
-    <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom + 16 }]}
+    <View
+      style={[styles.tabBarContainer, { paddingBottom: insets.bottom + 16 }]}
     >
       <MenuDeNavegao
         activeKey={activeRouteName}
@@ -73,34 +60,8 @@ const CustomTabBar = memo(({ state, navigation, canSeeCommunity }: CustomTabBarP
 });
 
 export default function TabLayout() {
-  const [canSeeCommunity, setCanSeeCommunity] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadUser = async () => {
-      try {
-        const user = await getCurrentUser();
-        if (!isMounted) return;
-        const allowed = user?.role === "CLUB_ADMIN" || user?.membershipTier === "QUINZE_SELECT";
-        setCanSeeCommunity(Boolean(allowed));
-      } catch (error) {
-        // fallback: hide community for unknown user
-        if (isMounted) {
-          setCanSeeCommunity(false);
-        }
-      }
-    };
-
-    loadUser();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
   return (
-    <Tabs tabBar={(props) => <CustomTabBar {...props} canSeeCommunity={canSeeCommunity} />}>
+    <Tabs tabBar={(props) => <CustomTabBar {...props} />}>
       <Tabs.Screen
         name="index"
         options={{
@@ -115,15 +76,13 @@ export default function TabLayout() {
           headerShown: false,
         }}
       />
-      {canSeeCommunity ? (
-        <Tabs.Screen
-          name="community"
-          options={{
-            title: "Comunidade",
-            headerShown: false,
-          }}
-        />
-      ) : null}
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: "Comunidade",
+          headerShown: false,
+        }}
+      />
       <Tabs.Screen
         name="profile"
         options={{

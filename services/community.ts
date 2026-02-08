@@ -1,10 +1,10 @@
 import {
-  CommentRequest,
-  CommentResponse,
-  LikeResponse,
-  PageResponse,
-  PostRequest,
-  PostResponse,
+    CommentRequest,
+    CommentResponse,
+    LikeResponse,
+    PageResponse,
+    PostRequest,
+    PostResponse,
 } from "../types/api";
 import api from "./api";
 import { mockData } from "./mock/data";
@@ -129,4 +129,42 @@ export const deleteComment = async (postId: number, commentId: number) => {
 
   const config = await withAuthHeader();
   await api.delete(`/community/posts/${postId}/comments/${commentId}`, config);
+};
+
+export const createPostWithUpload = async (
+  title: string,
+  content: string,
+  files: Array<{ uri: string; name: string; type: string }>,
+  options?: { position?: number[]; folder?: string },
+) => {
+  if (isMockEnabled()) {
+    return clone(
+      mockData.createPost({ title, content, media: [] as any } as PostRequest),
+    );
+  }
+
+  const form = new FormData();
+  files.forEach((file) => {
+    form.append("file", file as any);
+  });
+
+  const config = await withAuthHeader();
+  const { data } = await api.post<PostResponse>(
+    "/community/posts/upload",
+    form,
+    {
+      ...config,
+      params: {
+        title,
+        content,
+        position: options?.position,
+        folder: options?.folder ?? "posts",
+      },
+      headers: {
+        ...(config.headers ?? {}),
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+  return data;
 };

@@ -217,8 +217,13 @@ export default function HomeScreen() {
 
         if (currentUser?.role === "CLUB_ADMIN") {
           setIsAdmin(true);
+          setProfile(currentUser);
+          if (currentUser.name) {
+            setUserName(currentUser.name);
+          }
           setIsLoadingNext(false);
           setNextAppointment(null);
+          router.replace("/admin-dashboard");
           return;
         }
 
@@ -689,7 +694,9 @@ export default function HomeScreen() {
                     key="register-user"
                     style={cardStyle}
                     activeOpacity={0.9}
-                    onPress={() => handleNavigate("/register")}
+                    onPress={() =>
+                      handleNavigate("/register", { fromAdmin: "1" })
+                    }
                   >
                     <View style={styles.quickActionCardContent}>
                       <View style={styles.cardHeader}>

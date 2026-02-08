@@ -3,26 +3,27 @@ import { usePathname, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    BackHandler,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  BackHandler,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  Padding,
+  StyleVariable,
 } from "../GlobalStyles";
 import AdminNavbar from "../components/admin-navbar";
+import { listAppointments } from "../services/appointments";
 import { getAdminDashboardMetrics } from "../services/dashboard";
 import { getCurrentUser } from "../services/users";
 import type { AdminDashboardResponse, UserProfileResponse } from "../types/api";
@@ -34,6 +35,8 @@ const AdminDashboardScreen = () => {
   const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(
     null,
   );
+  const [scheduledAppointmentsTotal, setScheduledAppointmentsTotal] =
+    useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -54,7 +57,26 @@ const AdminDashboardScreen = () => {
 
       const dashboardData = await getAdminDashboardMetrics();
 
+      let scheduledTotal = dashboardData?.upcomingAppointments ?? 0;
+      try {
+        const scheduledPage = await listAppointments({
+          status: "SCHEDULED",
+          page: 0,
+          size: 1,
+        });
+        scheduledTotal =
+          typeof scheduledPage?.totalElements === "number"
+            ? scheduledPage.totalElements
+            : (scheduledPage?.content?.length ?? scheduledTotal);
+      } catch (appointmentsError) {
+        console.error(
+          "Failed to load admin appointments list",
+          appointmentsError,
+        );
+      }
+
       setDashboard(dashboardData);
+      setScheduledAppointmentsTotal(scheduledTotal);
       setErrorMessage(null);
       return true;
     } catch (error) {
@@ -72,6 +94,7 @@ const AdminDashboardScreen = () => {
       console.error("Failed to load admin dashboard", error);
       setErrorMessage("Nao foi possivel carregar os dados do dashboard.");
       setDashboard(null);
+      setScheduledAppointmentsTotal(0);
       return true;
     }
   }, [router]);
@@ -268,13 +291,11 @@ const AdminDashboardScreen = () => {
                   size={16}
                   color={Color.piccolo}
                 />
-                <Text style={styles.metricPillTextNeutral}>
-                  Meus agendamentos
-                </Text>
+                <Text style={styles.metricPillTextNeutral}>Agendamentos</Text>
               </View>
             </View>
             <Text style={styles.metricValue}>
-              {(dashboard?.upcomingAppointments ?? 0).toLocaleString("pt-BR")}
+              {scheduledAppointmentsTotal.toLocaleString("pt-BR")}
             </Text>
             <Text style={styles.metricSubtitle}>Atendimentos proximos</Text>
             <View style={styles.metricFooter}>

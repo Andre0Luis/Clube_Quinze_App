@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     Pressable,
     ScrollView,
@@ -22,6 +22,8 @@ import {
     Padding,
     StyleVariable,
 } from "../GlobalStyles";
+import { isMockEnabled } from "../services/mock/settings";
+import { listUsers } from "../services/users";
 import type { MembershipTier } from "../types/api";
 import { mockMembers } from "./admin-members.data";
 
@@ -39,6 +41,9 @@ export default function AdminMembersScreen() {
   const [openMenuMemberId, setOpenMenuMemberId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [planFilter, setPlanFilter] = useState<PlanFilter>("ALL");
+  const [members, setMembers] = useState<typeof mockMembers>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const resolvedTier = useMemo(
     () => (Array.isArray(tier) ? tier[0] : tier) ?? "CLUB_15",
@@ -46,8 +51,59 @@ export default function AdminMembersScreen() {
   );
   const isSelectView = resolvedTier === "QUINZE_SELECT";
 
+  useEffect(() => {
+    let isActive = true;
+    const fetchMembers = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        if (isMockEnabled()) {
+          if (isActive) setMembers(mockMembers);
+          return;
+        }
+        const users = await listUsers();
+        if (!isActive) return;
+
+        const mapped = users.map((user) => {
+          const planName = user.plan?.name ?? "";
+          const lowerPlan = planName.toLowerCase();
+          const roleLabel =
+            user.membershipTier === "QUINZE_SELECT"
+              ? "Select"
+              : lowerPlan.includes("premium")
+                ? "Premium"
+                : lowerPlan.includes("standard")
+                  ? "Standard"
+                  : planName || "Standard";
+          return {
+            id: user.id,
+            name: user.name,
+            membershipTier: user.membershipTier,
+            roleLabel,
+            avatarInitials: user.name
+              .split(" ")
+              .map((part) => part.charAt(0).toUpperCase())
+              .join("")
+              .slice(0, 2),
+          };
+        });
+        setMembers(mapped);
+      } catch (err) {
+        console.error("Failed to load members", err);
+        if (isActive) setError("Nao foi possivel carregar os membros.");
+      } finally {
+        if (isActive) setIsLoading(false);
+      }
+    };
+
+    void fetchMembers();
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   const filteredMembers = useMemo(() => {
-    const base = mockMembers.filter((member) =>
+    const base = members.filter((member) =>
       isSelectView
         ? member.membershipTier === "QUINZE_SELECT"
         : member.membershipTier === "CLUB_15",
@@ -68,7 +124,7 @@ export default function AdminMembersScreen() {
     return byPlan.filter((member) =>
       member.name.toLowerCase().includes(lowered),
     );
-  }, [isSelectView, planFilter, searchTerm]);
+  }, [isSelectView, planFilter, searchTerm, members]);
 
   const totalLabel = isSelectView
     ? "Membros Quinze Select"
@@ -100,6 +156,18 @@ export default function AdminMembersScreen() {
           <Text style={styles.metricLabel}>{totalLabel}</Text>
           <Text style={styles.metricPlan}>{planLabel}</Text>
         </View>
+
+        {isLoading ? (
+          <View style={styles.feedbackBanner}>
+            <Text style={styles.feedbackText}>Carregando membros...</Text>
+          </View>
+        ) : null}
+
+        {error ? (
+          <View style={[styles.feedbackBanner, styles.feedbackError]}>
+            <Text style={styles.feedbackText}>{error}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.searchRow}>
           <View style={styles.searchInputWrapper}>
@@ -363,6 +431,22 @@ const styles = StyleSheet.create({
     fontSize: FontSize.fs_14,
     fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
+  },
+  feedbackBanner: {
+    borderRadius: Border.br_12,
+    borderWidth: 1,
+    borderColor: "rgba(0, 5, 61, 0.08)",
+    backgroundColor: Color.mainGohan,
+    paddingHorizontal: StyleVariable.px4,
+    paddingVertical: StyleVariable.py2,
+  },
+  feedbackError: {
+    borderColor: Color.supportiveChichi,
+  },
+  feedbackText: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
   },
   memberCard: {
     position: "relative",

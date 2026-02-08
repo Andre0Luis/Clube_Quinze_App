@@ -1,10 +1,9 @@
-
-import { Ionicons } from '@expo/vector-icons';
-import type { AxiosError } from 'axios';
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { useEffect, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import type { AxiosError } from "axios";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import { useEffect, useState } from "react";
 import {
     Alert,
     KeyboardAvoidingView,
@@ -15,8 +14,8 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
     Border,
@@ -26,26 +25,27 @@ import {
     LineHeight,
     Padding,
     StyleVariable,
-} from '../GlobalStyles';
-import { login } from '../services/auth';
-import type { MockPersona } from '../services/mock/data';
+} from "../GlobalStyles";
+import { login } from "../services/auth";
+import type { MockPersona } from "../services/mock/data";
 import {
     getMockPersona,
     getMockPersonaCredentials,
     getMockPersonaOptions,
     setMockPersona as setMockPersonaSetting,
-} from '../services/mock/data';
-import { isMockEnabled, setMockEnabled } from '../services/mock/settings';
+} from "../services/mock/data";
+import { isMockEnabled, setMockEnabled } from "../services/mock/settings";
 
 const mockPersonaOptions = getMockPersonaOptions();
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [useMock, setUseMock] = useState(isMockEnabled());
-  const [mockPersona, setMockPersonaState] = useState<MockPersona>(getMockPersona());
+  const [mockPersona, setMockPersonaState] =
+    useState<MockPersona>(getMockPersona());
   const router = useRouter();
 
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
@@ -72,9 +72,9 @@ export default function LoginScreen() {
       }
 
       try {
-        const token = await SecureStore.getItemAsync('accessToken');
+        const token = await SecureStore.getItemAsync("accessToken");
         if (token && isMounted) {
-          router.replace('/(tabs)');
+          router.replace("/(tabs)");
         }
       } catch {
         // ignore failed read; user stays on login
@@ -92,8 +92,8 @@ export default function LoginScreen() {
     setUseMock((prev) => {
       const next = !prev;
       if (next) {
-        SecureStore.deleteItemAsync('accessToken').catch(() => undefined);
-        SecureStore.deleteItemAsync('refreshToken').catch(() => undefined);
+        SecureStore.deleteItemAsync("accessToken").catch(() => undefined);
+        SecureStore.deleteItemAsync("refreshToken").catch(() => undefined);
       }
       return next;
     });
@@ -116,16 +116,19 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-    const { accessToken, refreshToken } = await login({ email, password });
+      const { accessToken, refreshToken } = await login({ email, password });
 
-    await SecureStore.setItemAsync('accessToken', accessToken);
-    await SecureStore.setItemAsync('refreshToken', refreshToken);
+      await SecureStore.setItemAsync("accessToken", accessToken);
+      await SecureStore.setItemAsync("refreshToken", refreshToken);
 
-  router.replace('/(tabs)');
+      router.replace("/(tabs)");
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       const serverMessage = err.response?.data?.message;
-      Alert.alert('Erro no Login', serverMessage ?? 'Credenciais inválidas, tente novamente');
+      Alert.alert(
+        "Erro no Login",
+        serverMessage ?? "Credenciais inválidas, tente novamente",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -135,8 +138,8 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -146,12 +149,14 @@ export default function LoginScreen() {
           <View style={styles.content}>
             <View style={styles.header}>
               <Image
-                source={require('../assets/images/icon.png')}
+                source={require("../assets/images/icon.png")}
                 style={styles.logo}
                 contentFit="contain"
               />
               <Text style={styles.title}>Bem-vindo de volta</Text>
-              <Text style={styles.subtitle}>Faça login para acessar o Clube Quinze</Text>
+              <Text style={styles.subtitle}>
+                Faça login para acessar o Clube Quinze
+              </Text>
             </View>
 
             <View style={styles.form}>
@@ -184,10 +189,12 @@ export default function LoginScreen() {
                   <TouchableOpacity
                     onPress={() => setShowPassword((prev) => !prev)}
                     accessibilityRole="button"
-                    accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    accessibilityLabel={
+                      showPassword ? "Ocultar senha" : "Mostrar senha"
+                    }
                   >
                     <Ionicons
-                      name={showPassword ? 'eye-off' : 'eye'}
+                      name={showPassword ? "eye-off" : "eye"}
                       size={20}
                       color={Color.mainTrunks}
                     />
@@ -197,14 +204,22 @@ export default function LoginScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.loginButton, (!isFormValid || isLoading) && styles.loginButtonDisabled]}
+              style={[
+                styles.loginButton,
+                (!isFormValid || isLoading) && styles.loginButtonDisabled,
+              ]}
               onPress={handleLogin}
               disabled={!isFormValid || isLoading}
             >
-              <Text style={styles.loginButtonText}>{isLoading ? 'Entrando...' : 'Entrar'}</Text>
+              <Text style={styles.loginButtonText}>
+                {isLoading ? "Entrando..." : "Entrar"}
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.secondaryAction} onPress={() => router.push('/register')}>
+            <TouchableOpacity
+              style={styles.secondaryAction}
+              onPress={() => router.push("/register")}
+            >
               <Text style={styles.secondaryText}>Criar conta</Text>
             </TouchableOpacity>
 
@@ -219,16 +234,31 @@ export default function LoginScreen() {
                   return (
                     <TouchableOpacity
                       key={option.id}
-                      style={[styles.personaChip, isActive ? styles.personaChipActive : null]}
+                      style={[
+                        styles.personaChip,
+                        isActive ? styles.personaChipActive : null,
+                      ]}
                       onPress={() => handleSelectPersona(option.id)}
                       accessibilityRole="button"
                       accessibilityLabel={`Selecionar perfil ${option.label}`}
                     >
-                      <Text style={[styles.personaChipLabel, isActive ? styles.personaChipLabelActive : null]}>
+                      <Text
+                        style={[
+                          styles.personaChipLabel,
+                          isActive ? styles.personaChipLabelActive : null,
+                        ]}
+                      >
                         {option.label}
                       </Text>
-                      <Text style={[styles.personaChipSub, isActive ? styles.personaChipLabelActive : null]}>
-                        {option.membershipTier === 'QUINZE_SELECT' ? 'Select' : 'Clube 15'}
+                      <Text
+                        style={[
+                          styles.personaChipSub,
+                          isActive ? styles.personaChipLabelActive : null,
+                        ]}
+                      >
+                        {option.membershipTier === "QUINZE_SELECT"
+                          ? "Select"
+                          : "Clube 15"}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -247,9 +277,24 @@ export default function LoginScreen() {
         accessibilityState={{ checked: useMock }}
         accessibilityLabel="Alternar dados mockados"
       >
-        <Ionicons name={useMock ? 'cloud-offline' : 'cloud-outline'} size={18} color={Color.mainGoten} />
-        <Text style={styles.mockToggleText}>{useMock ? 'Mocks ativos' : 'Mocks inativos'}</Text>
+        <Ionicons
+          name={useMock ? "cloud-offline" : "cloud-outline"}
+          size={18}
+          color={Color.mainGoten}
+        />
+        <Text style={styles.mockToggleText}>
+          {useMock ? "Mocks ativos" : "Mocks inativos"}
+        </Text>
       </TouchableOpacity>
+
+      {isLoading ? (
+        <View style={styles.loadingOverlay} pointerEvents="auto">
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={Color.piccolo} />
+            <Text style={styles.loadingText}>Entrando...</Text>
+          </View>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -269,10 +314,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: Padding.padding_24,
     paddingVertical: Padding.padding_32,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: StyleVariable.gap2,
     marginBottom: StyleVariable.px6,
   },
@@ -287,14 +332,14 @@ const styles = StyleSheet.create({
     lineHeight: LineHeight.lh_32,
     fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitle: {
     fontSize: FontSize.fs_14,
     lineHeight: LineHeight.lh_24,
     fontFamily: FontFamily.dMSansRegular,
     color: Color.mainTrunks,
-    textAlign: 'center',
+    textAlign: "center",
   },
   form: {
     gap: StyleVariable.px4,
@@ -320,8 +365,8 @@ const styles = StyleSheet.create({
     backgroundColor: Color.mainGohan,
   },
   passwordWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: StyleVariable.interactiveBorderRadiusRadiusISm,
     borderWidth: 1,
     borderColor: Color.mainBeerus,
@@ -340,7 +385,7 @@ const styles = StyleSheet.create({
     paddingVertical: StyleVariable.py4,
     borderRadius: StyleVariable.interactiveBorderRadiusRadiusISm,
     backgroundColor: Color.piccolo,
-    alignItems: 'center',
+    alignItems: "center",
   },
   loginButtonDisabled: {
     backgroundColor: Color.mainBeerus,
@@ -353,28 +398,28 @@ const styles = StyleSheet.create({
   },
   secondaryAction: {
     marginTop: StyleVariable.px4,
-    alignItems: 'center',
+    alignItems: "center",
   },
   secondaryText: {
     fontSize: FontSize.fs_14,
     lineHeight: LineHeight.lh_24,
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
-    textDecorationLine: 'underline',
+    textDecorationLine: "underline",
   },
   mockControls: {
     marginTop: StyleVariable.px6,
     padding: StyleVariable.px4,
     borderRadius: Border.br_16,
-    backgroundColor: '#F5F7FB',
+    backgroundColor: "#F5F7FB",
     borderWidth: 1,
     borderColor: Color.mainBeerus,
     gap: StyleVariable.px3,
   },
   mockHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   mockLabel: {
     fontSize: FontSize.fs_14,
@@ -389,9 +434,9 @@ const styles = StyleSheet.create({
     color: Color.mainTrunks,
   },
   personaChips: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: StyleVariable.px2,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
   },
   personaChip: {
     paddingVertical: StyleVariable.py2,
@@ -404,7 +449,7 @@ const styles = StyleSheet.create({
   },
   personaChipActive: {
     borderColor: Color.piccolo,
-    backgroundColor: 'rgba(28, 145, 214, 0.12)',
+    backgroundColor: "rgba(28, 145, 214, 0.12)",
   },
   personaChipLabel: {
     fontSize: FontSize.fs_14,
@@ -422,16 +467,16 @@ const styles = StyleSheet.create({
     color: Color.mainTrunks,
   },
   mockToggle: {
-    position: 'absolute',
+    position: "absolute",
     right: Padding.padding_24,
     bottom: Padding.padding_24,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: StyleVariable.gap1,
     paddingHorizontal: StyleVariable.px4,
     paddingVertical: StyleVariable.py2,
     borderRadius: Border.br_16,
-    backgroundColor: 'rgba(52, 59, 69, 0.85)',
+    backgroundColor: "rgba(52, 59, 69, 0.85)",
   },
   mockToggleActive: {
     backgroundColor: Color.piccolo,
@@ -441,5 +486,36 @@ const styles = StyleSheet.create({
     lineHeight: LineHeight.lh_16,
     fontFamily: FontFamily.dMSansBold,
     color: Color.mainGoten,
+  },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Padding.padding_24,
+  },
+  loadingCard: {
+    minWidth: 200,
+    borderRadius: Border.br_16,
+    backgroundColor: Color.mainGoten,
+    paddingVertical: Padding.padding_16,
+    paddingHorizontal: Padding.padding_16,
+    alignItems: "center",
+    gap: StyleVariable.gap1,
+    shadowColor: "rgba(0,0,0,0.15)",
+    shadowOpacity: 1,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    elevation: 6,
+  },
+  loadingText: {
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_18,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.hit,
   },
 });

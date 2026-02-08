@@ -3,7 +3,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import type { AxiosError } from "axios";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import {
@@ -48,6 +48,12 @@ export default function RegisterScreen() {
   >("CLUB_15");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { fromAdmin } = useLocalSearchParams<{
+    fromAdmin?: string | string[];
+  }>();
+  const isAdminFlow = Array.isArray(fromAdmin)
+    ? fromAdmin.includes("1")
+    : fromAdmin === "1";
   const isFormValid =
     name.trim().length > 0 &&
     email.trim().length > 0 &&
@@ -73,7 +79,18 @@ export default function RegisterScreen() {
         phone: phoneDigits ? phoneDigits : undefined,
       };
 
-      const { accessToken, refreshToken } = await register(payload);
+      const authResponse = await register(payload);
+
+      if (isAdminFlow) {
+        Alert.alert(
+          "Cadastro concluído",
+          "Usuário criado com sucesso. Você continua logado como administrador.",
+        );
+        router.replace("/admin-members");
+        return;
+      }
+
+      const { accessToken, refreshToken } = authResponse;
 
       await SecureStore.setItemAsync("accessToken", accessToken);
       await SecureStore.setItemAsync("refreshToken", refreshToken);

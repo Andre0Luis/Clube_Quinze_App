@@ -1,27 +1,31 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  Padding,
+  StyleVariable,
 } from "../../GlobalStyles";
 import AdminNavbar from "../../components/admin-navbar";
+import { isMockEnabled } from "../../services/mock/settings";
+import { getUserById } from "../../services/users";
+import type { UserProfileResponse } from "../../types/api";
 import { findMemberById } from "../admin-members.data";
 
 type RenewValue = "1m" | "3m" | "6m" | "12m";
@@ -42,11 +46,62 @@ export default function AdminMemberDetailScreen() {
 
   const [renewVisible, setRenewVisible] = useState(false);
   const [renewSelection, setRenewSelection] = useState<RenewValue>("1m");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [member, setMember] = useState<UserProfileResponse | undefined>(
+    undefined,
+  );
 
-  const member = useMemo(() => {
-    const idNumber = Number(memberId);
-    if (Number.isNaN(idNumber)) return undefined;
-    return findMemberById(idNumber);
+  useEffect(() => {
+    let isActive = true;
+    const fetchMember = async () => {
+      const idNumber = Number(memberId);
+      if (Number.isNaN(idNumber)) return;
+      if (isMockEnabled()) {
+        const mock = findMemberById(idNumber);
+        if (isActive && mock) {
+          setMember({
+            id: mock.id,
+            name: mock.name,
+            email: "",
+            phone: "",
+            birthDate: "",
+            membershipTier: mock.membershipTier,
+            role:
+              mock.membershipTier === "QUINZE_SELECT"
+                ? "CLUB_SELECT"
+                : "CLUB_STANDARD",
+            plan: undefined,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+            nextAppointment: undefined,
+            preferences: [],
+            profilePictureUrl: undefined,
+            profilePictureBase64: undefined,
+            gallery: [],
+          });
+        }
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+      try {
+        const user = await getUserById(idNumber);
+        if (!isActive) return;
+        setMember(user);
+      } catch (err) {
+        console.error("Failed to load member", err);
+        if (isActive) setError("Não foi possível carregar o membro.");
+      } finally {
+        if (isActive) setIsLoading(false);
+      }
+    };
+
+    void fetchMember();
+    return () => {
+      isActive = false;
+    };
   }, [memberId]);
 
   const derived = useMemo(() => {
@@ -63,37 +118,42 @@ export default function AdminMemberDetailScreen() {
       };
     }
 
-    const slug = member.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ".")
-      .replace(/^\.|\.$/g, "");
-    const email = `${slug || "membro"}@quinze.com`;
-    const idade = `${25 + (member.id % 15)} anos`;
-    const preferencias =
-      member.membershipTier === "QUINZE_SELECT"
-        ? "Horários premium, massagem"
-        : "Horários flexíveis, academia";
-    const agendamentoStatus =
-      member.id % 2 === 0
-        ? "Próximo atendimento agendado"
-        : "Sem próximo atendimento";
-    const planoLabel =
+    const planLabel =
       member.membershipTier === "QUINZE_SELECT"
         ? "Quinze Select"
-        : "Clube Quinze";
-    const userStatus = member.id % 3 === 0 ? "Cancelado" : "Ativo";
-    const vencimento = "12/12/2026";
+        : member.plan?.name || "Clube Quinze";
 
     return {
       name: member.name,
-      email,
-      idade,
-      preferencias,
-      agendamentoStatus,
-      planoLabel,
-      userStatus,
-      vencimento,
+      email: member.email ?? "",
+      idade: member.birthDate ?? "",
+      preferencias: member.preferences?.map((p) => p.value).join(", ") ?? "",
+      agendamentoStatus: member.nextAppointment?.status ?? "",
+      planoLabel: planLabel,
+      userStatus: member.role ?? "",
+      vencimento: member.plan?.durationMonths
+        ? `${member.plan.durationMonths} meses`
+        : "",
     };
+  }, [member]);
+
+  const avatarInitials = useMemo(() => {
+    if (!member?.name) return "";
+    return member.name
+      .split(" ")
+      .map((part) => part.charAt(0).toUpperCase())
+      .join("")
+      .slice(0, 2);
+  }, [member?.name]);
+
+  const roleLabel = useMemo(() => {
+    if (!member) return "";
+    if (member.membershipTier === "QUINZE_SELECT") return "Select";
+    const planName = member.plan?.name ?? "";
+    const lower = planName.toLowerCase();
+    if (lower.includes("premium")) return "Premium";
+    if (lower.includes("standard")) return "Standard";
+    return planName || "Standard";
   }, [member]);
 
   const handleOpenRenew = () => {
@@ -129,7 +189,12 @@ export default function AdminMemberDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {!member ? (
+        {isLoading ? (
+          <View style={styles.emptyCard}>
+            <ActivityIndicator size="small" color={Color.piccolo} />
+            <Text style={styles.emptyText}>Carregando membro...</Text>
+          </View>
+        ) : !member ? (
           <View style={styles.emptyCard}>
             <Ionicons
               name="alert-circle-outline"
@@ -143,14 +208,17 @@ export default function AdminMemberDetailScreen() {
           </View>
         ) : (
           <View style={styles.detailWrapper}>
+            {error ? (
+              <View style={styles.feedbackBanner}>
+                <Text style={styles.feedbackText}>{error}</Text>
+              </View>
+            ) : null}
             <View style={styles.centerBlock}>
               <View style={styles.avatarLarge}>
-                <Text style={styles.avatarLargeLabel}>
-                  {member.avatarInitials}
-                </Text>
+                <Text style={styles.avatarLargeLabel}>{avatarInitials}</Text>
               </View>
               <Text style={styles.memberName}>{member.name}</Text>
-              <Text style={styles.memberPlan}>{member.roleLabel}</Text>
+              <Text style={styles.memberPlan}>{roleLabel}</Text>
             </View>
 
             <View style={styles.sectionBlock}>
@@ -552,5 +620,18 @@ const styles = StyleSheet.create({
     fontSize: FontSize.fs_14,
     fontFamily: FontFamily.dMSansBold,
     color: Color.mainGoten,
+  },
+  feedbackBanner: {
+    borderRadius: Border.br_12,
+    borderWidth: 1,
+    borderColor: "rgba(0, 5, 61, 0.08)",
+    backgroundColor: Color.mainGohan,
+    paddingHorizontal: StyleVariable.px4,
+    paddingVertical: StyleVariable.py2,
+  },
+  feedbackText: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
   },
 });
