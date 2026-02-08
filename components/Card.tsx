@@ -87,8 +87,6 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: Border.br_8,
     backgroundColor: Color.white,
-    borderColor: Color.piccolo,
-    borderWidth: 1,
     padding: StyleVariable.surfaceBorderRadiusRadiusSLg,
     gap: Gap.gap_8,
     alignSelf: "stretch",

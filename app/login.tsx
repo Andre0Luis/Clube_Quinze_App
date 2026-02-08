@@ -5,38 +5,33 @@ import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    LineHeight,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  LineHeight,
+  Padding,
+  StyleVariable,
 } from "../GlobalStyles";
 import { login } from "../services/auth";
 import type { MockPersona } from "../services/mock/data";
 import {
-    getMockPersona,
-    getMockPersonaCredentials,
-    getMockPersonaOptions,
-    setMockPersona as setMockPersonaSetting,
+  getMockPersona
 } from "../services/mock/data";
 import { isMockEnabled, setMockEnabled } from "../services/mock/settings";
-
-const mockPersonaOptions = getMockPersonaOptions();
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -53,15 +48,10 @@ export default function LoginScreen() {
   useEffect(() => {
     setMockEnabled(useMock);
     if (useMock) {
-      const credentials = getMockPersonaCredentials(mockPersona);
-      setEmail(credentials.email);
-      setPassword(credentials.password);
+      setEmail("aluis283@gmail.com");
+      setPassword("1234");
     }
-  }, [useMock, mockPersona]);
-
-  useEffect(() => {
-    setMockPersonaSetting(mockPersona);
-  }, [mockPersona]);
+  }, [useMock]);
 
   useEffect(() => {
     let isMounted = true;
@@ -97,15 +87,6 @@ export default function LoginScreen() {
       }
       return next;
     });
-  };
-
-  const handleSelectPersona = (persona: MockPersona) => {
-    setMockPersonaState(persona);
-    if (useMock) {
-      const credentials = getMockPersonaCredentials(persona);
-      setEmail(credentials.email);
-      setPassword(credentials.password);
-    }
   };
 
   const handleLogin = async () => {
