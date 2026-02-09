@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -29,7 +30,10 @@ import {
 import { login } from "../services/auth";
 import type { MockPersona } from "../services/mock/data";
 import {
-  getMockPersona
+  getMockPersona,
+  getMockPersonaCredentials,
+  getMockPersonaOptions,
+  setMockPersona,
 } from "../services/mock/data";
 import { isMockEnabled, setMockEnabled } from "../services/mock/settings";
 
@@ -42,16 +46,17 @@ export default function LoginScreen() {
   const [mockPersona, setMockPersonaState] =
     useState<MockPersona>(getMockPersona());
   const router = useRouter();
-
+  const mockPersonaOptions = getMockPersonaOptions();
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
 
   useEffect(() => {
     setMockEnabled(useMock);
     if (useMock) {
-      setEmail("aluis283@gmail.com");
-      setPassword("1234");
+      const creds = getMockPersonaCredentials(mockPersona);
+      setEmail(creds.email);
+      setPassword(creds.password);
     }
-  }, [useMock]);
+  }, [useMock, mockPersona]);
 
   useEffect(() => {
     let isMounted = true;
@@ -87,6 +92,16 @@ export default function LoginScreen() {
       }
       return next;
     });
+  };
+
+  const handleSelectPersona = (personaId: MockPersona) => {
+    setMockPersona(personaId);
+    setMockPersonaState(personaId);
+    if (useMock) {
+      const creds = getMockPersonaCredentials(personaId);
+      setEmail(creds.email);
+      setPassword(creds.password);
+    }
   };
 
   const handleLogin = async () => {
@@ -195,13 +210,6 @@ export default function LoginScreen() {
               <Text style={styles.loginButtonText}>
                 {isLoading ? "Entrando..." : "Entrar"}
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.secondaryAction}
-              onPress={() => router.push("/register")}
-            >
-              <Text style={styles.secondaryText}>Criar conta</Text>
             </TouchableOpacity>
 
             <View style={styles.mockControls}>

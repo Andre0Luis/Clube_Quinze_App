@@ -1,10 +1,10 @@
-import { mockMembers } from "../app/admin-members.data";
 import {
     UpdateUserRequest,
     UserProfileResponse,
     UserSummary,
 } from "../types/api";
 import api from "./api";
+import { mockMembers } from "./mock/admin-members";
 import { mockData } from "./mock/data";
 import { isMockEnabled } from "./mock/settings";
 import { clone } from "./mock/utils";

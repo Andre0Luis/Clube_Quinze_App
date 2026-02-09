@@ -41,22 +41,29 @@ const formatAppointmentDate = (input: string) => {
   const weekday = date.toLocaleDateString("pt-BR", { weekday: "long" });
   const day = date.toLocaleDateString("pt-BR", { day: "2-digit" });
   const month = date.toLocaleDateString("pt-BR", { month: "long" });
-  const time = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const time = date.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} • ${day} de ${month} • ${time}`;
 };
 
-const statusStyles: Record<string, { label: string; background: string; text: string }> = {
+const statusStyles: Record<
+  string,
+  { label: string; background: string; text: string }
+> = {
   SCHEDULED: { label: "Agendado", background: "#1B9984", text: "#FFFFFF" },
   COMPLETED: { label: "Concluido", background: "#4CAF50", text: "#FFFFFF" },
   CANCELED: { label: "Cancelado", background: "#D7263D", text: "#FFFFFF" },
 };
 
-const getStatusStyle = (status?: string) => statusStyles[status ?? ""] ?? {
-  label: status ? status : "Desconhecido",
-  background: Color.mainBeerus,
-  text: Color.mainBulma,
-};
+const getStatusStyle = (status?: string) =>
+  statusStyles[status ?? ""] ?? {
+    label: status ? status : "Desconhecido",
+    background: Color.mainBeerus,
+    text: Color.mainBulma,
+  };
 
 const isWithinNext30Days = (appointment: AppointmentResponse) => {
   const now = new Date();
@@ -81,7 +88,9 @@ const isHistoryEntry = (appointment: AppointmentResponse) => {
   }
   const now = new Date();
   const scheduled = new Date(appointment.scheduledAt);
-  return Number.isNaN(scheduled.getTime()) ? false : scheduled.getTime() < now.getTime();
+  return Number.isNaN(scheduled.getTime())
+    ? false
+    : scheduled.getTime() < now.getTime();
 };
 
 const sortByDateAscending = (a: AppointmentResponse, b: AppointmentResponse) =>
@@ -89,10 +98,15 @@ const sortByDateAscending = (a: AppointmentResponse, b: AppointmentResponse) =>
 
 export default function AppointmentsScreen() {
   const router = useRouter();
-  const { tab, from, allowAdmin } = useLocalSearchParams<{ tab?: string | string[]; from?: string | string[]; allowAdmin?: string | string[] }>();
+  const { tab, from, allowAdmin } = useLocalSearchParams<{
+    tab?: string | string[];
+    from?: string | string[];
+    allowAdmin?: string | string[];
+  }>();
 
   const resolvedTabParam = Array.isArray(tab) ? tab[0] : tab;
-  const paramTab: TabId = resolvedTabParam === "history" ? "history" : "upcoming";
+  const paramTab: TabId =
+    resolvedTabParam === "history" ? "history" : "upcoming";
   const resolvedFromParam = Array.isArray(from) ? from[0] : from;
   const cameFromAdmin = resolvedFromParam === "admin";
 
@@ -172,15 +186,19 @@ export default function AppointmentsScreen() {
     }
   }, [activeTab, paramTab]);
 
-  const upcomingAppointments = useMemo(() =>
-    appointments.filter(isWithinNext30Days).sort(sortByDateAscending),
-  [appointments]);
+  const upcomingAppointments = useMemo(
+    () => appointments.filter(isWithinNext30Days).sort(sortByDateAscending),
+    [appointments],
+  );
 
-  const historyAppointments = useMemo(() =>
-    appointments.filter(isHistoryEntry).sort(sortByDateAscending).reverse(),
-  [appointments]);
+  const historyAppointments = useMemo(
+    () =>
+      appointments.filter(isHistoryEntry).sort(sortByDateAscending).reverse(),
+    [appointments],
+  );
 
-  const activeAppointments = activeTab === "upcoming" ? upcomingAppointments : historyAppointments;
+  const activeAppointments =
+    activeTab === "upcoming" ? upcomingAppointments : historyAppointments;
   const nextAppointmentId = upcomingAppointments[0]?.id;
 
   const subtitle =
@@ -197,7 +215,7 @@ export default function AppointmentsScreen() {
 
   const handleBack = useCallback(() => {
     if (cameFromAdmin) {
-      router.replace("/admin-dashboard");
+      router.replace("/");
       return;
     }
 
@@ -237,11 +255,19 @@ export default function AppointmentsScreen() {
             return (
               <TouchableOpacity
                 key={tab.id}
-                style={[styles.tabButton, isActive ? styles.tabButtonActive : null]}
+                style={[
+                  styles.tabButton,
+                  isActive ? styles.tabButtonActive : null,
+                ]}
                 onPress={() => handleTabChange(tab.id)}
                 activeOpacity={0.85}
               >
-                <Text style={[styles.tabText, isActive ? styles.tabTextActive : null]}>
+                <Text
+                  style={[
+                    styles.tabText,
+                    isActive ? styles.tabTextActive : null,
+                  ]}
+                >
                   {tab.label}
                 </Text>
               </TouchableOpacity>
@@ -250,7 +276,10 @@ export default function AppointmentsScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.sectionSubtitle}>{subtitle}</Text>
 
         {isLoading ? (
@@ -260,12 +289,18 @@ export default function AppointmentsScreen() {
         ) : activeAppointments.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons
-              name={activeTab === "upcoming" ? "information-circle-outline" : "calendar-outline"}
+              name={
+                activeTab === "upcoming"
+                  ? "information-circle-outline"
+                  : "calendar-outline"
+              }
               size={32}
               color={Color.mainBeerus}
             />
             <Text style={styles.emptyTitle}>
-              {activeTab === "upcoming" ? "Sem agendamentos" : "Nenhum agendamento passado"}
+              {activeTab === "upcoming"
+                ? "Sem agendamentos"
+                : "Nenhum agendamento passado"}
             </Text>
             <Text style={styles.emptyDescription}>
               {activeTab === "upcoming"
@@ -286,7 +321,8 @@ export default function AppointmentsScreen() {
         ) : (
           activeAppointments.map((appointment) => {
             const status = getStatusStyle(appointment.status);
-            const isNext = appointment.id === nextAppointmentId && activeTab === "upcoming";
+            const isNext =
+              appointment.id === nextAppointmentId && activeTab === "upcoming";
 
             return (
               <TouchableOpacity
@@ -299,21 +335,36 @@ export default function AppointmentsScreen() {
                   <View style={styles.cardIconWrapper}>
                     <Ionicons name="calendar" size={18} color={Color.piccolo} />
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: status.background }]}>
-                    <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: status.background },
+                    ]}
+                  >
+                    <Text style={[styles.statusText, { color: status.text }]}>
+                      {status.label}
+                    </Text>
                   </View>
                 </View>
 
                 <View style={styles.cardBody}>
                   {isNext ? (
-                    <Text style={styles.nextTitle}>Sua proxima sessao esta proxima</Text>
+                    <Text style={styles.nextTitle}>
+                      Sua proxima sessao esta proxima
+                    </Text>
                   ) : null}
-                  <Text style={styles.cardDate}>{formatAppointmentDate(appointment.scheduledAt)}</Text>
+                  <Text style={styles.cardDate}>
+                    {formatAppointmentDate(appointment.scheduledAt)}
+                  </Text>
                 </View>
 
                 <View style={styles.cardFooter}>
                   <Text style={styles.cardLink}>Ver detalhes</Text>
-                  <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
+                  <Ionicons
+                    name="arrow-forward"
+                    size={16}
+                    color={Color.piccolo}
+                  />
                 </View>
               </TouchableOpacity>
             );
@@ -409,14 +460,14 @@ const styles = StyleSheet.create({
     color: Color.mainTrunks,
   },
   loaderWrapper: {
-  paddingVertical: StyleVariable.py4,
+    paddingVertical: StyleVariable.py4,
     alignItems: "center",
   },
   emptyState: {
     alignItems: "center",
-  gap: StyleVariable.gap2,
-  paddingVertical: StyleVariable.py4,
-  paddingHorizontal: StyleVariable.px4,
+    gap: StyleVariable.gap2,
+    paddingVertical: StyleVariable.py4,
+    paddingHorizontal: StyleVariable.px4,
     borderRadius: Border.br_16,
     backgroundColor: "#F1F3F5",
   },
@@ -461,16 +512,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cardIconWrapper: {
-  width: 32,
-  height: 32,
-  borderRadius: StyleVariable.interactiveBorderRadiusRadiusIMd,
+    width: 32,
+    height: 32,
+    borderRadius: StyleVariable.interactiveBorderRadiusRadiusIMd,
     backgroundColor: "#E7F6FF",
     alignItems: "center",
     justifyContent: "center",
   },
   statusBadge: {
-  paddingHorizontal: StyleVariable.px3,
-  paddingVertical: StyleVariable.py1,
+    paddingHorizontal: StyleVariable.px3,
+    paddingVertical: StyleVariable.py1,
     borderRadius: Border.br_58,
   },
   statusText: {
@@ -483,14 +534,14 @@ const styles = StyleSheet.create({
     gap: StyleVariable.gap1,
   },
   nextTitle: {
-  fontSize: FontSize.fs_14,
-  lineHeight: LineHeight.lh_18,
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_18,
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
   },
   cardDate: {
-  fontSize: FontSize.fs_16,
-  lineHeight: LineHeight.lh_24,
+    fontSize: FontSize.fs_16,
+    lineHeight: LineHeight.lh_24,
     fontFamily: FontFamily.dMSansBold,
     color: Color.mainBulma,
   },
@@ -500,8 +551,8 @@ const styles = StyleSheet.create({
     gap: StyleVariable.gap1,
   },
   cardLink: {
-  fontSize: FontSize.fs_14,
-  lineHeight: LineHeight.lh_18,
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_18,
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
     textDecorationLine: "underline",

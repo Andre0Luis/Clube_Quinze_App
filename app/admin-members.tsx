@@ -22,10 +22,10 @@ import {
     Padding,
     StyleVariable,
 } from "../GlobalStyles";
+import { mockMembers } from "../services/mock/admin-members";
 import { isMockEnabled } from "../services/mock/settings";
 import { listUsers } from "../services/users";
 import type { MembershipTier } from "../types/api";
-import { mockMembers } from "./admin-members.data";
 
 const tierCopy: Record<MembershipTier, string> = {
   CLUB_15: "Plano Clube Quinze",

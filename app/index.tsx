@@ -3,7 +3,6 @@ import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Text, View } from "react-native";
 
-import { getCurrentUser } from "../services/users";
 
 export default function Index() {
   const [initialRoute, setInitialRoute] = useState<string | null>(null);
@@ -25,17 +24,7 @@ export default function Index() {
           return;
         }
 
-        let target: string = "/(tabs)";
-        try {
-          const user = await getCurrentUser();
-          if (user?.role === "CLUB_ADMIN") {
-            target = "/admin-dashboard";
-          }
-        } catch {
-          // fallback stays on default
-        }
-
-        setInitialRoute(target);
+        setInitialRoute("/(tabs)");
       } catch {
         if (isMounted) {
           setInitialRoute("/login");

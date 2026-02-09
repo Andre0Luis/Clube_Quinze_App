@@ -1,7 +1,7 @@
-import { Platform } from 'react-native';
+import { Platform } from "react-native";
 
-import api from './api';
-import { getAccessToken } from './storage';
+import api from "./api";
+import { getAccessToken } from "./storage";
 
 const withAuthHeader = async () => {
   const token = await getAccessToken();
@@ -19,13 +19,16 @@ const withAuthHeader = async () => {
  * Tenta registrar o expoPushToken no backend. A chamada é tolerante a erro/404,
  * pois a API ainda será implementada. Não dispara throw para não quebrar o app.
  */
-export const registerPushToken = async (expoPushToken: string, appVersion?: string) => {
+export const registerPushToken = async (
+  expoPushToken: string,
+  appVersion?: string,
+) => {
   if (!expoPushToken) return;
 
   try {
     const config = await withAuthHeader();
     await api.post(
-      '/notifications/tokens',
+      "/api/v1/notifications/tokens",
       {
         token: expoPushToken,
         platform: Platform.OS,
@@ -34,6 +37,9 @@ export const registerPushToken = async (expoPushToken: string, appVersion?: stri
       config,
     );
   } catch (error) {
-    console.warn('Falha ao registrar expoPushToken no backend (ignorado):', error);
+    console.warn(
+      "Falha ao registrar expoPushToken no backend (ignorado):",
+      error,
+    );
   }
 };

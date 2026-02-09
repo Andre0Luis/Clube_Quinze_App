@@ -6,6 +6,7 @@ import { jwtDecode } from "jwt-decode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Linking,
     ScrollView,
     StyleSheet,
@@ -135,6 +136,8 @@ export default function HomeScreen() {
   const {
     expoPushToken,
     appVersion,
+    lastResponse: lastNotificationResponse,
+    lastNotification,
     error: notificationsError,
   } = usePushNotifications();
   const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(
@@ -166,6 +169,123 @@ export default function HomeScreen() {
       }
     }
   }, [expoPushToken, registeredPushToken, appVersion]);
+
+  const handleNotificationNavigation = useCallback(
+    (data?: {
+      appointmentId?: string | number;
+      href?: string;
+      kind?: string;
+      scheduledAt?: string;
+      offset?: string;
+    }) => {
+      if (!data) return;
+
+      if (data.href) {
+        router.push(data.href as any);
+        return;
+      }
+
+      if (data.appointmentId) {
+        router.push({
+          pathname: "/appointments/[appointmentId]",
+          params: { appointmentId: String(data.appointmentId) },
+        });
+      }
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    if (!lastNotificationResponse) {
+      return;
+    }
+
+    const data =
+      (lastNotificationResponse.notification.request.content.data as
+        | {
+            appointmentId?: string | number;
+            href?: string;
+            kind?: string;
+            scheduledAt?: string;
+            offset?: string;
+          }
+        | undefined) ?? {};
+
+    handleNotificationNavigation(data);
+  }, [lastNotificationResponse, handleNotificationNavigation]);
+
+  useEffect(() => {
+    if (!lastNotification) {
+      return;
+    }
+
+    const data =
+      (lastNotification.request.content.data as
+        | {
+            appointmentId?: string | number;
+            href?: string;
+            kind?: string;
+            scheduledAt?: string;
+            offset?: string;
+          }
+        | undefined) ?? {};
+
+    const kind = data.kind ?? "";
+    const scheduledAt = data.scheduledAt;
+    const offset = data.offset;
+
+    const messageByKind: Record<string, string> = {
+      SCHEDULED: scheduledAt
+        ? `Agendamento confirmado para ${scheduledAt}.`
+        : "Agendamento confirmado.",
+      RESCHEDULED: scheduledAt
+        ? `Agendamento remarcado para ${scheduledAt}.`
+        : "Agendamento remarcado.",
+      CANCELLED: "Agendamento cancelado.",
+      reminder: offset
+        ? `Lembrete do seu agendamento (${offset}).`
+        : "Lembrete do seu agendamento.",
+    };
+
+    const alertBody =
+      messageByKind[kind] ??
+      lastNotification.request.content.body ??
+      "Notificacao recebida.";
+
+    Alert.alert("Notificacao", alertBody, [
+      {
+        text: "Ver",
+        onPress: () => handleNotificationNavigation(data),
+      },
+      {
+        text: "Ok",
+        style: "cancel",
+      },
+    ]);
+  }, [lastNotification, handleNotificationNavigation]);
+
+  useEffect(() => {
+    if (!lastNotificationResponse) {
+      return;
+    }
+
+    const data =
+      (lastNotificationResponse.notification.request.content.data as
+        | { appointmentId?: string | number; href?: string }
+        | undefined) ?? {};
+
+    if (data.href) {
+      router.push(data.href as any);
+      return;
+    }
+
+    if (data.appointmentId) {
+      router.push({
+        pathname: "/appointments/[appointmentId]",
+        params: { appointmentId: String(data.appointmentId) },
+      });
+    }
+  }, [lastNotificationResponse, router]);
 
   useEffect(() => {
     let isMounted = true;
@@ -223,7 +343,6 @@ export default function HomeScreen() {
           }
           setIsLoadingNext(false);
           setNextAppointment(null);
-          router.replace("/admin-dashboard");
           return;
         }
 

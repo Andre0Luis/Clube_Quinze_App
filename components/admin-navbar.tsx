@@ -10,7 +10,7 @@ const navItems = [
     key: "home",
     label: "Home",
     icon: "home-outline" as const,
-    path: "/admin-dashboard" as const,
+    path: "/" as const,
   },
   {
     key: "agenda",
@@ -48,8 +48,7 @@ export const AdminNavbar = memo(function AdminNavbar({
 
   const handleSelectTab = (key: string) => {
     if (key === "home") {
-      // Home deve sempre levar para o dashboard novo
-      router.replace("/admin-dashboard");
+      router.replace("/");
       return;
     }
 
@@ -59,8 +58,8 @@ export const AdminNavbar = memo(function AdminNavbar({
       return;
     }
 
-    // fallback: always land on admin dashboard
-    router.replace("/admin-dashboard");
+    // fallback: land on home
+    router.replace("/");
   };
 
   return (

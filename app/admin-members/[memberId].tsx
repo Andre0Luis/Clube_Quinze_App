@@ -23,10 +23,10 @@ import {
   StyleVariable,
 } from "../../GlobalStyles";
 import AdminNavbar from "../../components/admin-navbar";
+import { findMemberById } from "../../services/mock/admin-members";
 import { isMockEnabled } from "../../services/mock/settings";
 import { getUserById } from "../../services/users";
 import type { UserProfileResponse } from "../../types/api";
-import { findMemberById } from "../admin-members.data";
 
 type RenewValue = "1m" | "3m" | "6m" | "12m";
 
