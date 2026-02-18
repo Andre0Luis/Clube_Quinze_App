@@ -1,34 +1,34 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
-    useFocusEffect,
-    useLocalSearchParams,
-    usePathname,
-    useRouter,
+  useFocusEffect,
+  useLocalSearchParams,
+  usePathname,
+  useRouter,
 } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Linking,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Linking,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import AdminNavbar from "../../components/admin-navbar";
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    LineHeight,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  LineHeight,
+  Padding,
+  StyleVariable,
 } from "../../GlobalStyles";
 import { listPlans, updatePlan } from "../../services/plans";
 import { getCurrentUser } from "../../services/users";
@@ -322,7 +322,7 @@ export default function PlansScreen() {
             activeOpacity={0.85}
             onPress={() =>
               Linking.openURL(
-                "https://wa.me/5511999999999?text=Ol%C3%A1%20Quinze,%20quero%20renovar%20meu%20plano",
+                "https://wa.me/5511961995531?text=Ol%C3%A1%20Quinze,%20quero%20renovar%20meu%20plano",
               )
             }
           >
@@ -452,7 +452,7 @@ export default function PlansScreen() {
             activeOpacity={0.85}
             onPress={() =>
               Linking.openURL(
-                "https://wa.me/5511999999999?text=Ol%C3%A1%20Quinze,%20quero%20falar%20sobre%20planos",
+                "https://wa.me/5511961995531?text=Ol%C3%A1%20Quinze,%20quero%20falar%20sobre%20planos",
               )
             }
           >

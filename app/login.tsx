@@ -5,72 +5,67 @@ import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  Border,
-  Color,
-  FontFamily,
-  FontSize,
-  LineHeight,
-  Padding,
-  StyleVariable,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    LineHeight,
+    Padding,
+    StyleVariable,
 } from "../GlobalStyles";
 import { login } from "../services/auth";
 import type { MockPersona } from "../services/mock/data";
 import {
-  getMockPersona,
-  getMockPersonaCredentials,
-  getMockPersonaOptions,
-  setMockPersona,
+    getMockPersona,
+    getMockPersonaCredentials,
+    setMockPersona,
 } from "../services/mock/data";
-import { isMockEnabled, setMockEnabled } from "../services/mock/settings";
+import { setMockEnabled } from "../services/mock/settings";
+
+const inferMockPersona = (input: string): MockPersona => {
+  const lower = input.toLowerCase();
+  if (lower.includes("admin")) return "ADMIN";
+  if (lower.includes("select")) return "QUINZE_SELECT";
+  return getMockPersona();
+};
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [useMock, setUseMock] = useState(isMockEnabled());
-  const [mockPersona, setMockPersonaState] =
-    useState<MockPersona>(getMockPersona());
   const router = useRouter();
-  const mockPersonaOptions = getMockPersonaOptions();
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
-
-  useEffect(() => {
-    setMockEnabled(useMock);
-    if (useMock) {
-      const creds = getMockPersonaCredentials(mockPersona);
-      setEmail(creds.email);
-      setPassword(creds.password);
-    }
-  }, [useMock, mockPersona]);
 
   useEffect(() => {
     let isMounted = true;
 
     const checkExistingSession = async () => {
-      if (useMock) {
-        return;
-      }
-
       try {
         const token = await SecureStore.getItemAsync("accessToken");
-        if (token && isMounted) {
-          router.replace("/(tabs)");
+        if (!isMounted || !token) {
+          return;
         }
+
+        if (token.startsWith("mock-")) {
+          setMockEnabled(true);
+        }
+
+        router.replace("/(tabs)");
       } catch {
         // ignore failed read; user stays on login
       }
@@ -81,37 +76,32 @@ export default function LoginScreen() {
     return () => {
       isMounted = false;
     };
-  }, [router, useMock]);
-
-  const handleToggleMock = () => {
-    setUseMock((prev) => {
-      const next = !prev;
-      if (next) {
-        SecureStore.deleteItemAsync("accessToken").catch(() => undefined);
-        SecureStore.deleteItemAsync("refreshToken").catch(() => undefined);
-      }
-      return next;
-    });
-  };
-
-  const handleSelectPersona = (personaId: MockPersona) => {
-    setMockPersona(personaId);
-    setMockPersonaState(personaId);
-    if (useMock) {
-      const creds = getMockPersonaCredentials(personaId);
-      setEmail(creds.email);
-      setPassword(creds.password);
-    }
-  };
+  }, [router]);
 
   const handleLogin = async () => {
-    if (!isFormValid) {
-      return;
-    }
-
     setIsLoading(true);
 
     try {
+      const wantsMock = email.trim().toLowerCase().startsWith("mock-");
+
+      if (!wantsMock && !isFormValid) {
+        return;
+      }
+
+      if (wantsMock) {
+        const persona = inferMockPersona(email);
+        setMockEnabled(true);
+        setMockPersona(persona);
+        const creds = getMockPersonaCredentials(persona);
+        await SecureStore.setItemAsync("accessToken", "mock-token");
+        await SecureStore.setItemAsync("refreshToken", "mock-refresh");
+        setEmail(creds.email);
+        setPassword(creds.password);
+        router.replace("/(tabs)");
+        return;
+      }
+
+      setMockEnabled(false);
       const { accessToken, refreshToken } = await login({ email, password });
 
       await SecureStore.setItemAsync("accessToken", accessToken);
@@ -205,76 +195,16 @@ export default function LoginScreen() {
                 (!isFormValid || isLoading) && styles.loginButtonDisabled,
               ]}
               onPress={handleLogin}
+              activeOpacity={0.9}
               disabled={!isFormValid || isLoading}
             >
               <Text style={styles.loginButtonText}>
                 {isLoading ? "Entrando..." : "Entrar"}
               </Text>
             </TouchableOpacity>
-
-            <View style={styles.mockControls}>
-              <View style={styles.mockHeaderRow}>
-                <Text style={styles.mockLabel}>Perfil para mocks</Text>
-                <Text style={styles.mockHint}>Escolha antes de ativar</Text>
-              </View>
-              <View style={styles.personaChips}>
-                {mockPersonaOptions.map((option) => {
-                  const isActive = mockPersona === option.id;
-                  return (
-                    <TouchableOpacity
-                      key={option.id}
-                      style={[
-                        styles.personaChip,
-                        isActive ? styles.personaChipActive : null,
-                      ]}
-                      onPress={() => handleSelectPersona(option.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Selecionar perfil ${option.label}`}
-                    >
-                      <Text
-                        style={[
-                          styles.personaChipLabel,
-                          isActive ? styles.personaChipLabelActive : null,
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.personaChipSub,
-                          isActive ? styles.personaChipLabelActive : null,
-                        ]}
-                      >
-                        {option.membershipTier === "QUINZE_SELECT"
-                          ? "Select"
-                          : "Clube 15"}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <TouchableOpacity
-        style={[styles.mockToggle, useMock ? styles.mockToggleActive : null]}
-        onPress={handleToggleMock}
-        activeOpacity={0.85}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: useMock }}
-        accessibilityLabel="Alternar dados mockados"
-      >
-        <Ionicons
-          name={useMock ? "cloud-offline" : "cloud-outline"}
-          size={18}
-          color={Color.mainGoten}
-        />
-        <Text style={styles.mockToggleText}>
-          {useMock ? "Mocks ativos" : "Mocks inativos"}
-        </Text>
-      </TouchableOpacity>
 
       {isLoading ? (
         <View style={styles.loadingOverlay} pointerEvents="auto">
@@ -382,97 +312,6 @@ const styles = StyleSheet.create({
   loginButtonText: {
     fontSize: FontSize.fs_16,
     lineHeight: LineHeight.lh_24,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.mainGoten,
-  },
-  secondaryAction: {
-    marginTop: StyleVariable.px4,
-    alignItems: "center",
-  },
-  secondaryText: {
-    fontSize: FontSize.fs_14,
-    lineHeight: LineHeight.lh_24,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.piccolo,
-    textDecorationLine: "underline",
-  },
-  mockControls: {
-    marginTop: StyleVariable.px6,
-    padding: StyleVariable.px4,
-    borderRadius: Border.br_16,
-    backgroundColor: "#F5F7FB",
-    borderWidth: 1,
-    borderColor: Color.mainBeerus,
-    gap: StyleVariable.px3,
-  },
-  mockHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  mockLabel: {
-    fontSize: FontSize.fs_14,
-    lineHeight: LineHeight.lh_18,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  mockHint: {
-    fontSize: FontSize.fs_12,
-    lineHeight: LineHeight.lh_16,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  personaChips: {
-    flexDirection: "row",
-    gap: StyleVariable.px2,
-    flexWrap: "wrap",
-  },
-  personaChip: {
-    paddingVertical: StyleVariable.py2,
-    paddingHorizontal: StyleVariable.px3,
-    borderRadius: Border.br_16,
-    borderWidth: 1,
-    borderColor: Color.mainBeerus,
-    backgroundColor: Color.mainGoten,
-    gap: StyleVariable.px1,
-  },
-  personaChipActive: {
-    borderColor: Color.piccolo,
-    backgroundColor: "rgba(28, 145, 214, 0.12)",
-  },
-  personaChipLabel: {
-    fontSize: FontSize.fs_14,
-    lineHeight: LineHeight.lh_18,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.mainBulma,
-  },
-  personaChipLabelActive: {
-    color: Color.piccolo,
-  },
-  personaChipSub: {
-    fontSize: FontSize.fs_12,
-    lineHeight: LineHeight.lh_16,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  mockToggle: {
-    position: "absolute",
-    right: Padding.padding_24,
-    bottom: Padding.padding_24,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: StyleVariable.gap1,
-    paddingHorizontal: StyleVariable.px4,
-    paddingVertical: StyleVariable.py2,
-    borderRadius: Border.br_16,
-    backgroundColor: "rgba(52, 59, 69, 0.85)",
-  },
-  mockToggleActive: {
-    backgroundColor: Color.piccolo,
-  },
-  mockToggleText: {
-    fontSize: FontSize.fs_12,
-    lineHeight: LineHeight.lh_16,
     fontFamily: FontFamily.dMSansBold,
     color: Color.mainGoten,
   },

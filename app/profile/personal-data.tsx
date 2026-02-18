@@ -1,4 +1,3 @@
-import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -25,9 +24,8 @@ import {
     FontSize,
     Gap,
     Padding,
-    StyleVariable
+    StyleVariable,
 } from "../../GlobalStyles";
-import { listPreferences, upsertPreference } from "../../services/preferences";
 import { getCurrentUser, updateCurrentUser } from "../../services/users";
 import type { UserProfileResponse } from "../../types/api";
 
@@ -43,7 +41,8 @@ const formatPhoneInput = (value?: string | null) => {
   if (!digits) {
     return "";
   }
-  const localDigits = digits.length > 11 ? digits.slice(digits.length - 11) : digits;
+  const localDigits =
+    digits.length > 11 ? digits.slice(digits.length - 11) : digits;
   if (localDigits.length <= 10) {
     const area = localDigits.slice(0, 2);
     const prefix = localDigits.slice(2, 6);
@@ -98,13 +97,6 @@ export default function PersonalDataScreen() {
   const [isPickingGallery, setIsPickingGallery] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [frequencyDays, setFrequencyDays] = useState<"7" | "15">("7");
-  const [frequencyTime, setFrequencyTime] = useState<Date>(() => {
-    const seed = new Date();
-    seed.setHours(9, 0, 0, 0);
-    return seed;
-  });
-  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const loadProfile = useCallback(async () => {
     const currentUser = await getCurrentUser();
@@ -154,31 +146,12 @@ export default function PersonalDataScreen() {
               id: `gallery-${item.position}-${index}`,
               uri: item.imageBase64
                 ? `data:image/jpeg;base64,${item.imageBase64}`
-                : item.imageUrl ?? `gallery-${item.position}`,
+                : (item.imageUrl ?? `gallery-${item.position}`),
               base64: item.imageBase64 ?? undefined,
               remoteUrl: item.imageUrl ?? undefined,
             }))
             .filter((item) => Boolean(item.uri));
           setGalleryMedia(galleryItems);
-
-          try {
-            const prefs = await listPreferences();
-            const freqValue = prefs.find((item) => item.key === "frequency_days")?.value;
-            const freqTimeValue = prefs.find((item) => item.key === "frequency_time")?.value;
-            if (freqValue === "7" || freqValue === "15") {
-              setFrequencyDays(freqValue);
-            }
-            if (typeof freqTimeValue === "string" && /^\d{2}:\d{2}$/.test(freqTimeValue)) {
-              const [hh, mm] = freqTimeValue.split(":").map((v) => Number(v));
-              if (!Number.isNaN(hh) && !Number.isNaN(mm)) {
-                const d = new Date();
-                d.setHours(hh, mm, 0, 0);
-                setFrequencyTime(d);
-              }
-            }
-          } catch (prefError) {
-            console.warn("Failed to load preferences", prefError);
-          }
         } catch (error) {
           console.error("Failed to load personal data", error);
           setProfile(null);
@@ -196,14 +169,44 @@ export default function PersonalDataScreen() {
     }, [loadProfile]),
   );
 
-  const galleryCountLabel = useMemo(() => `${galleryMedia.length}/${MAX_GALLERY_ITEMS}`, [galleryMedia.length]);
+  const galleryCountLabel = useMemo(
+    () => `${galleryMedia.length}/${MAX_GALLERY_ITEMS}`,
+    [galleryMedia.length],
+  );
+  const planRoleLabel = useMemo(() => {
+    if (!profile) {
+      return null;
+    }
+    const planName = profile.plan?.name ?? "";
+    const normalized = planName.toLowerCase();
+    if (normalized.includes("premium")) {
+      return "Premium";
+    }
+    if (normalized.includes("select")) {
+      return "Select";
+    }
+    if (
+      normalized.includes("padrao") ||
+      normalized.includes("padrão") ||
+      normalized.includes("standard")
+    ) {
+      return "Standard";
+    }
+    if (profile.membershipTier === "QUINZE_SELECT") {
+      return "Select";
+    }
+    return "Standard";
+  }, [profile?.membershipTier, profile?.plan?.name]);
   const isGalleryFull = galleryMedia.length >= MAX_GALLERY_ITEMS;
 
-  const handleFieldChange = useCallback(<K extends keyof ProfileFormState>(key: K, value: ProfileFormState[K]) => {
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  const handleFieldChange = useCallback(
+    <K extends keyof ProfileFormState>(key: K, value: ProfileFormState[K]) => {
+      setErrorMessage(null);
+      setSuccessMessage(null);
+      setForm((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
 
   const handleSelectAvatar = useCallback(async () => {
     if (isPickingAvatar) {
@@ -215,9 +218,12 @@ export default function PersonalDataScreen() {
     setSuccessMessage(null);
 
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        setErrorMessage("Autorize o acesso a galeria para atualizar sua foto de perfil.");
+        setErrorMessage(
+          "Autorize o acesso a galeria para atualizar sua foto de perfil.",
+        );
         return;
       }
 
@@ -262,7 +268,9 @@ export default function PersonalDataScreen() {
     try {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
-        setErrorMessage("Autorize o acesso a camera para atualizar sua foto de perfil.");
+        setErrorMessage(
+          "Autorize o acesso a camera para atualizar sua foto de perfil.",
+        );
         return;
       }
 
@@ -315,13 +323,15 @@ export default function PersonalDataScreen() {
     setSuccessMessage(null);
 
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         setErrorMessage("Autorize o acesso a galeria para anexar imagens.");
         return;
       }
 
-      const remainingSlots = Math.max(0, MAX_GALLERY_ITEMS - galleryMedia.length) || 1;
+      const remainingSlots =
+        Math.max(0, MAX_GALLERY_ITEMS - galleryMedia.length) || 1;
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: remainingSlots > 1,
@@ -420,24 +430,27 @@ export default function PersonalDataScreen() {
     setGalleryMedia((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
-  const handleMoveGalleryItem = useCallback((id: string, direction: "up" | "down") => {
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setGalleryMedia((prev) => {
-      const index = prev.findIndex((item) => item.id === id);
-      if (index < 0) {
-        return prev;
-      }
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= prev.length) {
-        return prev;
-      }
-      const next = [...prev];
-      const [moved] = next.splice(index, 1);
-      next.splice(targetIndex, 0, moved);
-      return next;
-    });
-  }, []);
+  const handleMoveGalleryItem = useCallback(
+    (id: string, direction: "up" | "down") => {
+      setErrorMessage(null);
+      setSuccessMessage(null);
+      setGalleryMedia((prev) => {
+        const index = prev.findIndex((item) => item.id === id);
+        if (index < 0) {
+          return prev;
+        }
+        const targetIndex = direction === "up" ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= prev.length) {
+          return prev;
+        }
+        const next = [...prev];
+        const [moved] = next.splice(index, 1);
+        next.splice(targetIndex, 0, moved);
+        return next;
+      });
+    },
+    [],
+  );
 
   const handleGoBack = useCallback(() => {
     router.back();
@@ -464,29 +477,32 @@ export default function PersonalDataScreen() {
 
     try {
       const avatarBase64 = avatar?.base64 ?? null;
-      const avatarUrlCandidate = avatar?.remoteUrl ?? (avatar?.uri && avatar.uri.startsWith("http") ? avatar.uri : undefined);
+      const avatarUrlCandidate =
+        avatar?.remoteUrl ??
+        (avatar?.uri && avatar.uri.startsWith("http") ? avatar.uri : undefined);
       const galleryPayload = galleryMedia.map((item, index) => ({
         position: index + 1,
         imageBase64: item.base64 ?? null,
         imageUrl: item.base64
           ? null
-          : item.remoteUrl ?? (item.uri && item.uri.startsWith("http") ? item.uri : null),
+          : (item.remoteUrl ??
+            (item.uri && item.uri.startsWith("http") ? item.uri : null)),
       }));
       const sanitizedPhone = sanitizePhonePayload(form.phone ?? "");
-      const normalizedBirthDate = form.birthDate.trim() ? form.birthDate.trim() : undefined;
+      const normalizedBirthDate = form.birthDate.trim()
+        ? form.birthDate.trim()
+        : undefined;
 
       const payload = {
         name: form.name.trim(),
         email: form.email.trim(),
         phone: sanitizedPhone,
         birthDate: normalizedBirthDate,
-        profilePictureBase64: avatar
-          ? avatarBase64
-          : null,
+        profilePictureBase64: avatar ? avatarBase64 : null,
         profilePictureUrl: avatar
           ? avatarBase64
             ? null
-            : avatarUrlCandidate ?? null
+            : (avatarUrlCandidate ?? null)
           : null,
         gallery: galleryPayload,
       };
@@ -499,11 +515,6 @@ export default function PersonalDataScreen() {
         phone: formatPhoneInput(updated.phone),
         birthDate: updated.birthDate ?? "",
       });
-      const safeTime = `${frequencyTime.getHours().toString().padStart(2, "0")}:${frequencyTime.getMinutes().toString().padStart(2, "0")}`;
-      await Promise.allSettled([
-        upsertPreference({ key: "frequency_days", value: frequencyDays }),
-        upsertPreference({ key: "frequency_time", value: safeTime }),
-      ]);
       const updatedAvatar = updated.profilePictureBase64
         ? {
             id: `avatar-${Date.now()}`,
@@ -525,7 +536,7 @@ export default function PersonalDataScreen() {
           id: `gallery-${item.position}-${index}`,
           uri: item.imageBase64
             ? `data:image/jpeg;base64,${item.imageBase64}`
-            : item.imageUrl ?? `gallery-${item.position}`,
+            : (item.imageUrl ?? `gallery-${item.position}`),
           base64: item.imageBase64 ?? undefined,
           remoteUrl: item.imageUrl ?? undefined,
         }));
@@ -537,7 +548,7 @@ export default function PersonalDataScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [avatar, form, frequencyDays, frequencyTime, galleryMedia, isSaving]);
+  }, [avatar, form, galleryMedia, isSaving]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
@@ -546,7 +557,10 @@ export default function PersonalDataScreen() {
         behavior={Platform.select({ ios: "padding", android: undefined })}
         keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.header}>
             <TouchableOpacity
               style={styles.backButton}
@@ -569,15 +583,42 @@ export default function PersonalDataScreen() {
 
           {errorMessage ? (
             <View style={[styles.feedbackBanner, styles.feedbackError]}>
-              <Ionicons name="alert-circle-outline" size={18} color={Color.supportiveChichi} />
+              <Ionicons
+                name="alert-circle-outline"
+                size={18}
+                color={Color.supportiveChichi}
+              />
               <Text style={styles.feedbackText}>{errorMessage}</Text>
             </View>
           ) : null}
 
           {successMessage ? (
             <View style={[styles.feedbackBanner, styles.feedbackSuccess]}>
-              <Ionicons name="checkmark-circle-outline" size={18} color={Color.supportiveRoshi} />
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color={Color.supportiveRoshi}
+              />
               <Text style={styles.feedbackText}>{successMessage}</Text>
+            </View>
+          ) : null}
+
+          {profile ? (
+            <View style={styles.planRoleCard}>
+              <Text style={styles.sectionTitle}>Plano atual</Text>
+              <Text style={styles.planRoleLabel}>
+                {planRoleLabel ?? "Plano nao identificado"}
+              </Text>
+              <Text style={styles.planRoleMeta}>
+                {profile.plan?.name ??
+                  (profile.membershipTier === "QUINZE_SELECT"
+                    ? "Quinze Select"
+                    : "Clube Quinze")}
+              </Text>
+              <Text style={styles.planRoleDescription}>
+                {profile.plan?.description ??
+                  "Planos disponiveis: Standard, Premium e Select."}
+              </Text>
             </View>
           ) : null}
 
@@ -586,14 +627,21 @@ export default function PersonalDataScreen() {
             <View style={styles.avatarSection}>
               <View style={styles.avatarPreview}>
                 {avatar ? (
-                  <Image source={{ uri: avatar.uri }} style={styles.avatarPreviewImage} contentFit="cover" />
+                  <Image
+                    source={{ uri: avatar.uri }}
+                    style={styles.avatarPreviewImage}
+                    contentFit="cover"
+                  />
                 ) : (
                   <Ionicons name="person" size={28} color={Color.mainTrunks} />
                 )}
               </View>
               <View style={styles.avatarActions}>
                 <TouchableOpacity
-                  style={[styles.avatarPrimaryButton, isPickingAvatar && styles.avatarPrimaryButtonDisabled]}
+                  style={[
+                    styles.avatarPrimaryButton,
+                    isPickingAvatar && styles.avatarPrimaryButtonDisabled,
+                  ]}
                   onPress={handleSelectAvatar}
                   activeOpacity={0.85}
                   disabled={isPickingAvatar}
@@ -601,17 +649,28 @@ export default function PersonalDataScreen() {
                   {isPickingAvatar ? (
                     <ActivityIndicator size="small" color={Color.mainGoten} />
                   ) : (
-                    <Text style={styles.avatarPrimaryButtonText}>Atualizar foto</Text>
+                    <Text style={styles.avatarPrimaryButtonText}>
+                      Atualizar foto
+                    </Text>
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.avatarSecondaryButton, isPickingAvatar && styles.avatarSecondaryButtonDisabled]}
+                  style={[
+                    styles.avatarSecondaryButton,
+                    isPickingAvatar && styles.avatarSecondaryButtonDisabled,
+                  ]}
                   onPress={handleCaptureAvatar}
                   activeOpacity={0.85}
                   disabled={isPickingAvatar}
                 >
-                  <Ionicons name="camera-outline" size={14} color={Color.piccolo} />
-                  <Text style={styles.avatarSecondaryButtonText}>Usar camera</Text>
+                  <Ionicons
+                    name="camera-outline"
+                    size={14}
+                    color={Color.piccolo}
+                  />
+                  <Text style={styles.avatarSecondaryButtonText}>
+                    Usar camera
+                  </Text>
                 </TouchableOpacity>
                 {avatar ? (
                   <TouchableOpacity
@@ -626,10 +685,16 @@ export default function PersonalDataScreen() {
             </View>
 
             <View style={styles.gallerySectionHeader}>
-              <Text style={styles.fieldLabel}>Galeria ({galleryCountLabel})</Text>
+              <Text style={styles.fieldLabel}>
+                Galeria ({galleryCountLabel})
+              </Text>
               <View style={styles.galleryActions}>
                 <TouchableOpacity
-                  style={[styles.galleryActionButton, (isPickingGallery || isGalleryFull) && styles.galleryActionButtonDisabled]}
+                  style={[
+                    styles.galleryActionButton,
+                    (isPickingGallery || isGalleryFull) &&
+                      styles.galleryActionButtonDisabled,
+                  ]}
                   onPress={handleCaptureGalleryMedia}
                   activeOpacity={0.85}
                   disabled={isPickingGallery || isGalleryFull}
@@ -638,7 +703,11 @@ export default function PersonalDataScreen() {
                     <ActivityIndicator size="small" color={Color.piccolo} />
                   ) : (
                     <View style={styles.galleryActionButtonContent}>
-                      <Ionicons name="camera-outline" size={16} color={Color.piccolo} />
+                      <Ionicons
+                        name="camera-outline"
+                        size={16}
+                        color={Color.piccolo}
+                      />
                       <Text style={styles.galleryActionButtonLabel}>
                         {isGalleryFull ? "Limite atingido" : "Capturar"}
                       </Text>
@@ -646,7 +715,11 @@ export default function PersonalDataScreen() {
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.galleryActionButton, (isPickingGallery || isGalleryFull) && styles.galleryActionButtonDisabled]}
+                  style={[
+                    styles.galleryActionButton,
+                    (isPickingGallery || isGalleryFull) &&
+                      styles.galleryActionButtonDisabled,
+                  ]}
                   onPress={handleAddGalleryMedia}
                   activeOpacity={0.85}
                   disabled={isPickingGallery || isGalleryFull}
@@ -655,7 +728,11 @@ export default function PersonalDataScreen() {
                     <ActivityIndicator size="small" color={Color.piccolo} />
                   ) : (
                     <View style={styles.galleryActionButtonContent}>
-                      <Ionicons name="images-outline" size={16} color={Color.piccolo} />
+                      <Ionicons
+                        name="images-outline"
+                        size={16}
+                        color={Color.piccolo}
+                      />
                       <Text style={styles.galleryActionButtonLabel}>
                         {isGalleryFull ? "Limite atingido" : "Adicionar"}
                       </Text>
@@ -667,7 +744,8 @@ export default function PersonalDataScreen() {
 
             {galleryMedia.length === 0 ? (
               <Text style={styles.galleryEmptyHint}>
-                Selecione ate {MAX_GALLERY_ITEMS} imagens para mostrar seu estilo no app.
+                Selecione ate {MAX_GALLERY_ITEMS} imagens para mostrar seu
+                estilo no app.
               </Text>
             ) : (
               <View style={styles.galleryThumbGrid}>
@@ -676,7 +754,11 @@ export default function PersonalDataScreen() {
                   const isLast = index === galleryMedia.length - 1;
                   return (
                     <View key={item.id} style={styles.galleryThumbWrapper}>
-                      <Image source={{ uri: item.uri }} style={styles.galleryThumbImage} contentFit="cover" />
+                      <Image
+                        source={{ uri: item.uri }}
+                        style={styles.galleryThumbImage}
+                        contentFit="cover"
+                      />
                       <View style={styles.galleryOrderBadge}>
                         <Text style={styles.galleryOrderText}>{index + 1}</Text>
                       </View>
@@ -687,24 +769,42 @@ export default function PersonalDataScreen() {
                         accessibilityLabel="Remover imagem da galeria"
                         activeOpacity={0.85}
                       >
-                        <Ionicons name="close" size={12} color={Color.mainGoten} />
+                        <Ionicons
+                          name="close"
+                          size={12}
+                          color={Color.mainGoten}
+                        />
                       </TouchableOpacity>
                       <View style={styles.galleryThumbControls}>
                         <TouchableOpacity
-                          style={[styles.galleryControlButton, isFirst && styles.galleryControlButtonDisabled]}
+                          style={[
+                            styles.galleryControlButton,
+                            isFirst && styles.galleryControlButtonDisabled,
+                          ]}
                           onPress={() => handleMoveGalleryItem(item.id, "up")}
                           disabled={isFirst}
                           accessibilityLabel="Mover imagem para cima"
                         >
-                          <Ionicons name="chevron-up" size={14} color={Color.mainGoten} />
+                          <Ionicons
+                            name="chevron-up"
+                            size={14}
+                            color={Color.mainGoten}
+                          />
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={[styles.galleryControlButton, isLast && styles.galleryControlButtonDisabled]}
+                          style={[
+                            styles.galleryControlButton,
+                            isLast && styles.galleryControlButtonDisabled,
+                          ]}
                           onPress={() => handleMoveGalleryItem(item.id, "down")}
                           disabled={isLast}
                           accessibilityLabel="Mover imagem para baixo"
                         >
-                          <Ionicons name="chevron-down" size={14} color={Color.mainGoten} />
+                          <Ionicons
+                            name="chevron-down"
+                            size={14}
+                            color={Color.mainGoten}
+                          />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -745,7 +845,9 @@ export default function PersonalDataScreen() {
               <MaskedTextInput
                 style={styles.fieldInput}
                 value={form.phone}
-                onChangeText={(masked: string) => handleFieldChange("phone", masked)}
+                onChangeText={(masked: string) =>
+                  handleFieldChange("phone", masked)
+                }
                 mask={Masks.BRL_PHONE}
                 placeholder="(11) 99999-0000"
                 placeholderTextColor={Color.mainTrunks}
@@ -757,72 +859,22 @@ export default function PersonalDataScreen() {
               <MaskedTextInput
                 style={styles.fieldInput}
                 value={form.birthDate}
-                onChangeText={(masked: string) => handleFieldChange("birthDate", masked)}
+                onChangeText={(masked: string) =>
+                  handleFieldChange("birthDate", masked)
+                }
                 mask={Masks.DATE_YYYYMMDD}
                 placeholder="AAAA-MM-DD"
                 placeholderTextColor={Color.mainTrunks}
                 keyboardType="numbers-and-punctuation"
               />
             </View>
-
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Frequencia de atendimento</Text>
-              <View style={styles.frequencyRow}>
-                <TouchableOpacity
-                  style={[styles.frequencyChip, frequencyDays === "7" && styles.frequencyChipActive]}
-                  onPress={() => setFrequencyDays("7")}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[styles.frequencyChipText, frequencyDays === "7" && styles.frequencyChipTextActive]}>
-                    1 vez / 7 dias
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.frequencyChip, frequencyDays === "15" && styles.frequencyChipActive]}
-                  onPress={() => setFrequencyDays("15")}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[styles.frequencyChipText, frequencyDays === "15" && styles.frequencyChipTextActive]}>
-                    1 vez / 15 dias
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.fieldLabel}>Horario preferido</Text>
-              <TouchableOpacity
-                style={styles.fieldInput}
-                onPress={() => setShowTimePicker(true)}
-                accessibilityRole="button"
-                accessibilityLabel="Selecionar horario preferido"
-                activeOpacity={0.85}
-              >
-                <Text style={styles.timeValue}>
-                  {`${frequencyTime.getHours().toString().padStart(2, "0")}:${frequencyTime.getMinutes().toString().padStart(2, "0")}`}
-                </Text>
-              </TouchableOpacity>
-              {showTimePicker && (
-                <DateTimePicker
-                  value={frequencyTime}
-                  mode="time"
-                  is24Hour
-                  display="default"
-                  onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
-                    if (event.type === "dismissed") {
-                      if (Platform.OS !== "ios") {
-                        setShowTimePicker(false);
-                      }
-                      return;
-                    }
-                    const current = selectedDate || frequencyTime;
-                    setFrequencyTime(current);
-                    setShowTimePicker(Platform.OS === "ios");
-                  }}
-                />
-              )}
-            </View>
           </View>
 
           <TouchableOpacity
-            style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
+            style={[
+              styles.submitButton,
+              isSaving && styles.submitButtonDisabled,
+            ]}
             onPress={handleSubmit}
             disabled={isSaving}
             activeOpacity={0.85}
@@ -1119,38 +1171,30 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansRegular,
     color: Color.hit,
   },
-  frequencyRow: {
-    flexDirection: "row",
-    gap: StyleVariable.gap2,
-  },
-  frequencyChip: {
-    flex: 1,
+  planRoleCard: {
+    borderRadius: Border.br_16,
     borderWidth: 1,
     borderColor: "rgba(0, 5, 61, 0.08)",
-    backgroundColor: Color.mainGoten,
-    borderRadius: Border.br_16,
-    paddingVertical: StyleVariable.py2,
-    paddingHorizontal: StyleVariable.px2,
-    alignItems: "center",
+    backgroundColor: Color.mainGohan,
+    paddingHorizontal: StyleVariable.px6,
+    paddingVertical: StyleVariable.py4,
+    gap: Gap.gap_8,
   },
-  frequencyChipActive: {
-    borderColor: Color.piccolo,
-    backgroundColor: "#E7F6FF",
-  },
-  frequencyChipText: {
-    fontSize: FontSize.fs_14,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-    textAlign: "center",
-  },
-  frequencyChipTextActive: {
+  planRoleLabel: {
+    fontSize: FontSize.fs_18,
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
   },
-  timeValue: {
+  planRoleMeta: {
     fontSize: FontSize.fs_14,
     fontFamily: FontFamily.dMSansRegular,
-    color: Color.hit,
+    color: Color.mainTrunks,
+  },
+  planRoleDescription: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+    opacity: 0.8,
   },
   submitButton: {
     borderRadius: Border.br_16,

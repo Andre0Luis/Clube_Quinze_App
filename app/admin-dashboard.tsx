@@ -3,30 +3,35 @@ import { usePathname, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  BackHandler,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    BackHandler,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  Border,
-  Color,
-  FontFamily,
-  FontSize,
-  Gap,
-  Padding,
-  StyleVariable,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    Padding,
+    StyleVariable,
 } from "../GlobalStyles";
 import AdminNavbar from "../components/admin-navbar";
 import { listAppointments } from "../services/appointments";
 import { getAdminDashboardMetrics } from "../services/dashboard";
-import { getCurrentUser } from "../services/users";
+import { getCurrentUser, listUsers } from "../services/users";
 import type { AdminDashboardResponse, UserProfileResponse } from "../types/api";
+
+type MemberCounts = {
+  standard: number;
+  select: number;
+};
 
 const AdminDashboardScreen = () => {
   const router = useRouter();
@@ -39,6 +44,7 @@ const AdminDashboardScreen = () => {
     useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [memberCounts, setMemberCounts] = useState<MemberCounts | null>(null);
 
   const loadDashboard = useCallback(async () => {
     const clearStoredTokens = async () => {
@@ -49,13 +55,17 @@ const AdminDashboardScreen = () => {
     try {
       const current = await getCurrentUser();
       if (!current || current.role !== "CLUB_ADMIN") {
+        setMemberCounts(null);
         router.replace("/");
         return false;
       }
 
       setProfile(current);
 
-      const dashboardData = await getAdminDashboardMetrics();
+      const dashboardPromise = getAdminDashboardMetrics();
+      const membersPromise = listUsers();
+
+      const dashboardData = await dashboardPromise;
 
       let scheduledTotal = dashboardData?.upcomingAppointments ?? 0;
       try {
@@ -75,6 +85,30 @@ const AdminDashboardScreen = () => {
         );
       }
 
+      try {
+        const members = await membersPromise;
+        const standardMembers = members.filter(
+          (user) => user.membershipTier === "CLUB_15",
+        ).length;
+        const selectMembers = members.filter(
+          (user) => user.membershipTier === "QUINZE_SELECT",
+        ).length;
+        setMemberCounts({ standard: standardMembers, select: selectMembers });
+      } catch (membersError) {
+        const status =
+          typeof membersError === "object" &&
+          membersError !== null &&
+          "response" in membersError
+            ? (membersError as { response?: { status?: number } }).response
+                ?.status
+            : undefined;
+        if (status === 401) {
+          throw membersError;
+        }
+        console.error("Failed to load member counts", membersError);
+        setMemberCounts(null);
+      }
+
       setDashboard(dashboardData);
       setScheduledAppointmentsTotal(scheduledTotal);
       setErrorMessage(null);
@@ -87,6 +121,7 @@ const AdminDashboardScreen = () => {
 
       if (status === 401) {
         await clearStoredTokens();
+        setMemberCounts(null);
         router.replace("/login");
         return false;
       }
@@ -95,6 +130,7 @@ const AdminDashboardScreen = () => {
       setErrorMessage("Nao foi possivel carregar os dados do dashboard.");
       setDashboard(null);
       setScheduledAppointmentsTotal(0);
+      setMemberCounts(null);
       return true;
     }
   }, [router]);
@@ -125,14 +161,20 @@ const AdminDashboardScreen = () => {
   );
 
   const membersStandard = useMemo(() => {
+    if (memberCounts) {
+      return memberCounts.standard;
+    }
     const total = dashboard?.totalMembers ?? 0;
     return metricValue(
       "members_standard",
       Math.max(0, Math.round(total * 0.7)),
     );
-  }, [dashboard?.totalMembers, metricValue]);
+  }, [dashboard?.totalMembers, metricValue, memberCounts]);
 
   const membersSelect = useMemo(() => {
+    if (memberCounts) {
+      return memberCounts.select;
+    }
     const total = dashboard?.totalMembers ?? 0;
     const fromMetric = dashboard?.metrics?.find(
       (metric) => metric.id === "members_select",
@@ -142,7 +184,12 @@ const AdminDashboardScreen = () => {
     }
     const fallback = total - membersStandard;
     return Math.max(0, fallback);
-  }, [dashboard?.metrics, dashboard?.totalMembers, membersStandard]);
+  }, [
+    dashboard?.metrics,
+    dashboard?.totalMembers,
+    membersStandard,
+    memberCounts,
+  ]);
 
   const upcomingPayments = useMemo(
     () => metricValue("payments_upcoming", metricValue("payments_due", 0)),

@@ -4,43 +4,43 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    Share,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    LineHeight,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  LineHeight,
+  Padding,
+  StyleVariable,
 } from "../../GlobalStyles";
 import {
-    createPost,
-    deletePost,
-    likePost,
-    listPosts,
-    unlikePost,
+  createPost,
+  deletePost,
+  likePost,
+  listPosts,
+  unlikePost,
 } from "../../services/community";
-import { getCurrentUser } from "../../services/users";
+import { getCurrentUser, getUserById } from "../../services/users";
 import type {
-    MediaAsset,
-    PageResponse,
-    PostResponse,
-    UserProfileResponse,
+  MediaAsset,
+  PageResponse,
+  PostResponse,
+  UserProfileResponse,
 } from "../../types/api";
 
 type TabName = "posts" | "communities";
@@ -141,10 +141,51 @@ export default function CommunityScreen() {
   const [currentUser, setCurrentUser] = useState<UserProfileResponse | null>(
     null,
   );
+  const [authorNames, setAuthorNames] = useState<Record<number, string>>({});
   const [likedPostIds, setLikedPostIds] = useState<number[]>([]);
   const [deletingPostIds, setDeletingPostIds] = useState<number[]>([]);
   const [openMenuPostId, setOpenMenuPostId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const ensureAuthorNames = useCallback(
+    async (posts: PostResponse[]) => {
+      const uniqueAuthorIds = Array.from(
+        new Set(posts.map((post) => post.authorId)),
+      ).filter((id): id is number => typeof id === "number" && id > 0);
+      const missingIds = uniqueAuthorIds.filter((id) => !authorNames[id]);
+      if (!missingIds.length) {
+        return;
+      }
+      try {
+        const responses = await Promise.all(
+          missingIds.map(async (id) => {
+            try {
+              const user = await getUserById(id);
+              return user?.name ? { id, name: user.name } : null;
+            } catch (innerError) {
+              console.error("Failed to fetch author data", id, innerError);
+              return null;
+            }
+          }),
+        );
+        const newNames = responses.reduce<Record<number, string>>(
+          (acc, entry) => {
+            if (entry?.name) {
+              acc[entry.id] = entry.name;
+            }
+            return acc;
+          },
+          {},
+        );
+        if (Object.keys(newNames).length) {
+          setAuthorNames((prev) => ({ ...prev, ...newNames }));
+        }
+      } catch (error) {
+        console.error("Failed to resolve author names", error);
+      }
+    },
+    [authorNames],
+  );
 
   const fetchCommunityData = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -168,6 +209,7 @@ export default function CommunityScreen() {
               pageResponse.content?.some((post) => post.id === id) ?? false,
           ),
         );
+        void ensureAuthorNames(pageResponse.content ?? []);
       } catch (error) {
         console.error("Failed to load community data", error);
         setErrorMessage("Nao foi possivel carregar a comunidade agora.");
@@ -176,7 +218,7 @@ export default function CommunityScreen() {
         setIsRefreshing(false);
       }
     },
-    [],
+    [ensureAuthorNames],
   );
 
   useFocusEffect(
@@ -277,6 +319,17 @@ export default function CommunityScreen() {
     setSelectedMedia((prev) => prev.filter((item) => item.uri !== uri));
   }, []);
 
+  useEffect(() => {
+    if (currentUser?.id && currentUser.name) {
+      setAuthorNames((prev) => {
+        if (prev[currentUser.id] === currentUser.name) {
+          return prev;
+        }
+        return { ...prev, [currentUser.id]: currentUser.name };
+      });
+    }
+  }, [currentUser]);
+
   const handlePublish = useCallback(async () => {
     if (!postContent.trim()) {
       return;
@@ -352,15 +405,18 @@ export default function CommunityScreen() {
     [likedPostIds],
   );
 
-  const handleSharePost = useCallback(async (post: PostResponse) => {
-    try {
-      await Share.share({
-        message: `${post.content}\n\nCompartilhado via Clube Quinze.`,
-      });
-    } catch (error) {
-      console.error("Failed to share post", error);
-    }
-  }, []);
+  const handleSharePost = useCallback(
+    async (post: PostResponse) => {
+      try {
+        await Share.share({
+          message: `${post.content}\n\nCompartilhado via Clube Quinze.`,
+        });
+      } catch (error) {
+        console.error("Failed to share post", error);
+      }
+    },
+    [ensureAuthorNames],
+  );
 
   const handleDeletePost = useCallback(
     (post: PostResponse) => {
@@ -468,23 +524,6 @@ export default function CommunityScreen() {
           <TouchableOpacity
             style={[
               styles.segmentButton,
-              activeTab === "posts" && styles.segmentButtonActive,
-            ]}
-            activeOpacity={0.85}
-            onPress={() => setActiveTab("posts")}
-          >
-            <Text
-              style={[
-                styles.segmentLabel,
-                activeTab === "posts" && styles.segmentLabelActive,
-              ]}
-            >
-              Meus posts
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.segmentButton,
               activeTab === "communities" && styles.segmentButtonActive,
             ]}
             activeOpacity={0.85}
@@ -497,6 +536,23 @@ export default function CommunityScreen() {
               ]}
             >
               Minha comunidade
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              activeTab === "posts" && styles.segmentButtonActive,
+            ]}
+            activeOpacity={0.85}
+            onPress={() => setActiveTab("posts")}
+          >
+            <Text
+              style={[
+                styles.segmentLabel,
+                activeTab === "posts" && styles.segmentLabelActive,
+              ]}
+            >
+              Meus posts
             </Text>
           </TouchableOpacity>
         </View>
@@ -664,7 +720,10 @@ export default function CommunityScreen() {
                   </View>
                   <View style={styles.postHeaderTexts}>
                     <Text style={styles.postAuthor}>
-                      Autor #{post.authorId}
+                      {currentUser?.id === post.authorId
+                        ? "Você"
+                        : (authorNames[post.authorId] ??
+                          `Autor #${post.authorId}`)}
                     </Text>
                     <Text style={styles.postTimestamp}>
                       {formatDateLabel(post.createdAt)}

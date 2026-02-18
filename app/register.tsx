@@ -1,5 +1,5 @@
 import DateTimePicker, {
-    type DateTimePickerEvent,
+  type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import type { AxiosError } from "axios";
@@ -7,19 +7,20 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import MaskInput from "react-native-mask-input";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Color } from "../GlobalStyles";
 import { register } from "../services/auth";
 import { upsertPreference } from "../services/preferences";
 import type { RegisterRequest } from "../types/api";
@@ -229,7 +230,7 @@ export default function RegisterScreen() {
                 /\d/,
                 /\d/,
               ]}
-              placeholder="(99) 99999-9999"
+              placeholder="(11) 96199-5531"
             />
 
             <Text style={styles.label}>Plano</Text>
@@ -382,6 +383,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#ddd",
+    color: Color.tokenColorNeutralDarkest,
   },
   pickerContainer: {
     width: "100%",

@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
@@ -21,7 +20,10 @@ import {
     Padding,
     StyleVariable,
 } from "../../../GlobalStyles";
-import { getAppointmentById, updateAppointmentStatus } from "../../../services/appointments";
+import {
+    getAppointmentById,
+    updateAppointmentStatus,
+} from "../../../services/appointments";
 import type { AppointmentResponse } from "../../../types/api";
 
 const statusStyles: Record<string, { label: string; color: string }> = {
@@ -30,10 +32,11 @@ const statusStyles: Record<string, { label: string; color: string }> = {
   CANCELED: { label: "Cancelado", color: "#D7263D" },
 };
 
-const getStatusLabel = (status?: string) => statusStyles[status ?? ""] ?? {
-  label: status ? status : "Desconhecido",
-  color: Color.mainTrunks,
-};
+const getStatusLabel = (status?: string) =>
+  statusStyles[status ?? ""] ?? {
+    label: status ? status : "Desconhecido",
+    color: Color.mainTrunks,
+  };
 
 const formatDate = (input?: string) => {
   if (!input) {
@@ -78,7 +81,15 @@ const formatFullDate = (input?: string) => {
   return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} • ${day} de ${month}`;
 };
 
-const DetailRow = ({ label, value, color }: { label: string; value: string; color?: string }) => (
+const DetailRow = ({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+}) => (
   <View style={styles.detailRow}>
     <Text style={styles.detailLabel}>{label}</Text>
     <Text style={[styles.detailValue, color ? { color } : null]}>{value}</Text>
@@ -90,48 +101,45 @@ export default function AppointmentDetailsScreen() {
   const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [appointment, setAppointment] = useState<AppointmentResponse | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [appointment, setAppointment] = useState<AppointmentResponse | null>(
+    null,
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadAppointment = useCallback(async () => {
     const id = Number(appointmentId);
     if (!appointmentId || Number.isNaN(id)) {
-      Alert.alert("Agendamento invalido", "Nao conseguimos carregar este atendimento.");
-      router.back();
+      setErrorMessage("Agendamento invalido.");
+      setAppointment(null);
+      setIsLoading(false);
       return;
     }
 
-    let isMounted = true;
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const response = await getAppointmentById(id);
+      setAppointment(response);
+    } catch (error) {
+      console.error("Failed to load appointment", error);
+      setAppointment(null);
+      setErrorMessage(
+        "Nao foi possivel carregar os detalhes. Tente novamente.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [appointmentId]);
 
-    const loadAppointment = async () => {
-      setIsLoading(true);
-      try {
-        const response = await getAppointmentById(id);
-        if (!isMounted) {
-          return;
-        }
-        setAppointment(response);
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-        Alert.alert(
-          "Falha ao carregar",
-          "Nao foi possivel carregar os detalhes. Tente novamente mais tarde.",
-        );
-        router.back();
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
+  useEffect(() => {
+    const bootstrap = async () => {
+      await loadAppointment();
     };
 
-    loadAppointment();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [appointmentId, router]);
+    bootstrap();
+  }, [loadAppointment]);
 
   const statusMeta = useMemo(
     () => getStatusLabel(appointment?.status),
@@ -164,39 +172,36 @@ export default function AppointmentDetailsScreen() {
     });
   };
 
-  const handleCancelAppointment = () => {
+  const handleCancelAppointment = async () => {
     if (!appointment || !canCancel || isCancelling) {
       return;
     }
 
-    Alert.alert(
-      "Cancelar agendamento",
-      "Tem certeza que deseja cancelar este agendamento?",
-      [
-        { text: "Nao", style: "cancel" },
-        {
-          text: "Sim, cancelar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setIsCancelling(true);
-              await updateAppointmentStatus(appointment.id, { status: "CANCELED" });
-              setAppointment((prev) => (prev ? { ...prev, status: "CANCELED" } : prev));
-              Alert.alert("Agendamento cancelado", "Seu agendamento foi cancelado com sucesso.", [
-                {
-                  text: "OK",
-                  onPress: () => router.back(),
-                },
-              ]);
-            } catch (error) {
-              Alert.alert("Nao foi possivel cancelar", "Tente novamente em instantes.");
-            } finally {
-              setIsCancelling(false);
-            }
-          },
-        },
-      ],
-    );
+    if (!confirmCancel) {
+      setCancelError(null);
+      setConfirmCancel(true);
+      return;
+    }
+
+    try {
+      setIsCancelling(true);
+      setCancelError(null);
+      await updateAppointmentStatus(appointment.id, { status: "CANCELED" });
+      setAppointment((prev) => (prev ? { ...prev, status: "CANCELED" } : prev));
+      setConfirmCancel(false);
+      router.back();
+    } catch (error) {
+      setCancelError(
+        "Nao foi possivel cancelar. Tente novamente em instantes.",
+      );
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const resetCancelConfirmation = () => {
+    setConfirmCancel(false);
+    setCancelError(null);
   };
 
   return (
@@ -216,26 +221,65 @@ export default function AppointmentDetailsScreen() {
         <View style={styles.loaderWrapper}>
           <ActivityIndicator size="small" color={Color.piccolo} />
         </View>
+      ) : errorMessage ? (
+        <View style={styles.loaderWrapper}>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={loadAppointment}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.retryButtonText}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
       ) : appointment ? (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.detailCard}>
             <View style={styles.cardIconWrapper}>
               <Ionicons name="calendar" size={20} color={Color.piccolo} />
             </View>
-            <Text style={styles.cardSubtitle}>{formatFullDate(appointment.scheduledAt)}</Text>
+            <Text style={styles.cardSubtitle}>
+              {formatFullDate(appointment.scheduledAt)}
+            </Text>
             <View style={styles.divider} />
-            <DetailRow label="Data" value={formatDate(appointment.scheduledAt)} />
-            <DetailRow label="Horario" value={formatTime(appointment.scheduledAt)} />
+            <DetailRow
+              label="Data"
+              value={formatDate(appointment.scheduledAt)}
+            />
+            <DetailRow
+              label="Horario"
+              value={formatTime(appointment.scheduledAt)}
+            />
             <DetailRow
               label="Preferencias"
-              value={appointment.notes?.trim() ? appointment.notes : "Sem preferencias"}
+              value={
+                appointment.notes?.trim()
+                  ? appointment.notes
+                  : "Sem preferencias"
+              }
             />
-            <DetailRow label="Status" value={statusMeta.label} color={statusMeta.color} />
+            <DetailRow
+              label="Status"
+              value={statusMeta.label}
+              color={statusMeta.color}
+            />
           </View>
         </ScrollView>
       ) : (
         <View style={styles.loaderWrapper}>
-          <Text style={styles.errorText}>Nao encontramos os detalhes deste agendamento.</Text>
+          <Text style={styles.errorText}>
+            Nao encontramos os detalhes deste agendamento.
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={loadAppointment}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.retryButtonText}>Tentar novamente</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -251,7 +295,11 @@ export default function AppointmentDetailsScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.secondaryButton, isCancelling ? styles.secondaryButtonDisabled : null]}
+              style={[
+                styles.secondaryButton,
+                isCancelling ? styles.secondaryButtonDisabled : null,
+                confirmCancel ? styles.secondaryButtonConfirm : null,
+              ]}
               onPress={handleCancelAppointment}
               activeOpacity={0.9}
               disabled={isCancelling}
@@ -259,13 +307,38 @@ export default function AppointmentDetailsScreen() {
               {isCancelling ? (
                 <ActivityIndicator size="small" color={Color.piccolo} />
               ) : (
-                <Text style={styles.secondaryButtonText}>Cancelar agendamento</Text>
+                <Text style={styles.secondaryButtonText}>
+                  {confirmCancel
+                    ? "Confirmar cancelamento"
+                    : "Cancelar agendamento"}
+                </Text>
               )}
             </TouchableOpacity>
+
+            {confirmCancel && (
+              <View style={styles.inlineRow}>
+                <Text style={styles.helperText}>
+                  Toque novamente para confirmar ou desfaça.
+                </Text>
+                <TouchableOpacity
+                  onPress={resetCancelConfirmation}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.helperAction}>Desfazer</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {cancelError ? (
+              <Text style={styles.errorText}>{cancelError}</Text>
+            ) : null}
           </View>
         ) : (
           <TouchableOpacity
-            style={[styles.primaryButton, !canEvaluate ? styles.primaryButtonDisabled : null]}
+            style={[
+              styles.primaryButton,
+              !canEvaluate ? styles.primaryButtonDisabled : null,
+            ]}
             onPress={handleNavigateToFeedback}
             activeOpacity={0.9}
             disabled={!canEvaluate}
@@ -385,6 +458,21 @@ const styles = StyleSheet.create({
     paddingTop: StyleVariable.py2,
     backgroundColor: Color.mainGohan,
   },
+  retryButton: {
+    marginTop: StyleVariable.py2,
+    paddingHorizontal: StyleVariable.px4,
+    paddingVertical: StyleVariable.py2,
+    borderRadius: Border.br_16,
+    borderWidth: 1,
+    borderColor: Color.piccolo,
+    backgroundColor: Color.mainGoten,
+  },
+  retryButtonText: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.piccolo,
+    textAlign: "center",
+  },
   actionStack: {
     gap: StyleVariable.py2,
   },
@@ -416,9 +504,31 @@ const styles = StyleSheet.create({
   secondaryButtonDisabled: {
     opacity: 0.6,
   },
+  secondaryButtonConfirm: {
+    borderColor: "#D7263D",
+  },
   secondaryButtonText: {
     fontSize: FontSize.fs_16,
     lineHeight: LineHeight.lh_24,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.piccolo,
+  },
+  inlineRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: StyleVariable.gap2,
+  },
+  helperText: {
+    flex: 1,
+    fontSize: FontSize.fs_12,
+    lineHeight: LineHeight.lh_16,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+  },
+  helperAction: {
+    fontSize: FontSize.fs_12,
+    lineHeight: LineHeight.lh_16,
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
   },
