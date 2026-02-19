@@ -262,12 +262,13 @@ export default function PlansScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.backButton}
             onPress={() => router.back()}
+            activeOpacity={0.85}
+            style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Voltar"
           >
-            <Ionicons name="arrow-back" size={20} color={Color.hit} />
+            <Ionicons name="arrow-back" size={18} color={Color.piccolo} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Planos</Text>
           <View style={styles.headerSpacer} />

@@ -1,41 +1,11 @@
 
-import { Ionicons } from '@expo/vector-icons';
-import type { AxiosError } from 'axios';
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { useEffect, useState } from 'react';
-import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    LineHeight,
-    Padding,
-    StyleVariable,
-} from '../GlobalStyles';
-import { login } from '../services/auth';
-import { isMockEnabled, setMockEnabled } from '../services/mock/settings';
-
-export default function LoginScreen() {
+export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [useMock, setUseMock] = useState(isMockEnabled());
+  const [showForgotModal, setShowForgotModal] = useState(false);
   const router = useRouter();
 
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
@@ -92,12 +62,12 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-    const { accessToken, refreshToken } = await login({ email, password });
+      const { accessToken, refreshToken } = await login({ email, password });
 
-    await SecureStore.setItemAsync('accessToken', accessToken);
-    await SecureStore.setItemAsync('refreshToken', refreshToken);
+      await SecureStore.setItemAsync('accessToken', accessToken);
+      await SecureStore.setItemAsync('refreshToken', refreshToken);
 
-  router.replace('/(tabs)');
+      router.replace('/(tabs)');
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       const serverMessage = err.response?.data?.message;
@@ -121,56 +91,30 @@ export default function LoginScreen() {
         >
           <View style={styles.content}>
             <View style={styles.header}>
-              <Image
-                source={require('../assets/images/icon.png')}
-                style={styles.logo}
-                contentFit="contain"
-              />
-              <Text style={styles.title}>Bem-vindo de volta</Text>
-              <Text style={styles.subtitle}>Faça login para acessar o Clube Quinze</Text>
-            </View>
-
-            <View style={styles.form}>
-              <View style={styles.field}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="seuemail@dominio.com"
-                  placeholderTextColor={Color.mainTrunks}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  onChangeText={setEmail}
-                  value={email}
-                  returnKeyType="next"
-                />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Senha</Text>
-                <View style={styles.passwordWrapper}>
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder="••••••••"
-                    placeholderTextColor={Color.mainTrunks}
-                    secureTextEntry={!showPassword}
-                    onChangeText={setPassword}
-                    value={password}
-                    returnKeyType="done"
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword((prev) => !prev)}
-                    accessibilityRole="button"
-                    accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                  >
-                    <Ionicons
-                      name={showPassword ? 'eye-off' : 'eye'}
-                      size={20}
-                      color={Color.mainTrunks}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
+              ...existing code...
+                          <Text style={styles.label}>Senha</Text>
+                          <View style={styles.passwordField}>
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Senha"
+                              placeholderTextColor={Color.mainTrunks}
+                              secureTextEntry={!showPassword}
+                              onChangeText={setPassword}
+                              value={password}
+                              returnKeyType="done"
+                            />
+                            <TouchableOpacity
+                              onPress={() => setShowPassword((prev) => !prev)}
+                              accessibilityRole="button"
+                              accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                            >
+                              <Ionicons
+                                name={showPassword ? 'eye-off' : 'eye'}
+                                size={20}
+                                color={Color.mainTrunks}
+                              />
+                            </TouchableOpacity>
+                          </View>
 
             <TouchableOpacity
               style={[styles.loginButton, (!isFormValid || isLoading) && styles.loginButtonDisabled]}
@@ -186,6 +130,10 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <ForgotPasswordModal
+        visible={showForgotModal}
+        onClose={() => setShowForgotModal(false)}
+      />
 
       <TouchableOpacity
         style={[styles.mockToggle, useMock ? styles.mockToggleActive : null]}

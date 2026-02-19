@@ -15,7 +15,7 @@ export default function SplashScreen() {
     <View style={styles.container}>
       <Animatable.View animation="fadeIn" duration={1500}>
         <Image
-          source={require('../assets/images/icon.png')} // Update with your logo path
+          source={require('../assets/images/logo_quinze.png')} // Update with your logo path
           style={styles.logo}
         />
       </Animatable.View>

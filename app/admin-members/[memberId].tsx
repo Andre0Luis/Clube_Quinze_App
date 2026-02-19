@@ -118,11 +118,12 @@ export default function AdminMemberDetailScreen() {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
+          activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Voltar"
-          activeOpacity={0.85}
+          style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={20} color={Color.piccolo} />
+          <Ionicons name="arrow-back" size={18} color={Color.piccolo} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Perfil</Text>
         <View style={styles.headerSpacer} />

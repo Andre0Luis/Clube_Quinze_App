@@ -51,7 +51,7 @@ export default function Index() {
       }}
     >
       <Image
-        source={require('../assets/images/icon.png')}
+        source={require('../assets/images/logo_quinze.png')}
         style={{ width: 150, height: 150 }}
         resizeMode="contain"
       />

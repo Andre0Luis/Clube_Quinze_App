@@ -83,7 +83,7 @@ export default function CommunityPostScreen() {
 
   const loadPost = useCallback(async () => {
     if (Number.isNaN(numericPostId)) {
-      setErrorMessage("Nao foi possivel identificar a publicacao.");
+      setErrorMessage("Não foi possível identificar a publicação.");
       setIsLoading(false);
       return;
     }
@@ -100,7 +100,7 @@ export default function CommunityPostScreen() {
       }
     } catch (error) {
       console.error("Failed to load post", error);
-      setErrorMessage("Nao foi possivel carregar a publicacao.");
+      setErrorMessage("Não foi possível carregar a publicação.");
     } finally {
       setIsLoading(false);
     }
@@ -140,7 +140,7 @@ export default function CommunityPostScreen() {
       }
     } catch (error) {
       console.error("Failed to toggle like on detail", error);
-      setErrorMessage("Nao foi possivel atualizar a curtida.");
+      setErrorMessage("Não foi possível atualizar a curtida.");
     } finally {
       setIsProcessingLike(false);
     }
@@ -171,7 +171,7 @@ export default function CommunityPostScreen() {
       setCommentContent("");
     } catch (error) {
       console.error("Failed to submit comment", error);
-      setErrorMessage("Nao foi possivel enviar seu comentario.");
+      setErrorMessage("Não foi possível enviar seu comentário.");
     } finally {
       setIsSubmittingComment(false);
     }
@@ -191,19 +191,20 @@ export default function CommunityPostScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
             <TouchableOpacity
-              style={styles.backButton}
               onPress={handleGoBack}
+              activeOpacity={0.85}
+              style={styles.backButton}
               accessibilityRole="button"
               accessibilityLabel="Voltar"
             >
-              <Ionicons name="arrow-back" size={20} color={Color.hit} />
+              <Ionicons name="arrow-back" size={18} color={Color.piccolo} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Publicacao</Text>
+            <Text style={styles.headerTitle}>Publicação</Text>
             <TouchableOpacity
               style={styles.headerShare}
               onPress={handleShare}
               accessibilityRole="button"
-              accessibilityLabel="Compartilhar publicacao"
+              accessibilityLabel="Compartilhar publicação"
             >
               <Ionicons name="share-outline" size={20} color={Color.piccolo} />
             </TouchableOpacity>
@@ -223,9 +224,9 @@ export default function CommunityPostScreen() {
           ) : isInvalidPost || !post ? (
             <View style={styles.emptyState}>
               <Ionicons name="alert-circle-outline" size={32} color={Color.mainTrunks} />
-              <Text style={styles.emptyTitle}>Publicacao nao encontrada</Text>
+              <Text style={styles.emptyTitle}>Publicação não encontrada</Text>
               <Text style={styles.emptySubtitle}>
-                Tente voltar e selecionar outra publicacao da comunidade.
+                Tente voltar e selecionar outra publicação da comunidade.
               </Text>
             </View>
           ) : (
@@ -243,7 +244,7 @@ export default function CommunityPostScreen() {
                     style={styles.likeButton}
                     onPress={handleToggleLike}
                     accessibilityRole="button"
-                    accessibilityLabel="Curtir publicacao"
+                    accessibilityLabel="Curtir publicação"
                   >
                     <Ionicons
                       name={hasLiked ? "heart" : "heart-outline"}
@@ -294,7 +295,7 @@ export default function CommunityPostScreen() {
               </View>
 
               <View style={styles.commentsHeader}>
-                <Text style={styles.commentsTitle}>Comentarios</Text>
+                <Text style={styles.commentsTitle}>Comentários</Text>
                 <Text style={styles.commentsCount}>{post.comments.length}</Text>
               </View>
 
@@ -329,7 +330,7 @@ export default function CommunityPostScreen() {
               style={styles.commentInput}
               value={commentContent}
               onChangeText={setCommentContent}
-              placeholder="Escreva um comentario"
+              placeholder="Escreva um comentário"
               placeholderTextColor={Color.mainTrunks}
               multiline
               textAlignVertical="top"

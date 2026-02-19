@@ -181,6 +181,9 @@ export default function RegisterScreen() {
             />
 
             <Text style={styles.label}>Senha</Text>
+            <Text style={{ fontSize: 12, color: '#888', marginBottom: 4, marginLeft: 2 }}>
+              Mínimo 8 caracteres
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="João*25"

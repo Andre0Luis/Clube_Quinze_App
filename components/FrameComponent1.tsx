@@ -31,7 +31,7 @@ const FrameComponent1 = ({
           <Image
             style={styles.logoQuinzeNovoAzulIcon}
             contentFit="cover"
-            source={require("../assets/images/icon.png")}
+            source={require("../assets/images/logo_quinze.png")}
           />
           <Text style={[styles.buttonText, styles.olJooTypo]}>
             Clube Quinze

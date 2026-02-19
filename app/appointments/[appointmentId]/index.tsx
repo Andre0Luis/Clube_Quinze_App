@@ -26,7 +26,7 @@ import type { AppointmentResponse } from "../../../types/api";
 
 const statusStyles: Record<string, { label: string; color: string }> = {
   SCHEDULED: { label: "Agendado", color: "#1B9984" },
-  COMPLETED: { label: "Concluido", color: "#4CAF50" },
+  COMPLETED: { label: "Concluído", color: "#4CAF50" },
   CANCELED: { label: "Cancelado", color: "#D7263D" },
 };
 
@@ -52,7 +52,7 @@ const formatDate = (input?: string) => {
 
 const formatTime = (input?: string) => {
   if (!input) {
-    return "Sem horario";
+    return "Sem horário";
   }
   const date = new Date(input);
   if (Number.isNaN(date.getTime())) {
@@ -95,7 +95,7 @@ export default function AppointmentDetailsScreen() {
   useEffect(() => {
     const id = Number(appointmentId);
     if (!appointmentId || Number.isNaN(id)) {
-      Alert.alert("Agendamento invalido", "Nao conseguimos carregar este atendimento.");
+      Alert.alert("Agendamento inválido", "Não conseguimos carregar este atendimento.");
       router.back();
       return;
     }
@@ -116,7 +116,7 @@ export default function AppointmentDetailsScreen() {
         }
         Alert.alert(
           "Falha ao carregar",
-          "Nao foi possivel carregar os detalhes. Tente novamente mais tarde.",
+          "Não foi possível carregar os detalhes. Tente novamente mais tarde.",
         );
         router.back();
       } finally {
@@ -173,7 +173,7 @@ export default function AppointmentDetailsScreen() {
       "Cancelar agendamento",
       "Tem certeza que deseja cancelar este agendamento?",
       [
-        { text: "Nao", style: "cancel" },
+        { text: "Não", style: "cancel" },
         {
           text: "Sim, cancelar",
           style: "destructive",
@@ -189,7 +189,7 @@ export default function AppointmentDetailsScreen() {
                 },
               ]);
             } catch (error) {
-              Alert.alert("Nao foi possivel cancelar", "Tente novamente em instantes.");
+              Alert.alert("Não foi possível cancelar", "Tente novamente em instantes.");
             } finally {
               setIsCancelling(false);
             }
@@ -225,17 +225,17 @@ export default function AppointmentDetailsScreen() {
             <Text style={styles.cardSubtitle}>{formatFullDate(appointment.scheduledAt)}</Text>
             <View style={styles.divider} />
             <DetailRow label="Data" value={formatDate(appointment.scheduledAt)} />
-            <DetailRow label="Horario" value={formatTime(appointment.scheduledAt)} />
+            <DetailRow label="Horário" value={formatTime(appointment.scheduledAt)} />
             <DetailRow
-              label="Preferencias"
-              value={appointment.notes?.trim() ? appointment.notes : "Sem preferencias"}
+              label="Preferências"
+              value={appointment.notes?.trim() ? appointment.notes : "Sem preferências"}
             />
             <DetailRow label="Status" value={statusMeta.label} color={statusMeta.color} />
           </View>
         </ScrollView>
       ) : (
         <View style={styles.loaderWrapper}>
-          <Text style={styles.errorText}>Nao encontramos os detalhes deste agendamento.</Text>
+          <Text style={styles.errorText}>Não encontramos os detalhes deste agendamento.</Text>
         </View>
       )}
 

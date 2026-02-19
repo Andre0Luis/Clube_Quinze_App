@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
@@ -14,6 +13,8 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import CardPassosMagicos from '../../assets/images/Card-Passos-Mágicos.svg';
+import CardQuinze from '../../assets/images/Card-Quinze.svg';
 
 import Card from "../../components/Card";
 import FrameComponent1 from "../../components/FrameComponent1";
@@ -815,12 +816,22 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <Image
-            source={require("../../assets/passos_magicos.jpg")}
-            style={styles.magicStepsImage}
-            contentFit="contain"
-            accessibilityLabel="Passos Magicos"
-          />
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => Linking.openURL("https://passosmagicos.org.br/")}
+            accessibilityRole="link"
+            accessibilityLabel="Acessar Passos Mágicos"
+            style={{ width: '100%' }}
+          >
+            <View style={styles.magicStepsCard}>
+              <CardPassosMagicos width="100%" style={styles.magicStepsBg} accessibilityLabel="Passos Mágicos" />
+              <View style={styles.magicStepsOverlay}>
+                <View style={styles.magicStepsTag}><Text style={styles.magicStepsTagText}>Responsabilidade Social</Text></View>
+                <Text style={styles.magicStepsTitle}>Passos Mágicos</Text>
+                <Text style={styles.magicStepsDesc}>Participe de uma de nossas ações. Interagindo com nossos alunos, compartilhando experiências e conhecimento</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -830,12 +841,7 @@ export default function HomeScreen() {
             accessibilityRole="link"
             accessibilityLabel="Acessar Produtos Quinze"
           >
-            <Image
-              source={require("../../assets/images/produtos15.png")}
-              style={styles.magicStepsImage}
-              contentFit="contain"
-              accessibilityLabel="Produtos Quinze"
-            />
+            <CardQuinze width="100%" style={styles.magicStepsImage} accessibilityLabel="Produtos Quinze" />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -857,6 +863,66 @@ const styles = StyleSheet.create({
   section: {
     alignItems: "center",
     gap: Gap.gap_16,
+  },
+  magicStepsCard: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: Border.br_16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E6EAF1',
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  magicStepsBg: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+  magicStepsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    gap: 8,
+  },
+  magicStepsTag: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
+  magicStepsTagText: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: FontFamily.dMSansBold,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  magicStepsTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontFamily: FontFamily.dMSansBold,
+    marginBottom: 8,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  magicStepsDesc: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: FontFamily.dMSansRegular,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   magicStepsImage: {
     width: "100%",

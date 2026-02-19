@@ -1,5 +1,5 @@
-import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -549,12 +549,13 @@ export default function PersonalDataScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <TouchableOpacity
-              style={styles.backButton}
               onPress={handleGoBack}
+              activeOpacity={0.85}
+              style={styles.backButton}
               accessibilityRole="button"
               accessibilityLabel="Voltar"
             >
-              <Ionicons name="arrow-back" size={20} color={Color.hit} />
+              <Ionicons name="arrow-back" size={18} color={Color.piccolo} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Dados pessoais</Text>
             <View style={styles.headerSpacer} />

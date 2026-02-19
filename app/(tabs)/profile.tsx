@@ -346,7 +346,7 @@ export default function ProfileScreen() {
 
 					<View style={styles.brandFooter}>
 						<Image
-							source={require("../../assets/images/icon.png")}
+							source={require("../../assets/images/logo_quinze.png")}
 							style={styles.brandLogo}
 							contentFit="contain"
 						/>
