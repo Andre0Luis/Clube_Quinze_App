@@ -1,26 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import AdminNavbar from "../components/admin-navbar";
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  Padding,
+  StyleVariable,
 } from "../GlobalStyles";
 import { mockMembers } from "../services/mock/admin-members";
 import { isMockEnabled } from "../services/mock/settings";
@@ -28,7 +27,8 @@ import { listUsers } from "../services/users";
 import type { MembershipTier } from "../types/api";
 
 const tierCopy: Record<MembershipTier, string> = {
-  CLUB_15: "Plano Clube Quinze",
+  QUINZE_STANDARD: "Plano Quinze Standard",
+  QUINZE_PREMIUM: "Plano Quinze Premium",
   QUINZE_SELECT: "Plano Quinze Select",
 };
 
@@ -36,7 +36,6 @@ type PlanFilter = "ALL" | "STANDARD" | "PREMIUM" | "SELECT";
 
 export default function AdminMembersScreen() {
   const router = useRouter();
-  const pathname = usePathname();
   const { tier } = useLocalSearchParams<{ tier?: string | string[] }>();
   const [openMenuMemberId, setOpenMenuMemberId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -46,7 +45,7 @@ export default function AdminMembersScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const resolvedTier = useMemo(
-    () => (Array.isArray(tier) ? tier[0] : tier) ?? "CLUB_15",
+    () => (Array.isArray(tier) ? tier[0] : tier) ?? "QUINZE_STANDARD",
     [tier],
   );
   const isSelectView = resolvedTier === "QUINZE_SELECT";
@@ -106,7 +105,8 @@ export default function AdminMembersScreen() {
     const base = members.filter((member) =>
       isSelectView
         ? member.membershipTier === "QUINZE_SELECT"
-        : member.membershipTier === "CLUB_15",
+        : member.membershipTier === "QUINZE_STANDARD" ||
+          member.membershipTier === "QUINZE_PREMIUM",
     );
 
     const byPlan = (() => {
@@ -128,8 +128,10 @@ export default function AdminMembersScreen() {
 
   const totalLabel = isSelectView
     ? "Membros Quinze Select"
-    : "Membros Clube Quinze e Premium";
-  const planLabel = isSelectView ? tierCopy.QUINZE_SELECT : tierCopy.CLUB_15;
+    : "Membros Quinze Standard e Premium";
+  const planLabel = isSelectView
+    ? tierCopy.QUINZE_SELECT
+    : tierCopy.QUINZE_STANDARD;
 
   return (
     <SafeAreaView
@@ -280,8 +282,6 @@ export default function AdminMembersScreen() {
           })}
         </View>
       </ScrollView>
-
-      <AdminNavbar activePath={pathname} />
     </SafeAreaView>
   );
 }

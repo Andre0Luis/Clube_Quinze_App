@@ -1,33 +1,46 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    Share,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    LineHeight,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  LineHeight,
+  Padding,
+  StyleVariable,
 } from "../../GlobalStyles";
-import { addComment, getPost, likePost, unlikePost } from "../../services/community";
-import type { MediaAsset, PostResponse } from "../../types/api";
+import {
+  addComment,
+  getPost,
+  likePost,
+  unlikePost,
+} from "../../services/community";
+import { getUserById } from "../../services/users";
+import type {
+  MediaAsset,
+  PostResponse,
+  UserProfileResponse,
+} from "../../types/api";
 
 type RouteParams = {
   postId?: string;
@@ -42,9 +55,12 @@ const formatDateLabel = (value?: string) => {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  const supportsRelativeTime = typeof Intl !== "undefined" && "RelativeTimeFormat" in Intl;
+  const supportsRelativeTime =
+    typeof Intl !== "undefined" && "RelativeTimeFormat" in Intl;
   if (supportsRelativeTime) {
-    const relativeFormatter = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
+    const relativeFormatter = new Intl.RelativeTimeFormat("pt-BR", {
+      numeric: "auto",
+    });
     const diffMinutes = Math.round((date.getTime() - Date.now()) / 60000);
     if (Math.abs(diffMinutes) < 60) {
       return relativeFormatter.format(diffMinutes, "minute");
@@ -56,8 +72,14 @@ const formatDateLabel = (value?: string) => {
     const diffDays = Math.round(diffHours / 24);
     return relativeFormatter.format(diffDays, "day");
   }
-  const dateLabel = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-  const timeLabel = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const dateLabel = date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+  });
+  const timeLabel = date.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   return `${dateLabel} • ${timeLabel}`;
 };
 
@@ -65,9 +87,15 @@ const extractMediaFromPost = (post: PostResponse | null): MediaAsset[] => {
   if (!post) {
     return [];
   }
-  const normalized = (post.media ?? []).filter((item) => item.imageUrl || item.imageBase64);
-  return [...normalized].sort((first, second) => first.position - second.position);
+  const normalized = (post.media ?? []).filter(
+    (item) => item.imageUrl || item.imageBase64,
+  );
+  return [...normalized].sort(
+    (first, second) => first.position - second.position,
+  );
 };
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 export default function CommunityPostScreen() {
   const router = useRouter();
@@ -80,6 +108,119 @@ export default function CommunityPostScreen() {
   const [commentContent, setCommentContent] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasLiked, setHasLiked] = useState(likedParam === "1");
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const [authorProfile, setAuthorProfile] = useState<{
+    name: string;
+    avatarUri?: string;
+    initials: string;
+  } | null>(null);
+  const [commentAuthors, setCommentAuthors] = useState<
+    Record<number, { name: string; avatarUri?: string; initials: string }>
+  >({});
+
+  const buildAuthorInitials = useCallback((name?: string) => {
+    return (
+      name
+        ?.split(" ")
+        .filter(Boolean)
+        .map((segment) => segment[0]?.toUpperCase())
+        .slice(0, 2)
+        .join("") ?? "CQ"
+    );
+  }, []);
+
+  const buildProfileAvatarUri = useCallback(
+    (profile?: UserProfileResponse | null) => {
+      if (!profile) {
+        return undefined;
+      }
+      if (profile.profilePictureBase64) {
+        return `data:image/jpeg;base64,${profile.profilePictureBase64}`;
+      }
+      return profile.profilePictureUrl ?? undefined;
+    },
+    [],
+  );
+
+  const resolveAuthorProfile = useCallback(
+    async (authorId?: number) => {
+      if (!authorId) {
+        setAuthorProfile(null);
+        return;
+      }
+      try {
+        const user = await getUserById(authorId);
+        if (!user?.name) {
+          setAuthorProfile(null);
+          return;
+        }
+        setAuthorProfile({
+          name: user.name,
+          avatarUri: buildProfileAvatarUri(user),
+          initials: buildAuthorInitials(user.name),
+        });
+      } catch (error) {
+        console.error("Failed to resolve author profile", error);
+        setAuthorProfile(null);
+      }
+    },
+    [buildAuthorInitials, buildProfileAvatarUri],
+  );
+
+  const ensureCommentAuthors = useCallback(
+    async (comments: PostResponse["comments"]) => {
+      const uniqueAuthorIds = Array.from(
+        new Set(
+          comments
+            .map((comment) => comment.authorId)
+            .filter((id): id is number => typeof id === "number" && id > 0),
+        ),
+      );
+      const missingIds = uniqueAuthorIds.filter((id) => !commentAuthors[id]);
+      if (!missingIds.length) {
+        return;
+      }
+      try {
+        const responses = await Promise.all(
+          missingIds.map(async (id) => {
+            try {
+              const user = await getUserById(id);
+              return user?.name
+                ? {
+                    id,
+                    name: user.name,
+                    avatarUri: buildProfileAvatarUri(user),
+                    initials: buildAuthorInitials(user.name),
+                  }
+                : null;
+            } catch (innerError) {
+              console.error("Failed to fetch comment author", id, innerError);
+              return null;
+            }
+          }),
+        );
+        const newAuthors = responses.reduce<
+          Record<number, { name: string; avatarUri?: string; initials: string }>
+        >((acc, entry) => {
+          if (entry?.name) {
+            acc[entry.id] = {
+              name: entry.name,
+              avatarUri: entry.avatarUri,
+              initials: entry.initials,
+            };
+          }
+          return acc;
+        }, {});
+        if (Object.keys(newAuthors).length) {
+          setCommentAuthors((prev) => ({ ...prev, ...newAuthors }));
+        }
+      } catch (error) {
+        console.error("Failed to resolve comment authors", error);
+      }
+    },
+    [buildAuthorInitials, buildProfileAvatarUri, commentAuthors],
+  );
 
   const loadPost = useCallback(async () => {
     if (Number.isNaN(numericPostId)) {
@@ -93,7 +234,13 @@ export default function CommunityPostScreen() {
     try {
       const response = await getPost(numericPostId);
       setPost(response);
-      const likedByUser = (response as { liked?: boolean; likedByMe?: boolean }).liked ??
+      if (typeof response.authorId === "number") {
+        void resolveAuthorProfile(response.authorId);
+      } else {
+        setAuthorProfile(null);
+      }
+      const likedByUser =
+        (response as { liked?: boolean; likedByMe?: boolean }).liked ??
         (response as { liked?: boolean; likedByMe?: boolean }).likedByMe;
       if (typeof likedByUser === "boolean") {
         setHasLiked(likedByUser);
@@ -104,13 +251,19 @@ export default function CommunityPostScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [numericPostId]);
+  }, [numericPostId, resolveAuthorProfile]);
 
   useFocusEffect(
     useCallback(() => {
       loadPost();
     }, [loadPost]),
   );
+
+  useEffect(() => {
+    if (post?.comments?.length) {
+      void ensureCommentAuthors(post.comments);
+    }
+  }, [ensureCommentAuthors, post?.comments]);
 
   const handleGoBack = useCallback(() => {
     router.back();
@@ -131,12 +284,16 @@ export default function CommunityPostScreen() {
         await unlikePost(post.id);
         setHasLiked(false);
         setPost((prev) =>
-          prev ? { ...prev, likeCount: Math.max(0, (prev.likeCount ?? 0) - 1) } : prev,
+          prev
+            ? { ...prev, likeCount: Math.max(0, (prev.likeCount ?? 0) - 1) }
+            : prev,
         );
       } else {
         await likePost(post.id);
         setHasLiked(true);
-        setPost((prev) => (prev ? { ...prev, likeCount: (prev.likeCount ?? 0) + 1 } : prev));
+        setPost((prev) =>
+          prev ? { ...prev, likeCount: (prev.likeCount ?? 0) + 1 } : prev,
+        );
       }
     } catch (error) {
       console.error("Failed to toggle like on detail", error);
@@ -166,8 +323,12 @@ export default function CommunityPostScreen() {
     setIsSubmittingComment(true);
     setErrorMessage(null);
     try {
-      const comment = await addComment(post.id, { content: commentContent.trim() });
-      setPost((prev) => (prev ? { ...prev, comments: [...prev.comments, comment] } : prev));
+      const comment = await addComment(post.id, {
+        content: commentContent.trim(),
+      });
+      setPost((prev) =>
+        prev ? { ...prev, comments: [...prev.comments, comment] } : prev,
+      );
       setCommentContent("");
     } catch (error) {
       console.error("Failed to submit comment", error);
@@ -178,8 +339,36 @@ export default function CommunityPostScreen() {
   }, [commentContent, post]);
 
   const isInvalidPost = Number.isNaN(numericPostId);
-  const isCommentDisabled = commentContent.trim().length === 0 || isSubmittingComment;
+  const isCommentDisabled =
+    commentContent.trim().length === 0 || isSubmittingComment;
   const mediaItems = extractMediaFromPost(post);
+  const mediaSlides = useMemo(
+    () =>
+      mediaItems
+        .map((media) => {
+          const uri = media.imageBase64
+            ? `data:image/jpeg;base64,${media.imageBase64}`
+            : media.imageUrl;
+          if (!uri) {
+            return null;
+          }
+          return {
+            key: String(media.position),
+            uri,
+          } as const;
+        })
+        .filter(Boolean) as Array<{ key: string; uri: string }>,
+    [mediaItems],
+  );
+
+  const handleOpenViewer = useCallback((index: number) => {
+    setViewerIndex(index);
+    setIsViewerOpen(true);
+  }, []);
+
+  const handleCloseViewer = useCallback(() => {
+    setIsViewerOpen(false);
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -211,7 +400,11 @@ export default function CommunityPostScreen() {
 
           {errorMessage ? (
             <View style={styles.errorBanner}>
-              <Ionicons name="warning-outline" size={18} color={Color.supportiveRoshi} />
+              <Ionicons
+                name="warning-outline"
+                size={18}
+                color={Color.supportiveRoshi}
+              />
               <Text style={styles.errorText}>{errorMessage}</Text>
             </View>
           ) : null}
@@ -222,7 +415,11 @@ export default function CommunityPostScreen() {
             </View>
           ) : isInvalidPost || !post ? (
             <View style={styles.emptyState}>
-              <Ionicons name="alert-circle-outline" size={32} color={Color.mainTrunks} />
+              <Ionicons
+                name="alert-circle-outline"
+                size={32}
+                color={Color.mainTrunks}
+              />
               <Text style={styles.emptyTitle}>Publicacao nao encontrada</Text>
               <Text style={styles.emptySubtitle}>
                 Tente voltar e selecionar outra publicacao da comunidade.
@@ -233,11 +430,26 @@ export default function CommunityPostScreen() {
               <View style={styles.postCard}>
                 <View style={styles.postHeader}>
                   <View style={styles.avatarSmall}>
-                    <Ionicons name="person" size={16} color={Color.mainGoten} />
+                    {authorProfile?.avatarUri ? (
+                      <Image
+                        source={{ uri: authorProfile.avatarUri }}
+                        style={styles.avatarImage}
+                        cachePolicy="memory-disk"
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <Text style={styles.avatarInitials}>
+                        {authorProfile?.initials ?? "CQ"}
+                      </Text>
+                    )}
                   </View>
                   <View style={styles.postHeaderTexts}>
-                    <Text style={styles.postAuthor}>Autor #{post.authorId}</Text>
-                    <Text style={styles.postTimestamp}>{formatDateLabel(post.createdAt)}</Text>
+                    <Text style={styles.postAuthor}>
+                      {authorProfile?.name ?? `Autor #${post.authorId}`}
+                    </Text>
+                    <Text style={styles.postTimestamp}>
+                      {formatDateLabel(post.createdAt)}
+                    </Text>
                   </View>
                   <TouchableOpacity
                     style={styles.likeButton}
@@ -248,46 +460,53 @@ export default function CommunityPostScreen() {
                     <Ionicons
                       name={hasLiked ? "heart" : "heart-outline"}
                       size={20}
-                      color={hasLiked ? Color.supportiveRoshi : Color.piccolo}
+                      color={hasLiked ? Color.supportiveChichi : Color.piccolo}
                     />
                   </TouchableOpacity>
                 </View>
 
                 <Text style={styles.postContent}>{post.content}</Text>
 
-                {mediaItems.length > 0 ? (
+                {mediaSlides.length > 0 ? (
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     nestedScrollEnabled
                     contentContainerStyle={styles.postMediaCarousel}
                   >
-                    {mediaItems.map((media) => {
-                      const mediaUri = media.imageBase64
-                        ? `data:image/jpeg;base64,${media.imageBase64}`
-                        : media.imageUrl;
-                      if (!mediaUri) {
-                        return null;
-                      }
-                      return (
-                        <View
-                          key={`${media.position}-${mediaUri}`}
-                          style={styles.postMediaItem}
-                        >
-                          <Image source={{ uri: mediaUri }} style={styles.postMediaImage} contentFit="cover" />
-                        </View>
-                      );
-                    })}
+                    {mediaSlides.map((media, index) => (
+                      <TouchableOpacity
+                        key={`${media.key}-${media.uri}`}
+                        style={styles.postMediaItem}
+                        activeOpacity={0.85}
+                        onPress={() => handleOpenViewer(index)}
+                      >
+                        <Image
+                          source={{ uri: media.uri }}
+                          style={styles.postMediaImage}
+                          cachePolicy="memory-disk"
+                          contentFit="cover"
+                        />
+                      </TouchableOpacity>
+                    ))}
                   </ScrollView>
                 ) : null}
 
                 <View style={styles.postMeta}>
                   <View style={styles.metaItem}>
-                    <Ionicons name="heart" size={16} color={Color.supportiveRoshi} />
+                    <Ionicons
+                      name="heart"
+                      size={16}
+                      color={Color.supportiveChichi}
+                    />
                     <Text style={styles.metaLabel}>{post.likeCount}</Text>
                   </View>
                   <View style={styles.metaItem}>
-                    <Ionicons name="chatbubble-ellipses-outline" size={16} color={Color.piccolo} />
+                    <Ionicons
+                      name="chatbubble-ellipses-outline"
+                      size={16}
+                      color={Color.piccolo}
+                    />
                     <Text style={styles.metaLabel}>{post.comments.length}</Text>
                   </View>
                 </View>
@@ -300,24 +519,54 @@ export default function CommunityPostScreen() {
 
               {post.comments.length === 0 ? (
                 <View style={styles.emptyComments}>
-                  <Ionicons name="chatbubble-outline" size={24} color={Color.mainTrunks} />
-                  <Text style={styles.emptyCommentsText}>Seja o primeiro a comentar.</Text>
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={24}
+                    color={Color.mainTrunks}
+                  />
+                  <Text style={styles.emptyCommentsText}>
+                    Seja o primeiro a comentar.
+                  </Text>
                 </View>
               ) : (
-                post.comments.map((comment) => (
-                  <View key={comment.id} style={styles.commentCard}>
-                    <View style={styles.commentHeader}>
-                      <View style={styles.avatarTiny}>
-                        <Ionicons name="person" size={14} color={Color.mainGoten} />
+                post.comments.map((comment) => {
+                  const commentAuthor =
+                    typeof comment.authorId === "number"
+                      ? commentAuthors[comment.authorId]
+                      : undefined;
+                  return (
+                    <View key={comment.id} style={styles.commentCard}>
+                      <View style={styles.commentHeader}>
+                        <View style={styles.avatarTiny}>
+                          {commentAuthor?.avatarUri ? (
+                            <Image
+                              source={{ uri: commentAuthor.avatarUri }}
+                              style={styles.avatarImageTiny}
+                              cachePolicy="memory-disk"
+                              contentFit="cover"
+                            />
+                          ) : (
+                            <Text style={styles.avatarInitialsTiny}>
+                              {commentAuthor?.initials ?? "CQ"}
+                            </Text>
+                          )}
+                        </View>
+                        <View style={styles.commentHeaderTexts}>
+                          <Text style={styles.commentAuthor}>
+                            {commentAuthor?.name ??
+                              `Membro #${comment.authorId}`}
+                          </Text>
+                          <Text style={styles.commentTimestamp}>
+                            {formatDateLabel(comment.createdAt)}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={styles.commentHeaderTexts}>
-                        <Text style={styles.commentAuthor}>Membro #{comment.authorId}</Text>
-                        <Text style={styles.commentTimestamp}>{formatDateLabel(comment.createdAt)}</Text>
-                      </View>
+                      <Text style={styles.commentContent}>
+                        {comment.content}
+                      </Text>
                     </View>
-                    <Text style={styles.commentContent}>{comment.content}</Text>
-                  </View>
-                ))
+                  );
+                })
               )}
             </View>
           )}
@@ -335,7 +584,10 @@ export default function CommunityPostScreen() {
               textAlignVertical="top"
             />
             <TouchableOpacity
-              style={[styles.commentButton, isCommentDisabled && styles.commentButtonDisabled]}
+              style={[
+                styles.commentButton,
+                isCommentDisabled && styles.commentButtonDisabled,
+              ]}
               onPress={handleSubmitComment}
               disabled={isCommentDisabled}
             >
@@ -348,6 +600,60 @@ export default function CommunityPostScreen() {
           </View>
         ) : null}
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={isViewerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseViewer}
+      >
+        <View style={styles.viewerBackdrop}>
+          <TouchableOpacity
+            style={styles.viewerClose}
+            onPress={handleCloseViewer}
+            accessibilityRole="button"
+            accessibilityLabel="Fechar imagem"
+          >
+            <Ionicons name="close" size={22} color={Color.mainGoten} />
+          </TouchableOpacity>
+
+          <FlatList
+            data={mediaSlides}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.key}
+            initialScrollIndex={viewerIndex}
+            getItemLayout={(_, index) => ({
+              length: screenWidth,
+              offset: screenWidth * index,
+              index,
+            })}
+            onMomentumScrollEnd={(event) => {
+              const nextIndex = Math.round(
+                event.nativeEvent.contentOffset.x / screenWidth,
+              );
+              setViewerIndex(nextIndex);
+            }}
+            renderItem={({ item }) => (
+              <View style={styles.viewerSlide}>
+                <Image
+                  source={{ uri: item.uri }}
+                  style={styles.viewerImage}
+                  cachePolicy="memory-disk"
+                  contentFit="contain"
+                />
+              </View>
+            )}
+          />
+
+          <View style={styles.viewerCounter}>
+            <Text style={styles.viewerCounterText}>
+              {viewerIndex + 1} / {mediaSlides.length}
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -467,6 +773,16 @@ const styles = StyleSheet.create({
     backgroundColor: Color.piccolo,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarInitials: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainGoten,
   },
   postHeaderTexts: {
     flex: 1,
@@ -571,6 +887,16 @@ const styles = StyleSheet.create({
     backgroundColor: Color.piccolo,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImageTiny: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarInitialsTiny: {
+    fontSize: FontSize.fs_10,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainGoten,
   },
   commentHeaderTexts: {
     flex: 1,
@@ -625,5 +951,45 @@ const styles = StyleSheet.create({
   },
   commentButtonDisabled: {
     opacity: 0.6,
+  },
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    justifyContent: "center",
+  },
+  viewerClose: {
+    position: "absolute",
+    top: StyleVariable.py4,
+    right: StyleVariable.px4,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  viewerSlide: {
+    width: screenWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewerImage: {
+    width: screenWidth,
+    height: screenHeight * 0.7,
+  },
+  viewerCounter: {
+    position: "absolute",
+    bottom: StyleVariable.py4,
+    alignSelf: "center",
+    paddingHorizontal: StyleVariable.px3,
+    paddingVertical: StyleVariable.py1,
+    borderRadius: Border.br_16,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  viewerCounterText: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainGoten,
   },
 });

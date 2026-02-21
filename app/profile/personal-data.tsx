@@ -26,10 +26,28 @@ import {
     Padding,
     StyleVariable,
 } from "../../GlobalStyles";
+import { uploadMedia } from "../../services/media";
 import { getCurrentUser, updateCurrentUser } from "../../services/users";
 import type { UserProfileResponse } from "../../types/api";
 
 const MAX_GALLERY_ITEMS = 4;
+const IMAGE_MEDIA_TYPE =
+  (ImagePicker as any).MediaType?.Images ??
+  (ImagePicker as any).MediaTypeOptions?.Images;
+
+const inferMimeType = (uri: string) => {
+  const extension = uri.split(".").pop()?.toLowerCase();
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "png") return "image/png";
+  if (extension === "heic") return "image/heic";
+  return "image/jpeg";
+};
+
+const buildUploadFile = (uri: string, position: number) => ({
+  uri,
+  name: uri.split("/").pop() ?? `media-${position}.jpg`,
+  type: inferMimeType(uri),
+});
 
 const sanitizeDigits = (value: string) => value.replace(/\D/g, "");
 
@@ -228,9 +246,8 @@ export default function PersonalDataScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: IMAGE_MEDIA_TYPE,
         allowsMultipleSelection: false,
-        base64: true,
         quality: 0.7,
       });
 
@@ -246,7 +263,6 @@ export default function PersonalDataScreen() {
       setAvatar({
         id: `avatar-${Date.now()}`,
         uri: asset.uri,
-        base64: asset.base64 ?? undefined,
       });
     } catch (error) {
       console.error("Failed to pick avatar media", error);
@@ -275,9 +291,8 @@ export default function PersonalDataScreen() {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: IMAGE_MEDIA_TYPE,
         allowsEditing: true,
-        base64: true,
         quality: 0.7,
       });
 
@@ -293,7 +308,6 @@ export default function PersonalDataScreen() {
       setAvatar({
         id: `avatar-${Date.now()}`,
         uri: asset.uri,
-        base64: asset.base64 ?? undefined,
       });
     } catch (error) {
       console.error("Failed to capture avatar media", error);
@@ -333,10 +347,9 @@ export default function PersonalDataScreen() {
       const remainingSlots =
         Math.max(0, MAX_GALLERY_ITEMS - galleryMedia.length) || 1;
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: IMAGE_MEDIA_TYPE,
         allowsMultipleSelection: remainingSlots > 1,
         selectionLimit: remainingSlots,
-        base64: true,
         quality: 0.7,
       });
 
@@ -353,7 +366,6 @@ export default function PersonalDataScreen() {
         const mapped = assets.map((asset, index) => ({
           id: `gallery-${Date.now()}-${index}`,
           uri: asset.uri,
-          base64: asset.base64 ?? undefined,
         }));
         const merged = [...prev, ...mapped];
         return merged.slice(0, MAX_GALLERY_ITEMS);
@@ -387,9 +399,8 @@ export default function PersonalDataScreen() {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: IMAGE_MEDIA_TYPE,
         allowsEditing: true,
-        base64: true,
         quality: 0.7,
       });
 
@@ -411,7 +422,6 @@ export default function PersonalDataScreen() {
           {
             id: `gallery-${Date.now()}`,
             uri: asset.uri,
-            base64: asset.base64 ?? undefined,
           },
         ];
         return next.slice(0, MAX_GALLERY_ITEMS);
@@ -476,18 +486,42 @@ export default function PersonalDataScreen() {
     setSuccessMessage(null);
 
     try {
-      const avatarBase64 = avatar?.base64 ?? null;
-      const avatarUrlCandidate =
+      let avatarUrlCandidate =
         avatar?.remoteUrl ??
         (avatar?.uri && avatar.uri.startsWith("http") ? avatar.uri : undefined);
-      const galleryPayload = galleryMedia.map((item, index) => ({
-        position: index + 1,
-        imageBase64: item.base64 ?? null,
-        imageUrl: item.base64
-          ? null
-          : (item.remoteUrl ??
-            (item.uri && item.uri.startsWith("http") ? item.uri : null)),
-      }));
+
+      if (!avatarUrlCandidate && avatar?.uri) {
+        const uploaded = await uploadMedia(
+          buildUploadFile(avatar.uri, 0),
+          "profile",
+        );
+        avatarUrlCandidate = uploaded.url ?? uploaded.path;
+      }
+
+      const galleryPayload: Array<{ position: number; imageUrl: string }> = [];
+      for (let index = 0; index < galleryMedia.length; index += 1) {
+        const item = galleryMedia[index];
+        const remoteUrl =
+          item.remoteUrl ??
+          (item.uri && item.uri.startsWith("http") ? item.uri : undefined);
+
+        if (remoteUrl) {
+          galleryPayload.push({ position: index + 1, imageUrl: remoteUrl });
+          continue;
+        }
+
+        if (item.uri) {
+          const uploaded = await uploadMedia(
+            buildUploadFile(item.uri, index + 1),
+            "gallery",
+          );
+          const imageUrl = uploaded.url ?? uploaded.path;
+          if (!imageUrl) {
+            throw new Error("Gallery upload failed");
+          }
+          galleryPayload.push({ position: index + 1, imageUrl });
+        }
+      }
       const sanitizedPhone = sanitizePhonePayload(form.phone ?? "");
       const normalizedBirthDate = form.birthDate.trim()
         ? form.birthDate.trim()
@@ -498,13 +532,16 @@ export default function PersonalDataScreen() {
         email: form.email.trim(),
         phone: sanitizedPhone,
         birthDate: normalizedBirthDate,
-        profilePictureBase64: avatar ? avatarBase64 : null,
-        profilePictureUrl: avatar
-          ? avatarBase64
-            ? null
-            : (avatarUrlCandidate ?? null)
-          : null,
-        gallery: galleryPayload,
+        membershipTier: profile?.membershipTier ?? "QUINZE_STANDARD",
+        planId: profile?.plan?.id,
+        ...(avatar === null
+          ? { profilePictureUrl: null }
+          : avatarUrlCandidate
+            ? { profilePictureUrl: avatarUrlCandidate }
+            : {}),
+        ...(galleryPayload.length || galleryMedia.length === 0
+          ? { gallery: galleryPayload }
+          : {}),
       };
 
       const updated = await updateCurrentUser(payload);

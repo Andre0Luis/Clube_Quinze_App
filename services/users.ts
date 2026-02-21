@@ -180,7 +180,7 @@ export const updateCurrentUserWithUpload = async (
 };
 
 export interface ListUsersParams {
-  plan?: string;
+  membershipTier?: string;
 }
 
 export const listUsers = async (params?: ListUsersParams) => {
@@ -204,9 +204,19 @@ export const listUsers = async (params?: ListUsersParams) => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.get<UserSummary[]>("/users", {
-    ...config,
-    params: params?.plan ? { plan: params.plan } : undefined,
-  });
-  return data;
+  const { data } = await api.get<UserSummary[] | { content?: UserSummary[] }>(
+    "/users",
+    {
+      ...config,
+      params: params?.membershipTier
+        ? { membershipTier: params.membershipTier }
+        : undefined,
+    },
+  );
+  const resolved = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.content)
+      ? data.content
+      : [];
+  return resolved;
 };

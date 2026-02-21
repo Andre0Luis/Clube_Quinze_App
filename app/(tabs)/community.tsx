@@ -6,9 +6,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
+  FlatList,
+  Modal,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Share,
   StyleSheet,
@@ -17,6 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   Border,
@@ -35,6 +38,7 @@ import {
   listPosts,
   unlikePost,
 } from "../../services/community";
+import { uploadMedia } from "../../services/media";
 import { getCurrentUser, getUserById } from "../../services/users";
 import type {
   MediaAsset,
@@ -46,11 +50,30 @@ import type {
 type TabName = "posts" | "communities";
 
 const MAX_MEDIA_ITEMS = 4;
+const IMAGE_MEDIA_TYPE =
+  (ImagePicker as any).MediaType?.Images ??
+  (ImagePicker as any).MediaTypeOptions?.Images;
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 type ComposerMedia = {
   uri: string;
   base64?: string;
 };
+
+const inferMimeType = (uri: string) => {
+  const extension = uri.split(".").pop()?.toLowerCase();
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "png") return "image/png";
+  if (extension === "heic") return "image/heic";
+  return "image/jpeg";
+};
+
+const buildUploadFile = (uri: string, position: number) => ({
+  uri,
+  name: uri.split("/").pop() ?? `media-${position}.jpg`,
+  type: inferMimeType(uri),
+});
 
 const extractMediaFromPost = (post: PostResponse): MediaAsset[] => {
   const normalizedMedia = (post.media ?? []).filter(
@@ -141,18 +164,52 @@ export default function CommunityScreen() {
   const [currentUser, setCurrentUser] = useState<UserProfileResponse | null>(
     null,
   );
-  const [authorNames, setAuthorNames] = useState<Record<number, string>>({});
+  const [authorProfiles, setAuthorProfiles] = useState<
+    Record<number, { name: string; avatarUri?: string; initials: string }>
+  >({});
   const [likedPostIds, setLikedPostIds] = useState<number[]>([]);
   const [deletingPostIds, setDeletingPostIds] = useState<number[]>([]);
   const [openMenuPostId, setOpenMenuPostId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const [viewerSlides, setViewerSlides] = useState<
+    Array<{ key: string; uri: string }>
+  >([]);
+  const viewerTotal = viewerSlides.length;
+  const viewerDisplayIndex =
+    viewerTotal > 0 ? Math.min(viewerIndex, viewerTotal - 1) + 1 : 0;
 
-  const ensureAuthorNames = useCallback(
+  const buildAuthorInitials = useCallback((name?: string) => {
+    return (
+      name
+        ?.split(" ")
+        .filter(Boolean)
+        .map((segment) => segment[0]?.toUpperCase())
+        .slice(0, 2)
+        .join("") ?? "CQ"
+    );
+  }, []);
+
+  const buildProfileAvatarUri = useCallback(
+    (profile?: UserProfileResponse | null) => {
+      if (!profile) {
+        return undefined;
+      }
+      if (profile.profilePictureBase64) {
+        return `data:image/jpeg;base64,${profile.profilePictureBase64}`;
+      }
+      return profile.profilePictureUrl ?? undefined;
+    },
+    [],
+  );
+
+  const ensureAuthorProfiles = useCallback(
     async (posts: PostResponse[]) => {
       const uniqueAuthorIds = Array.from(
         new Set(posts.map((post) => post.authorId)),
       ).filter((id): id is number => typeof id === "number" && id > 0);
-      const missingIds = uniqueAuthorIds.filter((id) => !authorNames[id]);
+      const missingIds = uniqueAuthorIds.filter((id) => !authorProfiles[id]);
       if (!missingIds.length) {
         return;
       }
@@ -161,30 +218,40 @@ export default function CommunityScreen() {
           missingIds.map(async (id) => {
             try {
               const user = await getUserById(id);
-              return user?.name ? { id, name: user.name } : null;
+              return user?.name
+                ? {
+                    id,
+                    name: user.name,
+                    avatarUri: buildProfileAvatarUri(user),
+                    initials: buildAuthorInitials(user.name),
+                  }
+                : null;
             } catch (innerError) {
               console.error("Failed to fetch author data", id, innerError);
               return null;
             }
           }),
         );
-        const newNames = responses.reduce<Record<number, string>>(
-          (acc, entry) => {
-            if (entry?.name) {
-              acc[entry.id] = entry.name;
-            }
-            return acc;
-          },
-          {},
-        );
-        if (Object.keys(newNames).length) {
-          setAuthorNames((prev) => ({ ...prev, ...newNames }));
+        const newProfiles = responses.reduce<
+          Record<number, { name: string; avatarUri?: string; initials: string }>
+        >((acc, entry) => {
+          if (entry?.name) {
+            acc[entry.id] = {
+              name: entry.name,
+              avatarUri: entry.avatarUri,
+              initials: entry.initials,
+            };
+          }
+          return acc;
+        }, {});
+        if (Object.keys(newProfiles).length) {
+          setAuthorProfiles((prev) => ({ ...prev, ...newProfiles }));
         }
       } catch (error) {
         console.error("Failed to resolve author names", error);
       }
     },
-    [authorNames],
+    [authorProfiles, buildAuthorInitials, buildProfileAvatarUri],
   );
 
   const fetchCommunityData = useCallback(
@@ -209,7 +276,7 @@ export default function CommunityScreen() {
               pageResponse.content?.some((post) => post.id === id) ?? false,
           ),
         );
-        void ensureAuthorNames(pageResponse.content ?? []);
+        void ensureAuthorProfiles(pageResponse.content ?? []);
       } catch (error) {
         console.error("Failed to load community data", error);
         setErrorMessage("Nao foi possivel carregar a comunidade agora.");
@@ -218,7 +285,7 @@ export default function CommunityScreen() {
         setIsRefreshing(false);
       }
     },
-    [ensureAuthorNames],
+    [ensureAuthorProfiles],
   );
 
   useFocusEffect(
@@ -286,10 +353,9 @@ export default function CommunityScreen() {
       const remainingSlots =
         Math.max(0, MAX_MEDIA_ITEMS - selectedMedia.length) || 1;
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: IMAGE_MEDIA_TYPE,
         allowsMultipleSelection: remainingSlots > 1,
         selectionLimit: remainingSlots,
-        base64: true,
         quality: 0.7,
       });
       if (result.canceled) {
@@ -300,10 +366,7 @@ export default function CommunityScreen() {
         return;
       }
       setSelectedMedia((prev) => {
-        const appended = assets.map((asset) => ({
-          uri: asset.uri,
-          base64: asset.base64 ?? undefined,
-        }));
+        const appended = assets.map((asset) => ({ uri: asset.uri }));
         const merged = [...prev, ...appended];
         return merged.slice(0, MAX_MEDIA_ITEMS);
       });
@@ -321,14 +384,25 @@ export default function CommunityScreen() {
 
   useEffect(() => {
     if (currentUser?.id && currentUser.name) {
-      setAuthorNames((prev) => {
-        if (prev[currentUser.id] === currentUser.name) {
+      setAuthorProfiles((prev) => {
+        const existing = prev[currentUser.id];
+        if (
+          existing?.name === currentUser.name &&
+          existing?.avatarUri === buildProfileAvatarUri(currentUser)
+        ) {
           return prev;
         }
-        return { ...prev, [currentUser.id]: currentUser.name };
+        return {
+          ...prev,
+          [currentUser.id]: {
+            name: currentUser.name,
+            avatarUri: buildProfileAvatarUri(currentUser),
+            initials: buildAuthorInitials(currentUser.name),
+          },
+        };
       });
     }
-  }, [currentUser]);
+  }, [buildAuthorInitials, buildProfileAvatarUri, currentUser]);
 
   const handlePublish = useCallback(async () => {
     if (!postContent.trim()) {
@@ -337,25 +411,40 @@ export default function CommunityScreen() {
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      const mediaPayload = selectedMedia.map((item, index) => ({
-        position: index + 1,
-        imageBase64: item.base64,
-        imageUrl:
-          item.base64 || !item.uri || item.uri.startsWith("file://")
-            ? undefined
-            : item.uri,
-      }));
+      const uploadedMedia = [] as MediaAsset[];
+
+      for (let index = 0; index < selectedMedia.length; index += 1) {
+        const media = selectedMedia[index];
+        const file = buildUploadFile(media.uri, index + 1);
+        const uploaded = await uploadMedia(file, "posts");
+        const imageUrl = uploaded.url ?? uploaded.path;
+        uploadedMedia.push({
+          position: index + 1,
+          imageUrl,
+        });
+      }
+
       await createPost({
         title: "Compartilhamento rapido",
         content: postContent.trim(),
-        media: mediaPayload,
+        media: uploadedMedia,
       });
       setPostContent("");
       setSelectedMedia([]);
       await fetchCommunityData({ silent: true });
     } catch (error) {
       console.error("Failed to publish post", error);
-      setErrorMessage("Nao foi possivel publicar agora. Tente novamente.");
+      const responseStatus =
+        typeof error === "object" && error && "response" in error
+          ? (error as any).response?.status
+          : undefined;
+      if (responseStatus === 413) {
+        setErrorMessage(
+          "Imagem muito grande para upload. Tente uma foto menor ou com menos midias.",
+        );
+      } else {
+        setErrorMessage("Nao foi possivel publicar agora. Tente novamente.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -405,18 +494,15 @@ export default function CommunityScreen() {
     [likedPostIds],
   );
 
-  const handleSharePost = useCallback(
-    async (post: PostResponse) => {
-      try {
-        await Share.share({
-          message: `${post.content}\n\nCompartilhado via Clube Quinze.`,
-        });
-      } catch (error) {
-        console.error("Failed to share post", error);
-      }
-    },
-    [ensureAuthorNames],
-  );
+  const handleSharePost = useCallback(async (post: PostResponse) => {
+    try {
+      await Share.share({
+        message: `${post.content}\n\nCompartilhado via Clube Quinze.`,
+      });
+    } catch (error) {
+      console.error("Failed to share post", error);
+    }
+  }, []);
 
   const handleDeletePost = useCallback(
     (post: PostResponse) => {
@@ -468,6 +554,38 @@ export default function CommunityScreen() {
 
   const handlePostOptions = useCallback((post: PostResponse) => {
     setOpenMenuPostId((current) => (current === post.id ? null : post.id));
+  }, []);
+
+  const buildMediaSlides = useCallback((items: MediaAsset[]) => {
+    return items
+      .map((media) => {
+        const uri = media.imageBase64
+          ? `data:image/jpeg;base64,${media.imageBase64}`
+          : media.imageUrl;
+        if (!uri) {
+          return null;
+        }
+        return { key: String(media.position), uri } as const;
+      })
+      .filter(Boolean) as Array<{ key: string; uri: string }>;
+  }, []);
+
+  const handleOpenViewer = useCallback(
+    (items: MediaAsset[], index: number) => {
+      const slides = buildMediaSlides(items);
+      if (!slides.length) {
+        return;
+      }
+      const safeIndex = Math.min(Math.max(index, 0), slides.length - 1);
+      setViewerSlides(slides);
+      setViewerIndex(safeIndex);
+      setIsViewerOpen(true);
+    },
+    [buildMediaSlides],
+  );
+
+  const handleCloseViewer = useCallback(() => {
+    setIsViewerOpen(false);
   }, []);
 
   const handleOpenComments = useCallback(
@@ -705,6 +823,12 @@ export default function CommunityScreen() {
               currentUser?.id === post.authorId;
             const isDeleting = deletingPostIds.includes(post.id);
             const mediaItems = extractMediaFromPost(post);
+            const authorProfile =
+              typeof post.authorId === "number"
+                ? authorProfiles[post.authorId]
+                : undefined;
+            const authorAvatarUri = authorProfile?.avatarUri;
+            const authorInitials = authorProfile?.initials ?? "CQ";
             return (
               <View key={post.id} style={styles.postCard}>
                 {openMenuPostId === post.id ? (
@@ -716,14 +840,24 @@ export default function CommunityScreen() {
                 ) : null}
                 <View style={styles.postHeader}>
                   <View style={styles.avatarSmall}>
-                    <Ionicons name="person" size={16} color={Color.mainGoten} />
+                    {authorAvatarUri ? (
+                      <Image
+                        source={{ uri: authorAvatarUri }}
+                        style={styles.avatarImage}
+                        cachePolicy="memory-disk"
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <Text style={styles.avatarInitials}>
+                        {authorInitials}
+                      </Text>
+                    )}
                   </View>
                   <View style={styles.postHeaderTexts}>
                     <Text style={styles.postAuthor}>
                       {currentUser?.id === post.authorId
                         ? "Você"
-                        : (authorNames[post.authorId] ??
-                          `Autor #${post.authorId}`)}
+                        : (authorProfile?.name ?? `Autor #${post.authorId}`)}
                     </Text>
                     <Text style={styles.postTimestamp}>
                       {formatDateLabel(post.createdAt)}
@@ -796,7 +930,7 @@ export default function CommunityScreen() {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.postMediaList}
                   >
-                    {mediaItems.map((media) => {
+                    {mediaItems.map((media, index) => {
                       const mediaUri = media.imageBase64
                         ? `data:image/jpeg;base64,${media.imageBase64}`
                         : media.imageUrl;
@@ -804,16 +938,19 @@ export default function CommunityScreen() {
                         return null;
                       }
                       return (
-                        <View
+                        <TouchableOpacity
                           key={`${post.id}-${media.position}-${mediaUri}`}
                           style={styles.postMediaItem}
+                          activeOpacity={0.85}
+                          onPress={() => handleOpenViewer(mediaItems, index)}
                         >
                           <Image
                             source={{ uri: mediaUri }}
                             style={styles.postMediaImage}
+                            cachePolicy="memory-disk"
                             contentFit="cover"
                           />
-                        </View>
+                        </TouchableOpacity>
                       );
                     })}
                   </ScrollView>
@@ -827,7 +964,7 @@ export default function CommunityScreen() {
                     <Ionicons
                       name={isLiked ? "heart" : "heart-outline"}
                       size={18}
-                      color={isLiked ? Color.supportiveRoshi : Color.piccolo}
+                      color={isLiked ? Color.supportiveChichi : Color.piccolo}
                     />
                     <Text
                       style={[
@@ -870,6 +1007,60 @@ export default function CommunityScreen() {
           })
         )}
       </ScrollView>
+
+      <Modal
+        visible={isViewerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseViewer}
+      >
+        <View style={styles.viewerBackdrop}>
+          <TouchableOpacity
+            style={styles.viewerClose}
+            onPress={handleCloseViewer}
+            accessibilityRole="button"
+            accessibilityLabel="Fechar imagem"
+          >
+            <Ionicons name="close" size={22} color={Color.mainGoten} />
+          </TouchableOpacity>
+
+          <FlatList
+            data={viewerSlides}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.key}
+            initialScrollIndex={viewerIndex}
+            getItemLayout={(_, index) => ({
+              length: screenWidth,
+              offset: screenWidth * index,
+              index,
+            })}
+            onMomentumScrollEnd={(event) => {
+              const nextIndex = Math.round(
+                event.nativeEvent.contentOffset.x / screenWidth,
+              );
+              setViewerIndex(nextIndex);
+            }}
+            renderItem={({ item }) => (
+              <View style={styles.viewerSlide}>
+                <Image
+                  source={{ uri: item.uri }}
+                  style={styles.viewerImage}
+                  cachePolicy="memory-disk"
+                  contentFit="contain"
+                />
+              </View>
+            )}
+          />
+
+          <View style={styles.viewerCounter}>
+            <Text style={styles.viewerCounterText}>
+              {viewerDisplayIndex} / {viewerTotal}
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1111,6 +1302,16 @@ const styles = StyleSheet.create({
     backgroundColor: Color.piccolo,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarInitials: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainGoten,
   },
   postHeaderTexts: {
     flex: 1,
@@ -1142,7 +1343,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 44,
     backgroundColor: Color.mainGohan,
-    borderRadius: Border.br_12,
+    borderRadius: Border.br_10,
     borderWidth: 1,
     borderColor: "rgba(0, 5, 61, 0.12)",
     shadowColor: "rgba(0,0,0,0.18)",
@@ -1202,7 +1403,7 @@ const styles = StyleSheet.create({
     color: Color.hit,
   },
   postActionLabelHighlighted: {
-    color: Color.supportiveRoshi,
+    color: Color.supportiveChichi,
   },
   postShare: {
     flexDirection: "row",
@@ -1318,6 +1519,46 @@ const styles = StyleSheet.create({
   },
   communityButtonText: {
     fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainGoten,
+  },
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    justifyContent: "center",
+  },
+  viewerClose: {
+    position: "absolute",
+    top: StyleVariable.py4,
+    right: StyleVariable.px4,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  viewerSlide: {
+    width: screenWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewerImage: {
+    width: screenWidth,
+    height: screenHeight * 0.7,
+  },
+  viewerCounter: {
+    position: "absolute",
+    bottom: StyleVariable.py4,
+    alignSelf: "center",
+    paddingHorizontal: StyleVariable.px3,
+    paddingVertical: StyleVariable.py1,
+    borderRadius: Border.br_16,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  viewerCounterText: {
+    fontSize: FontSize.fs_12,
     fontFamily: FontFamily.dMSansBold,
     color: Color.mainGoten,
   },

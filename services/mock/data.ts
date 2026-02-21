@@ -13,6 +13,7 @@ import {
     FeedbackResponse,
     LikeResponse,
     LoginRequest,
+    MembershipTier,
     PageResponse,
     PlanRequest,
     PlanResponse,
@@ -69,7 +70,7 @@ const selectPlan: PlanResponse = {
 
 const plans: PlanSummary[] = [basePlan, premiumPlan, selectPlan];
 
-export type MockPersona = "ADMIN" | "CLUB_15" | "QUINZE_SELECT";
+export type MockPersona = "ADMIN" | MembershipTier;
 
 type PersonaPreset = {
   id: MockPersona;
@@ -88,23 +89,34 @@ const personaPresets: Record<MockPersona, PersonaPreset> = {
     id: "ADMIN",
     label: "Admin",
     role: "CLUB_ADMIN",
-    membershipTier: "CLUB_15",
+    membershipTier: "QUINZE_PREMIUM",
     plan: premiumPlan,
     email: "admin@clubequinze.com",
     name: "Admin Clube Quinze",
     phone: "+55 11 90000-0001",
     description: "Perfil administrativo para testar dashboards e gestão",
   },
-  CLUB_15: {
-    id: "CLUB_15",
+  QUINZE_STANDARD: {
+    id: "QUINZE_STANDARD",
     label: "Clube 15",
     role: "CLIENT",
-    membershipTier: "CLUB_15",
+    membershipTier: "QUINZE_STANDARD",
     plan: basePlan,
     email: "cliente@clubequinze.com",
     name: "Cliente Clube 15",
     phone: "+55 11 90000-0015",
-    description: "Cliente convencional do Clube 15",
+    description: "Cliente convencional do Clube Quinze",
+  },
+  QUINZE_PREMIUM: {
+    id: "QUINZE_PREMIUM",
+    label: "Clube 15 Premium",
+    role: "CLIENT",
+    membershipTier: "QUINZE_PREMIUM",
+    plan: premiumPlan,
+    email: "premium@clubequinze.com",
+    name: "Cliente Clube 15 Premium",
+    phone: "+55 11 90000-0021",
+    description: "Cliente premium com beneficios extendidos",
   },
   QUINZE_SELECT: {
     id: "QUINZE_SELECT",
@@ -148,7 +160,7 @@ const appointments: AppointmentResponse[] = [
     id: 1,
     clientId: 1,
     scheduledAt: upcomingMorningIso,
-    appointmentTier: "CLUB_15",
+    appointmentTier: "QUINZE_STANDARD",
     status: "SCHEDULED",
     serviceType: "corte_de_cabelo",
     notes: "Cliente prefere silencio e acabamento com navalha.",
@@ -157,7 +169,7 @@ const appointments: AppointmentResponse[] = [
     id: 2,
     clientId: 1,
     scheduledAt: upcomingEveningIso,
-    appointmentTier: "CLUB_15",
+    appointmentTier: "QUINZE_STANDARD",
     status: "SCHEDULED",
     serviceType: "barba",
     notes: "Usar oleo refrescante e toalha quente.",
@@ -175,7 +187,7 @@ const appointments: AppointmentResponse[] = [
     id: 4,
     clientId: 1,
     scheduledAt: completedIso,
-    appointmentTier: "CLUB_15",
+    appointmentTier: "QUINZE_STANDARD",
     status: "COMPLETED",
     serviceType: "corte_de_cabelo",
     notes: "Cliente avaliou com nota maxima.",
@@ -184,7 +196,7 @@ const appointments: AppointmentResponse[] = [
     id: 5,
     clientId: 1,
     scheduledAt: canceledIso,
-    appointmentTier: "CLUB_15",
+    appointmentTier: "QUINZE_STANDARD",
     status: "CANCELED",
     serviceType: "barba",
     notes: "Cancelado pelo cliente via aplicativo.",
@@ -202,7 +214,7 @@ const appointments: AppointmentResponse[] = [
     id: 7,
     clientId: 1,
     scheduledAt: addDays(-7, 13, 0),
-    appointmentTier: "CLUB_15",
+    appointmentTier: "QUINZE_STANDARD",
     status: "COMPLETED",
     serviceType: "limpeza_de_pele",
     notes: "Sessao completa de skincare com esfoliacao.",
@@ -220,7 +232,7 @@ const appointments: AppointmentResponse[] = [
     id: 9,
     clientId: 1,
     scheduledAt: addDays(-20, 10, 30),
-    appointmentTier: "CLUB_15",
+    appointmentTier: "QUINZE_STANDARD",
     status: "CANCELED",
     serviceType: "corte_rapido",
     notes: "Cancelado por manutencao do espaco.",
@@ -229,7 +241,7 @@ const appointments: AppointmentResponse[] = [
 
 const baseAppointment: AppointmentResponse = appointments[0];
 
-let currentPersona: MockPersona = "CLUB_15";
+let currentPersona: MockPersona = "QUINZE_STANDARD";
 
 const buildBaseUser = (persona: MockPersona): UserProfileResponse => {
   const preset = personaPresets[persona];
@@ -822,7 +834,7 @@ export const mockData = {
     );
     return {
       date,
-      membershipTier: tier ?? "CLUB_15",
+      membershipTier: tier ?? "QUINZE_STANDARD",
       availableSlots,
     };
   },

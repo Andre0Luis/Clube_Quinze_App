@@ -1,34 +1,28 @@
 import { Ionicons } from "@expo/vector-icons";
-import {
-  useFocusEffect,
-  useLocalSearchParams,
-  usePathname,
-  useRouter,
-} from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Linking,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Linking,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import AdminNavbar from "../../components/admin-navbar";
 import {
-  Border,
-  Color,
-  FontFamily,
-  FontSize,
-  Gap,
-  LineHeight,
-  Padding,
-  StyleVariable,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    LineHeight,
+    Padding,
+    StyleVariable,
 } from "../../GlobalStyles";
 import { listPlans, updatePlan } from "../../services/plans";
 import { getCurrentUser } from "../../services/users";
@@ -72,7 +66,6 @@ const addMonths = (value: string, months: number) => {
 
 export default function PlansScreen() {
   const router = useRouter();
-  const pathname = usePathname();
   const { fromAdmin } = useLocalSearchParams<{
     fromAdmin?: string | string[];
   }>();
@@ -460,8 +453,6 @@ export default function PlansScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {isAdminContext ? <AdminNavbar activePath={pathname} /> : null}
     </SafeAreaView>
   );
 }

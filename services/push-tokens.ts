@@ -28,7 +28,7 @@ export const registerPushToken = async (
   try {
     const config = await withAuthHeader();
     await api.post(
-      "/api/v1/notifications/tokens",
+      "/notifications/tokens",
       {
         token: expoPushToken,
         platform: Platform.OS,

@@ -27,7 +27,7 @@ import {
     Padding,
     StyleVariable,
 } from "../GlobalStyles";
-import { login } from "../services/auth";
+import { forgotPassword, login } from "../services/auth";
 import type { MockPersona } from "../services/mock/data";
 import {
     getMockPersona,
@@ -48,6 +48,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
   const router = useRouter();
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
 
@@ -120,6 +121,33 @@ export default function LoginScreen() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      Alert.alert(
+        "Recuperar senha",
+        "Informe seu email para enviar o link de recuperação.",
+      );
+      return;
+    }
+
+    setIsSendingReset(true);
+    try {
+      await forgotPassword(trimmedEmail);
+      Alert.alert(
+        "Verifique seu email",
+        "Se o email existir, enviaremos um link para redefinir a senha.",
+      );
+    } catch (error) {
+      Alert.alert(
+        "Falha ao solicitar reset",
+        "Tente novamente em instantes ou contate o suporte.",
+      );
+    } finally {
+      setIsSendingReset(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -186,6 +214,15 @@ export default function LoginScreen() {
                     />
                   </TouchableOpacity>
                 </View>
+                <TouchableOpacity
+                  onPress={handleForgotPassword}
+                  disabled={isSendingReset}
+                  style={styles.forgotPassword}
+                >
+                  <Text style={styles.forgotPasswordText}>
+                    {isSendingReset ? "Enviando..." : "Esqueci minha senha"}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -298,6 +335,16 @@ const styles = StyleSheet.create({
     fontSize: FontSize.fs_16,
     fontFamily: FontFamily.dMSansRegular,
     color: Color.mainBulma,
+  },
+  forgotPassword: {
+    marginTop: StyleVariable.gap1,
+    alignSelf: "flex-end",
+  },
+  forgotPasswordText: {
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_20,
+    color: Color.piccolo,
+    fontFamily: FontFamily.dMSansMedium,
   },
   loginButton: {
     marginTop: StyleVariable.px6,

@@ -22,6 +22,8 @@ import {
 } from "../../../GlobalStyles";
 import {
     getAppointmentById,
+    listAppointments,
+    listMyAppointments,
     updateAppointmentStatus,
 } from "../../../services/appointments";
 import type { AppointmentResponse } from "../../../types/api";
@@ -98,7 +100,12 @@ const DetailRow = ({
 
 export default function AppointmentDetailsScreen() {
   const router = useRouter();
-  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
+  const { appointmentId, allowAdmin } = useLocalSearchParams<{
+    appointmentId?: string;
+    allowAdmin?: string | string[];
+  }>();
+  const allowAdminFlag = Array.isArray(allowAdmin) ? allowAdmin[0] : allowAdmin;
+  const isAdminContext = allowAdminFlag === "1";
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -123,6 +130,26 @@ export default function AppointmentDetailsScreen() {
       const response = await getAppointmentById(id);
       setAppointment(response);
     } catch (error) {
+      try {
+        if (isAdminContext) {
+          const page = await listAppointments({ size: 200 });
+          const fallback = page.content?.find((item) => item.id === id);
+          if (fallback) {
+            setAppointment(fallback);
+            return;
+          }
+        }
+
+        const page = await listMyAppointments({ size: 200 });
+        const fallback = page.content?.find((item) => item.id === id);
+        if (fallback) {
+          setAppointment(fallback);
+          return;
+        }
+      } catch (fallbackError) {
+        console.error("Failed to load appointment fallback", fallbackError);
+      }
+
       console.error("Failed to load appointment", error);
       setAppointment(null);
       setErrorMessage(
@@ -131,7 +158,7 @@ export default function AppointmentDetailsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [appointmentId]);
+  }, [appointmentId, isAdminContext]);
 
   useEffect(() => {
     const bootstrap = async () => {

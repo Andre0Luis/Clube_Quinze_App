@@ -4,19 +4,20 @@ import {
     AppointmentResponse,
     AppointmentStatus,
     AppointmentStatusUpdateRequest,
+    AppointmentTier,
     AvailableSlotResponse,
     PageResponse,
-} from '../types/api';
-import api from './api';
-import { mockData } from './mock/data';
-import { isMockEnabled } from './mock/settings';
-import { clone } from './mock/utils';
-import { getAccessToken } from './storage';
+} from "../types/api";
+import api from "./api";
+import { mockData } from "./mock/data";
+import { isMockEnabled } from "./mock/settings";
+import { clone } from "./mock/utils";
+import { getAccessToken } from "./storage";
 
 const withAuthHeader = async () => {
   const token = await getAccessToken();
   if (!token) {
-    throw new Error('Access token is not available.');
+    throw new Error("Access token is not available.");
   }
   return {
     headers: {
@@ -44,7 +45,7 @@ export interface ListMyAppointmentsParams {
 
 export interface ListAvailableSlotsParams {
   date: string;
-  tier?: 'CLUB_15' | 'QUINZE_SELECT';
+  tier?: AppointmentTier;
 }
 
 export const listAppointments = async (params?: ListAppointmentsParams) => {
@@ -53,10 +54,13 @@ export const listAppointments = async (params?: ListAppointmentsParams) => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.get<PageResponse<AppointmentResponse>>('/appointments', {
-    ...config,
-    params,
-  });
+  const { data } = await api.get<PageResponse<AppointmentResponse>>(
+    "/appointments",
+    {
+      ...config,
+      params,
+    },
+  );
   return data;
 };
 
@@ -66,10 +70,13 @@ export const listMyAppointments = async (params?: ListMyAppointmentsParams) => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.get<PageResponse<AppointmentResponse>>('/appointments/me', {
-    ...config,
-    params,
-  });
+  const { data } = await api.get<PageResponse<AppointmentResponse>>(
+    "/appointments/me",
+    {
+      ...config,
+      params,
+    },
+  );
   return data;
 };
 
@@ -79,7 +86,10 @@ export const getAppointmentById = async (appointmentId: number) => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.get<AppointmentResponse>(`/appointments/${appointmentId}`, config);
+  const { data } = await api.get<AppointmentResponse>(
+    `/appointments/${appointmentId}`,
+    config,
+  );
   return data;
 };
 
@@ -89,7 +99,11 @@ export const scheduleAppointment = async (payload: AppointmentRequest) => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.post<AppointmentResponse>('/appointments', payload, config);
+  const { data } = await api.post<AppointmentResponse>(
+    "/appointments",
+    payload,
+    config,
+  );
   return data;
 };
 
@@ -137,15 +151,21 @@ export const cancelAppointment = async (appointmentId: number) => {
   await api.delete(`/appointments/${appointmentId}`, config);
 };
 
-export const listAvailableSlots = async ({ date, tier }: ListAvailableSlotsParams) => {
+export const listAvailableSlots = async ({
+  date,
+  tier,
+}: ListAvailableSlotsParams) => {
   if (isMockEnabled()) {
     return clone(mockData.listAvailableSlots(date, tier));
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.get<AvailableSlotResponse>('/appointments/availability', {
-    ...config,
-    params: tier ? { date, tier } : { date },
-  });
+  const { data } = await api.get<AvailableSlotResponse>(
+    "/appointments/availability",
+    {
+      ...config,
+      params: tier ? { date, tier } : { date },
+    },
+  );
   return data;
 };

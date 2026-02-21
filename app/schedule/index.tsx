@@ -22,7 +22,10 @@ import {
     Padding,
     StyleVariable,
 } from "../../GlobalStyles";
-import { getAppointmentById, listAvailableSlots } from "../../services/appointments";
+import {
+    getAppointmentById,
+    listAvailableSlots,
+} from "../../services/appointments";
 import { getCurrentUser } from "../../services/users";
 import type { AvailableSlotResponse, MembershipTier } from "../../types/api";
 
@@ -42,22 +45,32 @@ const MONTH_LABELS = [
   "Dezembro",
 ] as const;
 
-const toStartOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
-const toStartOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
+const toStartOfDay = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+const toStartOfMonth = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), 1);
 
-const formatMonthLabel = (date: Date) => `${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
+const formatMonthLabel = (date: Date) =>
+  `${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
 
 const formatDateParam = (date: Date) => date.toISOString().split("T")[0];
 
 const formatDisplayDate = (input: Date) =>
-  input.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  input.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
 
 const formatDisplayTime = (iso: string) => {
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) {
     return iso;
   }
-  return parsed.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return parsed.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 const MAX_MONTH_OFFSET = 3;
@@ -69,7 +82,22 @@ interface DayCell {
 
 export default function ScheduleScreen() {
   const router = useRouter();
-  const { appointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
+  const { appointmentId, clientId, tier } = useLocalSearchParams<{
+    appointmentId?: string;
+    clientId?: string | string[];
+    tier?: string | string[];
+  }>();
+
+  const resolvedClientId = useMemo(() => {
+    const raw = Array.isArray(clientId) ? clientId[0] : clientId;
+    const parsed = Number(raw);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }, [clientId]);
+
+  const resolvedTier = useMemo(() => {
+    const raw = Array.isArray(tier) ? tier[0] : tier;
+    return raw as MembershipTier | undefined;
+  }, [tier]);
 
   const today = useMemo(() => toStartOfDay(new Date()), []);
   const minSelectableDate = useMemo(() => {
@@ -88,7 +116,9 @@ export default function ScheduleScreen() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-  const [membershipTier, setMembershipTier] = useState<MembershipTier | undefined>();
+  const [membershipTier, setMembershipTier] = useState<
+    MembershipTier | undefined
+  >();
   const [notes, setNotes] = useState("");
   const [isPrefetching, setIsPrefetching] = useState(true);
 
@@ -122,7 +152,11 @@ export default function ScheduleScreen() {
     }
 
     for (let day = 1; day <= daysInMonth; day += 1) {
-      const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+      const date = new Date(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth(),
+        day,
+      );
       cells.push({ key: `day-${day}`, date });
     }
 
@@ -180,12 +214,16 @@ export default function ScheduleScreen() {
       }
     };
 
-    loadUser();
+    if (resolvedTier) {
+      setMembershipTier(resolvedTier);
+    } else {
+      loadUser();
+    }
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [resolvedTier]);
 
   useEffect(() => {
     if (!appointmentId) {
@@ -259,6 +297,8 @@ export default function ScheduleScreen() {
         slot: selectedSlot,
         notes: notes.trim() ? notes.trim() : "",
         appointmentId: appointmentId ?? undefined,
+        clientId: resolvedClientId ? String(resolvedClientId) : undefined,
+        tier: resolvedTier ?? undefined,
       },
     });
   };
@@ -273,7 +313,8 @@ export default function ScheduleScreen() {
       cell.date < minSelectableDate ||
       cell.date > maxSelectableDate;
 
-    const isSelected = selectedDate && cell.date.getTime() === selectedDate.getTime();
+    const isSelected =
+      selectedDate && cell.date.getTime() === selectedDate.getTime();
 
     return (
       <TouchableOpacity
@@ -329,11 +370,19 @@ export default function ScheduleScreen() {
           return (
             <TouchableOpacity
               key={slot}
-              style={[styles.slotCard, isSelected ? styles.slotCardSelected : null]}
+              style={[
+                styles.slotCard,
+                isSelected ? styles.slotCardSelected : null,
+              ]}
               activeOpacity={0.85}
               onPress={() => setSelectedSlot(slot)}
             >
-              <Text style={[styles.slotCardLabel, isSelected ? styles.slotCardLabelSelected : null]}>
+              <Text
+                style={[
+                  styles.slotCardLabel,
+                  isSelected ? styles.slotCardLabelSelected : null,
+                ]}
+              >
                 {formatDisplayTime(slot)}
               </Text>
             </TouchableOpacity>
@@ -356,7 +405,10 @@ export default function ScheduleScreen() {
         <Text style={styles.headerTitle}>Agendamento</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.sectionTitle}>Selecione uma data</Text>
 
         <View style={styles.calendarCard}>
@@ -365,39 +417,55 @@ export default function ScheduleScreen() {
               onPress={() => handleChangeMonth(-1)}
               activeOpacity={0.85}
               disabled={isPreviousMonthDisabled}
-              style={[styles.monthButton, isPreviousMonthDisabled ? styles.monthButtonDisabled : null]}
+              style={[
+                styles.monthButton,
+                isPreviousMonthDisabled ? styles.monthButtonDisabled : null,
+              ]}
             >
               <Ionicons name="chevron-back" size={18} color={Color.piccolo} />
             </TouchableOpacity>
 
-            <Text style={styles.monthLabel}>{formatMonthLabel(currentMonth)}</Text>
+            <Text style={styles.monthLabel}>
+              {formatMonthLabel(currentMonth)}
+            </Text>
 
             <TouchableOpacity
               onPress={() => handleChangeMonth(1)}
               activeOpacity={0.85}
               disabled={isNextMonthDisabled}
-              style={[styles.monthButton, isNextMonthDisabled ? styles.monthButtonDisabled : null]}
+              style={[
+                styles.monthButton,
+                isNextMonthDisabled ? styles.monthButtonDisabled : null,
+              ]}
             >
-              <Ionicons name="chevron-forward" size={18} color={Color.piccolo} />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={Color.piccolo}
+              />
             </TouchableOpacity>
           </View>
 
           <View style={styles.weekHeader}>
-            {DAYS_OF_WEEK.map((day) => (
-              <Text key={day} style={styles.weekDayLabel}>
+            {DAYS_OF_WEEK.map((day, index) => (
+              <Text key={`${day}-${index}`} style={styles.weekDayLabel}>
                 {day}
               </Text>
             ))}
           </View>
 
-          <View style={styles.calendarGrid}>{generateCalendarCells().map(renderDayCell)}</View>
+          <View style={styles.calendarGrid}>
+            {generateCalendarCells().map(renderDayCell)}
+          </View>
         </View>
 
         <Text style={styles.sectionTitle}>Selecione um horario</Text>
         {slotsContent()}
 
         <View style={styles.notesBlock}>
-          <Text style={styles.sectionSubtitle}>Alguma preferencia? (Opcional)</Text>
+          <Text style={styles.sectionSubtitle}>
+            Alguma preferencia? (Opcional)
+          </Text>
           <TextInput
             style={styles.notesInput}
             value={notes}
@@ -414,7 +482,10 @@ export default function ScheduleScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.primaryButton, isReviewDisabled ? styles.primaryButtonDisabled : null]}
+          style={[
+            styles.primaryButton,
+            isReviewDisabled ? styles.primaryButtonDisabled : null,
+          ]}
           activeOpacity={0.9}
           disabled={isReviewDisabled}
           onPress={handleContinue}

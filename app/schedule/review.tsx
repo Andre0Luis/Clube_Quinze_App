@@ -50,21 +50,41 @@ const formatTimeDisplay = (iso?: string) => {
   if (Number.isNaN(date.getTime())) {
     return iso;
   }
-  return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 export default function ScheduleReviewScreen() {
   const router = useRouter();
-  const { date, slot, notes, appointmentId } = useLocalSearchParams<{
-    date?: string;
-    slot?: string;
-    notes?: string;
-    appointmentId?: string;
-  }>();
+  const { date, slot, notes, appointmentId, clientId, tier } =
+    useLocalSearchParams<{
+      date?: string;
+      slot?: string;
+      notes?: string;
+      appointmentId?: string;
+      clientId?: string | string[];
+      tier?: string | string[];
+    }>();
+
+  const resolvedClientId = useMemo(() => {
+    const raw = Array.isArray(clientId) ? clientId[0] : clientId;
+    const parsed = Number(raw);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }, [clientId]);
+
+  const resolvedTier = useMemo(() => {
+    const raw = Array.isArray(tier) ? tier[0] : tier;
+    return raw as AppointmentRequest["appointmentTier"] | undefined;
+  }, [tier]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
-  const [userContext, setUserContext] = useState<{ clientId: number; tier: AppointmentRequest["appointmentTier"] } | null>(null);
+  const [userContext, setUserContext] = useState<{
+    clientId: number;
+    tier: AppointmentRequest["appointmentTier"];
+  } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -75,7 +95,10 @@ export default function ScheduleReviewScreen() {
         if (!isMounted) {
           return;
         }
-        setUserContext({ clientId: user.id, tier: user.membershipTier ?? "CLUB_15" });
+        setUserContext({
+          clientId: user.id,
+          tier: user.membershipTier ?? "QUINZE_STANDARD",
+        });
       } catch (error) {
         if (isMounted) {
           setUserContext(null);
@@ -87,22 +110,41 @@ export default function ScheduleReviewScreen() {
       }
     };
 
-    if (!appointmentId) {
-      loadUser();
-    } else {
+    if (appointmentId) {
       setIsLoadingUser(false);
+      return () => {
+        isMounted = false;
+      };
     }
+
+    if (resolvedClientId) {
+      if (isMounted) {
+        setUserContext({
+          clientId: resolvedClientId,
+          tier: resolvedTier ?? "QUINZE_STANDARD",
+        });
+        setIsLoadingUser(false);
+      }
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    loadUser();
 
     return () => {
       isMounted = false;
     };
-  }, [appointmentId]);
+  }, [appointmentId, resolvedClientId, resolvedTier]);
 
   const trimmedNotes = useMemo(() => notes?.trim() ?? "", [notes]);
 
   const handleConfirm = useCallback(async () => {
     if (!slot) {
-      Alert.alert("Selecione um horario", "Volte e escolha uma data e horario.");
+      Alert.alert(
+        "Selecione um horario",
+        "Volte e escolha uma data e horario.",
+      );
       router.back();
       return;
     }
@@ -114,17 +156,24 @@ export default function ScheduleReviewScreen() {
           newDate: slot,
           notes: trimmedNotes ? trimmedNotes : undefined,
         });
-        Alert.alert("Agendamento atualizado", "Seu atendimento foi remarcado com sucesso.", [
-          {
-            text: "OK",
-            onPress: () => router.replace("/appointments"),
-          },
-        ]);
+        Alert.alert(
+          "Agendamento atualizado",
+          "Seu atendimento foi remarcado com sucesso.",
+          [
+            {
+              text: "OK",
+              onPress: () => router.replace("/"),
+            },
+          ],
+        );
         return;
       }
 
       if (!userContext) {
-        Alert.alert("Nao foi possivel confirmar", "Atualize a pagina e tente novamente.");
+        Alert.alert(
+          "Nao foi possivel confirmar",
+          "Atualize a pagina e tente novamente.",
+        );
         return;
       }
 
@@ -134,12 +183,16 @@ export default function ScheduleReviewScreen() {
         scheduledAt: slot,
         notes: trimmedNotes ? trimmedNotes : undefined,
       });
-      Alert.alert("Agendamento confirmado", "Seu atendimento foi marcado com sucesso.", [
-        {
-          text: "OK",
-          onPress: () => router.replace("/appointments"),
-        },
-      ]);
+      Alert.alert(
+        "Agendamento confirmado",
+        "Seu atendimento foi marcado com sucesso.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/"),
+          },
+        ],
+      );
     } catch (error) {
       Alert.alert("Nao foi possivel concluir", "Tente novamente em instantes.");
     } finally {
@@ -156,7 +209,10 @@ export default function ScheduleReviewScreen() {
     { label: "Preferencias", value: trimmedNotes || "Sem preferencias" },
   ];
 
-  const isConfirmDisabled = isSubmitting || !slot || (!appointmentId && (isLoadingUser || !userContext));
+  const isConfirmDisabled =
+    isSubmitting ||
+    !slot ||
+    (!appointmentId && (isLoadingUser || !userContext));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -184,7 +240,10 @@ export default function ScheduleReviewScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.primaryButton, isConfirmDisabled ? styles.primaryButtonDisabled : null]}
+          style={[
+            styles.primaryButton,
+            isConfirmDisabled ? styles.primaryButtonDisabled : null,
+          ]}
           activeOpacity={0.9}
           disabled={isConfirmDisabled}
           onPress={handleConfirm}

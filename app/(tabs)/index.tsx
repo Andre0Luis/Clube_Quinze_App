@@ -5,28 +5,28 @@ import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Linking,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Card from "../../components/Card";
 import FrameComponent1 from "../../components/FrameComponent1";
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    LineHeight,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  LineHeight,
+  Padding,
+  StyleVariable,
 } from "../../GlobalStyles";
 import { usePushNotifications } from "../../hooks/use-push-notifications";
 import { listMyAppointments } from "../../services/appointments";
@@ -34,11 +34,12 @@ import { logout as logoutService } from "../../services/auth";
 import { getAdminDashboardMetrics } from "../../services/dashboard";
 import { isMockEnabled } from "../../services/mock/settings";
 import { registerPushToken } from "../../services/push-tokens";
-import { getCurrentUser } from "../../services/users";
+import { getCurrentUser, listUsers } from "../../services/users";
 import type {
-    AdminDashboardResponse,
-    AppointmentResponse,
-    UserProfileResponse,
+  AdminDashboardResponse,
+  AppointmentResponse,
+  MembershipTier,
+  UserProfileResponse,
 } from "../../types/api";
 
 interface DecodedToken {
@@ -61,6 +62,17 @@ type ActionCard =
   | { kind: "adminAgenda"; span: 1 }
   | { kind: "adminPayments"; span: 1 }
   | { kind: "register"; span: 2 };
+
+type MemberCounts = {
+  standard: number;
+  select: number;
+};
+
+const STANDARD_TIER_SET: MembershipTier[] = [
+  "QUINZE_STANDARD",
+  "QUINZE_PREMIUM",
+];
+const SELECT_TIER: MembershipTier = "QUINZE_SELECT";
 
 const quickActions: QuickAction[] = [
   {
@@ -152,6 +164,7 @@ export default function HomeScreen() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [adminDashboard, setAdminDashboard] =
     useState<AdminDashboardResponse | null>(null);
+  const [memberCounts, setMemberCounts] = useState<MemberCounts | null>(null);
 
   useEffect(() => {
     if (notificationsError) {
@@ -170,6 +183,28 @@ export default function HomeScreen() {
     }
   }, [expoPushToken, registeredPushToken, appVersion]);
 
+  const handleNavigate = useCallback(
+    (path: string, params?: Record<string, string>) => {
+      if (params) {
+        router.push({ pathname: path, params });
+        return;
+      }
+      router.push(path);
+    },
+    [router],
+  );
+
+  const pushAppointmentDetails = useCallback(
+    (appointmentId?: string | number) => {
+      if (!appointmentId) {
+        return;
+      }
+      const query = isAdmin ? "?allowAdmin=1" : "";
+      router.push(`/appointments/${String(appointmentId)}${query}`);
+    },
+    [router, isAdmin],
+  );
+
   const handleNotificationNavigation = useCallback(
     (data?: {
       appointmentId?: string | number;
@@ -186,13 +221,10 @@ export default function HomeScreen() {
       }
 
       if (data.appointmentId) {
-        router.push({
-          pathname: "/appointments/[appointmentId]",
-          params: { appointmentId: String(data.appointmentId) },
-        });
+        pushAppointmentDetails(data.appointmentId);
       }
     },
-    [router],
+    [pushAppointmentDetails, router],
   );
 
   useEffect(() => {
@@ -280,12 +312,9 @@ export default function HomeScreen() {
     }
 
     if (data.appointmentId) {
-      router.push({
-        pathname: "/appointments/[appointmentId]",
-        params: { appointmentId: String(data.appointmentId) },
-      });
+      pushAppointmentDetails(data.appointmentId);
     }
-  }, [lastNotificationResponse, router]);
+  }, [lastNotificationResponse, pushAppointmentDetails, router]);
 
   useEffect(() => {
     let isMounted = true;
@@ -395,6 +424,7 @@ export default function HomeScreen() {
   useEffect(() => {
     if (isAdmin !== true) {
       setAdminDashboard(null);
+      setMemberCounts(null);
       return;
     }
 
@@ -441,6 +471,38 @@ export default function HomeScreen() {
       isActive = false;
     };
   }, [isAdmin, router]);
+
+  useEffect(() => {
+    if (isAdmin !== true) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadMemberCounts = async () => {
+      try {
+        const members = await listUsers();
+        if (!isActive) {
+          return;
+        }
+        const standardCount = members.filter((user) =>
+          STANDARD_TIER_SET.includes(user.membershipTier),
+        ).length;
+        const selectCount = members.filter(
+          (user) => user.membershipTier === SELECT_TIER,
+        ).length;
+        setMemberCounts({ standard: standardCount, select: selectCount });
+      } catch (error) {
+        console.error("Failed to load member counts", error);
+      }
+    };
+
+    loadMemberCounts();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isAdmin]);
 
   useFocusEffect(
     useCallback(() => {
@@ -507,17 +569,6 @@ export default function HomeScreen() {
     }
   }, [router]);
 
-  const handleNavigate = useCallback(
-    (path: string, params?: Record<string, string>) => {
-      if (params) {
-        router.push({ pathname: path, params });
-        return;
-      }
-      router.push(path);
-    },
-    [router],
-  );
-
   const displayName = useMemo(() => {
     if (profile?.name && profile.name.trim().length > 0) {
       return profile.name;
@@ -530,6 +581,9 @@ export default function HomeScreen() {
   );
 
   const membersStandardCount = useMemo(() => {
+    if (memberCounts) {
+      return memberCounts.standard;
+    }
     const total = adminDashboard?.totalMembers ?? 0;
     const fromMetric = adminDashboard?.metrics?.find(
       (metric) => metric.id === "members_standard",
@@ -538,9 +592,12 @@ export default function HomeScreen() {
       return fromMetric;
     }
     return Math.max(0, Math.round(total * 0.7));
-  }, [adminDashboard?.metrics, adminDashboard?.totalMembers]);
+  }, [adminDashboard?.metrics, adminDashboard?.totalMembers, memberCounts]);
 
   const membersSelectCount = useMemo(() => {
+    if (memberCounts) {
+      return memberCounts.select;
+    }
     const total = adminDashboard?.totalMembers ?? 0;
     const fromMetric = adminDashboard?.metrics?.find(
       (metric) => metric.id === "members_select",
@@ -554,6 +611,7 @@ export default function HomeScreen() {
     adminDashboard?.metrics,
     adminDashboard?.totalMembers,
     membersStandardCount,
+    memberCounts,
   ]);
 
   const actionCards = useMemo<ActionCard[]>(() => {
@@ -668,7 +726,9 @@ export default function HomeScreen() {
                     style={cardStyle}
                     activeOpacity={0.9}
                     onPress={() =>
-                      handleNavigate("/admin-members", { tier: "CLUB_15" })
+                      handleNavigate("/admin-members", {
+                        tier: "QUINZE_STANDARD",
+                      })
                     }
                   >
                     <View style={styles.quickActionCardContent}>
@@ -853,9 +913,7 @@ export default function HomeScreen() {
                       return;
                     }
                     if (nextAppointment) {
-                      handleNavigate("/appointments/[appointmentId]", {
-                        appointmentId: String(nextAppointment.id),
-                      });
+                      pushAppointmentDetails(nextAppointment.id);
                     } else {
                       handleNavigate("/schedule");
                     }
@@ -941,12 +999,19 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <Image
-            source={require("../../assets/passos_magicos.jpg")}
-            style={styles.magicStepsImage}
-            contentFit="contain"
-            accessibilityLabel="Passos Magicos"
-          />
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => Linking.openURL("https://passosmagicos.org.br/")}
+            accessibilityRole="link"
+            accessibilityLabel="Acessar Passos Magicos"
+          >
+            <Image
+              source={require("../../assets/passos_magicos.jpg")}
+              style={styles.magicStepsImage}
+              contentFit="contain"
+              accessibilityLabel="Passos Magicos"
+            />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>

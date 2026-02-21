@@ -1,67 +1,13 @@
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Tabs } from "expo-router";
-import { memo, useMemo } from "react";
-import { StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import MenuDeNavegao, { MenuItem } from "../../components/MenuDeNavegao";
-
-const routeConfig: Record<string, MenuItem> = {
-  index: { key: "index", label: "Home", icon: "home-outline" },
-  reserve: { key: "reserve", label: "Reserva", icon: "calendar-outline" },
-  community: { key: "community", label: "Comunidade", icon: "people-outline" },
-  profile: { key: "profile", label: "Perfil", icon: "person-outline" },
-};
-
-const CustomTabBar = memo(({ state, navigation }: BottomTabBarProps) => {
-  const insets = useSafeAreaInsets();
-
-  const items = useMemo(() => {
-    return state.routes
-      .map((route) => routeConfig[route.name])
-      .filter((item): item is MenuItem => Boolean(item));
-  }, [state.routes]);
-
-  const activeRouteName = useMemo(
-    () => state.routes[state.index]?.name,
-    [state.index, state.routes],
-  );
-
-  const handleSelectTab = (key: string) => {
-    const targetRoute = state.routes.find((route) => route.name === key);
-    if (!targetRoute) {
-      console.warn(`Rota não encontrada para a aba: ${key}`);
-      return;
-    }
-    const event = navigation.emit({
-      type: "tabPress",
-      target: targetRoute.key,
-      canPreventDefault: true,
-    });
-
-    if (event.defaultPrevented) {
-      return;
-    }
-
-    navigation.navigate(targetRoute.name);
-  };
-
-  return (
-    <View
-      style={[styles.tabBarContainer, { paddingBottom: insets.bottom + 16 }]}
-    >
-      <MenuDeNavegao
-        activeKey={activeRouteName}
-        items={items}
-        onSelectTab={handleSelectTab}
-      />
-    </View>
-  );
-});
 
 export default function TabLayout() {
   return (
-    <Tabs tabBar={(props) => <CustomTabBar {...props} />}>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+      }}
+      tabBar={() => null}
+    >
       <Tabs.Screen
         name="index"
         options={{
@@ -93,10 +39,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBarContainer: {
-    paddingHorizontal: 24,
-    backgroundColor: "transparent",
-  },
-});

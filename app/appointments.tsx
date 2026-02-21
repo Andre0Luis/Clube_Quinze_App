@@ -207,10 +207,7 @@ export default function AppointmentsScreen() {
       : "Ultimos agendamentos";
 
   const handleCardPress = (appointment: AppointmentResponse) => {
-    router.push({
-      pathname: "/appointments/[appointmentId]",
-      params: { appointmentId: String(appointment.id) },
-    });
+    router.push(`/appointments/${String(appointment.id)}`);
   };
 
   const handleBack = useCallback(() => {

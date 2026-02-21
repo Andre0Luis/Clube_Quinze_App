@@ -12,21 +12,21 @@ export const mockMembers: MemberCard[] = [
   {
     id: 1,
     name: "Adriano Silva",
-    membershipTier: "CLUB_15",
+    membershipTier: "QUINZE_STANDARD",
     roleLabel: "Standard",
     avatarInitials: "AS",
   },
   {
     id: 2,
     name: "Bianca Costa",
-    membershipTier: "CLUB_15",
+    membershipTier: "QUINZE_PREMIUM",
     roleLabel: "Premium",
     avatarInitials: "BC",
   },
   {
     id: 3,
     name: "Carlos Nogueira",
-    membershipTier: "CLUB_15",
+    membershipTier: "QUINZE_STANDARD",
     roleLabel: "Standard",
     avatarInitials: "CN",
   },
@@ -40,7 +40,7 @@ export const mockMembers: MemberCard[] = [
   {
     id: 5,
     name: "Eduardo Martins",
-    membershipTier: "CLUB_15",
+    membershipTier: "QUINZE_PREMIUM",
     roleLabel: "Premium",
     avatarInitials: "EM",
   },

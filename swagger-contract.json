@@ -1147,7 +1147,7 @@
             "name": "tier",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "enum": ["CLUB_15", "QUINZE_SELECT"] }
+            "schema": { "type": "string", "enum": ["QUINZE_STANDARD", "QUINZE_PREMIUM", "QUINZE_SELECT"] }
           }
         ],
         "responses": {
@@ -1213,7 +1213,7 @@
           "birthDate": { "type": "string", "format": "date" },
           "membershipTier": {
             "type": "string",
-            "enum": ["CLUB_15", "QUINZE_SELECT"]
+            "enum": ["QUINZE_STANDARD", "QUINZE_PREMIUM", "QUINZE_SELECT"]
           },
           "planId": { "type": "integer", "format": "int64" },
           "profilePictureUrl": { "type": "string" },
@@ -1242,7 +1242,7 @@
           "scheduledAt": { "type": "string", "format": "date-time" },
           "appointmentTier": {
             "type": "string",
-            "enum": ["CLUB_15", "QUINZE_SELECT"]
+            "enum": ["QUINZE_STANDARD", "QUINZE_PREMIUM", "QUINZE_SELECT"]
           },
           "status": {
             "type": "string",
@@ -1291,7 +1291,7 @@
           "birthDate": { "type": "string", "format": "date" },
           "membershipTier": {
             "type": "string",
-            "enum": ["CLUB_15", "QUINZE_SELECT"]
+            "enum": ["QUINZE_STANDARD", "QUINZE_PREMIUM", "QUINZE_SELECT"]
           },
           "role": {
             "type": "string",
@@ -1497,7 +1497,7 @@
           "birthDate": { "type": "string", "format": "date" },
           "membershipTier": {
             "type": "string",
-            "enum": ["CLUB_15", "QUINZE_SELECT"]
+            "enum": ["QUINZE_STANDARD", "QUINZE_PREMIUM", "QUINZE_SELECT"]
           },
           "planId": { "type": "integer", "format": "int64" }
         }
@@ -1531,7 +1531,7 @@
           "scheduledAt": { "type": "string", "format": "date-time" },
           "appointmentTier": {
             "type": "string",
-            "enum": ["CLUB_15", "QUINZE_SELECT"]
+            "enum": ["QUINZE_STANDARD", "QUINZE_PREMIUM", "QUINZE_SELECT"]
           },
           "serviceType": { "type": "string" },
           "notes": { "type": "string" }
@@ -1558,7 +1558,7 @@
           "birthDate": { "type": "string", "format": "date" },
           "membershipTier": {
             "type": "string",
-            "enum": ["CLUB_15", "QUINZE_SELECT"]
+            "enum": ["QUINZE_STANDARD", "QUINZE_PREMIUM", "QUINZE_SELECT"]
           },
           "role": {
             "type": "string",
@@ -1626,7 +1626,7 @@
           "date": { "type": "string", "format": "date" },
           "membershipTier": {
             "type": "string",
-            "enum": ["CLUB_15", "QUINZE_SELECT"]
+            "enum": ["QUINZE_STANDARD", "QUINZE_PREMIUM", "QUINZE_SELECT"]
           },
           "availableSlots": {
             "type": "array",

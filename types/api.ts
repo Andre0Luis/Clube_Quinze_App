@@ -1,10 +1,20 @@
-export type MembershipTier = 'CLUB_15' | 'QUINZE_SELECT';
+export type MembershipTier =
+  | "QUINZE_STANDARD"
+  | "QUINZE_PREMIUM"
+  | "QUINZE_SELECT";
 
-export type AppointmentStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELED';
+export type AppointmentStatus = "SCHEDULED" | "COMPLETED" | "CANCELED";
 
-export type AppointmentTier = 'CLUB_15' | 'QUINZE_SELECT';
+export type AppointmentTier =
+  | "QUINZE_STANDARD"
+  | "QUINZE_PREMIUM"
+  | "QUINZE_SELECT";
 
-export type UserRole = 'CLUB_STANDARD' | 'CLUB_SELECT' | 'CLUB_EMPLOYE' | 'CLUB_ADMIN';
+export type UserRole =
+  | "CLUB_STANDARD"
+  | "CLUB_SELECT"
+  | "CLUB_EMPLOYE"
+  | "CLUB_ADMIN";
 
 export interface PlanSummary {
   id: number;
@@ -72,6 +82,7 @@ export interface AppointmentRequest {
   appointmentTier: AppointmentTier;
   serviceType?: string;
   notes?: string;
+  durationMinutes?: number;
 }
 
 export interface AppointmentStatusUpdateRequest {
@@ -92,6 +103,7 @@ export interface AppointmentResponse {
   status: AppointmentStatus;
   serviceType?: string;
   notes?: string | null;
+  durationMinutes?: number;
 }
 
 export interface AvailableSlotResponse {

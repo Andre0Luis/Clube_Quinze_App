@@ -1,29 +1,28 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, usePathname, useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  Border,
-  Color,
-  FontFamily,
-  FontSize,
-  Gap,
-  LineHeight,
-  Padding,
-  StyleVariable,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    LineHeight,
+    Padding,
+    StyleVariable,
 } from "../GlobalStyles";
-import AdminNavbar from "../components/admin-navbar";
 import { cancelAppointment, listAppointments } from "../services/appointments";
 import { getCurrentUser, getUserById } from "../services/users";
 import type { AppointmentResponse } from "../types/api";
@@ -87,7 +86,6 @@ const clientLabel = (
 
 const AdminAgendaScreen = () => {
   const router = useRouter();
-  const pathname = usePathname();
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -208,10 +206,7 @@ const AdminAgendaScreen = () => {
       {
         text: "Alterar horario",
         onPress: () =>
-          router.push({
-            pathname: "/appointments/[appointmentId]",
-            params: { appointmentId: String(appointment.id), allowAdmin: "1" },
-          }),
+          router.push(`/appointments/${String(appointment.id)}?allowAdmin=1`),
       },
       {
         text: "Cancelar agendamento",
@@ -351,10 +346,9 @@ const AdminAgendaScreen = () => {
                 <TouchableOpacity
                   style={styles.linkRow}
                   onPress={() =>
-                    router.push({
-                      pathname: "/appointments/[appointmentId]",
-                      params: { appointmentId: String(nextAppointment.id) },
-                    })
+                    router.push(
+                      `/appointments/${String(nextAppointment.id)}?allowAdmin=1`,
+                    )
                   }
                 >
                   <Text style={styles.linkText}>
@@ -437,8 +431,6 @@ const AdminAgendaScreen = () => {
           )}
         </View>
       </ScrollView>
-
-      <AdminNavbar activePath={pathname} />
     </SafeAreaView>
   );
 };

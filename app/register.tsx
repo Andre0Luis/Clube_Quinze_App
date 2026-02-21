@@ -1,5 +1,5 @@
 import DateTimePicker, {
-  type DateTimePickerEvent,
+    type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import type { AxiosError } from "axios";
@@ -7,15 +7,15 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import MaskInput from "react-native-mask-input";
@@ -23,12 +23,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Color } from "../GlobalStyles";
 import { register } from "../services/auth";
 import { upsertPreference } from "../services/preferences";
-import type { RegisterRequest } from "../types/api";
+import type { MembershipTier, RegisterRequest } from "../types/api";
 
-const MEMBERSHIP_OPTIONS = [
-  { label: "Club 15", value: "CLUB_15" },
+const MEMBERSHIP_OPTIONS: Array<{ label: string; value: MembershipTier }> = [
+  { label: "Quinze Standard", value: "QUINZE_STANDARD" },
+  { label: "Quinze Premium", value: "QUINZE_PREMIUM" },
   { label: "Quinze Select", value: "QUINZE_SELECT" },
-] as const;
+];
 
 export default function RegisterScreen() {
   const [name, setName] = useState("");
@@ -44,9 +45,8 @@ export default function RegisterScreen() {
     seed.setHours(9, 0, 0, 0);
     return seed;
   });
-  const [membershipTier, setMembershipTier] = useState<
-    "CLUB_15" | "QUINZE_SELECT"
-  >("CLUB_15");
+  const [membershipTier, setMembershipTier] =
+    useState<MembershipTier>("QUINZE_STANDARD");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { fromAdmin } = useLocalSearchParams<{

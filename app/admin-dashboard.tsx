@@ -1,41 +1,49 @@
 import { Ionicons } from "@expo/vector-icons";
-import { usePathname, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    BackHandler,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  BackHandler,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  Padding,
+  StyleVariable,
 } from "../GlobalStyles";
-import AdminNavbar from "../components/admin-navbar";
 import { listAppointments } from "../services/appointments";
 import { getAdminDashboardMetrics } from "../services/dashboard";
 import { getCurrentUser, listUsers } from "../services/users";
-import type { AdminDashboardResponse, UserProfileResponse } from "../types/api";
+import type {
+  AdminDashboardResponse,
+  MembershipTier,
+  UserProfileResponse,
+} from "../types/api";
 
 type MemberCounts = {
   standard: number;
   select: number;
 };
 
+const STANDARD_TIER_SET: MembershipTier[] = [
+  "QUINZE_STANDARD",
+  "QUINZE_PREMIUM",
+];
+const SELECT_TIER: MembershipTier = "QUINZE_SELECT";
+
 const AdminDashboardScreen = () => {
   const router = useRouter();
-  const pathname = usePathname();
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
   const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(
     null,
@@ -62,10 +70,15 @@ const AdminDashboardScreen = () => {
 
       setProfile(current);
 
-      const dashboardPromise = getAdminDashboardMetrics();
-      const membersPromise = listUsers();
-
-      const dashboardData = await dashboardPromise;
+      let dashboardData: AdminDashboardResponse | null = null;
+      try {
+        dashboardData = await getAdminDashboardMetrics();
+        setDashboard(dashboardData);
+      } catch (dashboardError) {
+        console.error("Failed to load admin dashboard metrics", dashboardError);
+        setDashboard(null);
+        setErrorMessage("Nao foi possivel carregar os dados do dashboard.");
+      }
 
       let scheduledTotal = dashboardData?.upcomingAppointments ?? 0;
       try {
@@ -85,33 +98,10 @@ const AdminDashboardScreen = () => {
         );
       }
 
-      try {
-        const members = await membersPromise;
-        const standardMembers = members.filter(
-          (user) => user.membershipTier === "CLUB_15",
-        ).length;
-        const selectMembers = members.filter(
-          (user) => user.membershipTier === "QUINZE_SELECT",
-        ).length;
-        setMemberCounts({ standard: standardMembers, select: selectMembers });
-      } catch (membersError) {
-        const status =
-          typeof membersError === "object" &&
-          membersError !== null &&
-          "response" in membersError
-            ? (membersError as { response?: { status?: number } }).response
-                ?.status
-            : undefined;
-        if (status === 401) {
-          throw membersError;
-        }
-        console.error("Failed to load member counts", membersError);
-        setMemberCounts(null);
-      }
-
-      setDashboard(dashboardData);
       setScheduledAppointmentsTotal(scheduledTotal);
-      setErrorMessage(null);
+      if (dashboardData) {
+        setErrorMessage(null);
+      }
       return true;
     } catch (error) {
       const status =
@@ -130,10 +120,24 @@ const AdminDashboardScreen = () => {
       setErrorMessage("Nao foi possivel carregar os dados do dashboard.");
       setDashboard(null);
       setScheduledAppointmentsTotal(0);
-      setMemberCounts(null);
       return true;
     }
   }, [router]);
+
+  const loadMemberCounts = useCallback(async () => {
+    try {
+      const members = await listUsers();
+      const standardCount = members.filter((user) =>
+        STANDARD_TIER_SET.includes(user.membershipTier),
+      ).length;
+      const selectCount = members.filter(
+        (user) => user.membershipTier === SELECT_TIER,
+      ).length;
+      setMemberCounts({ standard: standardCount, select: selectCount });
+    } catch (membersError) {
+      console.error("Failed to load member counts", membersError);
+    }
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -153,6 +157,23 @@ const AdminDashboardScreen = () => {
       isMounted = false;
     };
   }, [loadDashboard]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const bootstrapCounts = async () => {
+      if (!isMounted) {
+        return;
+      }
+      await loadMemberCounts();
+    };
+
+    bootstrapCounts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [loadMemberCounts]);
 
   const metricValue = useCallback(
     (id: string, fallback = 0) =>
@@ -197,7 +218,7 @@ const AdminDashboardScreen = () => {
   );
 
   const handleManageMembers = useCallback(
-    (tier: "CLUB_15" | "QUINZE_SELECT") => {
+    (tier: MembershipTier) => {
       router.push({ pathname: "/admin-members", params: { tier } });
     },
     [router],
@@ -281,7 +302,7 @@ const AdminDashboardScreen = () => {
           <TouchableOpacity
             style={styles.metricCard}
             activeOpacity={0.9}
-            onPress={() => handleManageMembers("CLUB_15")}
+            onPress={() => handleManageMembers("QUINZE_STANDARD")}
           >
             <View style={styles.metricHeader}>
               <View style={styles.metricPillPrimary}>
@@ -398,8 +419,6 @@ const AdminDashboardScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      <AdminNavbar activePath={pathname} />
     </SafeAreaView>
   );
 };
