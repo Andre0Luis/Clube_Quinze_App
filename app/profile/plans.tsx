@@ -77,7 +77,9 @@ export default function PlansScreen() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [editDuration, setEditDuration] = useState("");
   const [isSavingPlan, setIsSavingPlan] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -110,7 +112,7 @@ export default function PlansScreen() {
           }
           setProfile(null);
           setPlans([]);
-          setErrorMessage("Nao foi possivel carregar os planos disponiveis.");
+          setErrorMessage("Não foi possível carregar os planos disponiveis.");
         } finally {
           if (!isActive) {
             return;
@@ -137,7 +139,7 @@ export default function PlansScreen() {
       setPlans(availablePlans);
     } catch (error) {
       console.error("Failed to refresh plans", error);
-      setErrorMessage("Nao foi possivel atualizar os planos.");
+      setErrorMessage("Não foi possível atualizar os planos.");
     } finally {
       setIsRefreshing(false);
     }
@@ -177,7 +179,9 @@ export default function PlansScreen() {
   const beginEdit = (plan: PlanResponse) => {
     setEditingPlanId(plan.id);
     setEditName(plan.name);
+    setEditDescription(plan.description ?? "");
     setEditPrice(plan.price.toString());
+    setEditDuration(plan.durationMonths?.toString() ?? "");
     setErrorMessage(null);
     setSuccessMessage(null);
   };
@@ -185,16 +189,20 @@ export default function PlansScreen() {
   const cancelEdit = () => {
     setEditingPlanId(null);
     setEditName("");
+    setEditDescription("");
     setEditPrice("");
+    setEditDuration("");
   };
 
   const handleSavePlan = async () => {
     if (!editingPlanId || isSavingPlan) return;
 
     const name = editName.trim();
+    const description = editDescription.trim();
     const numericPrice = Number(
       editPrice.replace(/[^0-9.,]/g, "").replace(",", "."),
     );
+    const numericDuration = Number(editDuration.replace(/\D/g, ""));
 
     if (!name) {
       setErrorMessage("Informe um nome para o plano.");
@@ -203,6 +211,11 @@ export default function PlansScreen() {
 
     if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
       setErrorMessage("Informe um valor válido para o plano.");
+      return;
+    }
+
+    if (!Number.isFinite(numericDuration) || numericDuration <= 0) {
+      setErrorMessage("Informe a duracao em meses.");
       return;
     }
 
@@ -219,9 +232,9 @@ export default function PlansScreen() {
 
       const updated = await updatePlan(editingPlanId, {
         name,
-        description: target.description,
+        description,
         price: numericPrice,
-        durationMonths: target.durationMonths,
+        durationMonths: numericDuration,
       });
 
       setPlans((prev) =>
@@ -231,7 +244,7 @@ export default function PlansScreen() {
       cancelEdit();
     } catch (error) {
       console.error("Failed to update plan", error);
-      setErrorMessage("Nao foi possivel atualizar o plano.");
+      setErrorMessage("Não foi possível atualizar o plano.");
     } finally {
       setIsSavingPlan(false);
     }
@@ -302,7 +315,7 @@ export default function PlansScreen() {
           </Text>
           <Text style={styles.currentPlanDescription}>
             {profile?.plan?.description ??
-              "Escolha um plano para desbloquear beneficios exclusivos."}
+              "Escolha um plano para desbloquear benef�cios exclusivos."}
           </Text>
           {currentPlanExpiration ? (
             <Text style={styles.currentPlanMeta}>
@@ -366,25 +379,60 @@ export default function PlansScreen() {
                       </View>
                     ) : null}
                   </View>
-                  <Text style={styles.planDescription}>{plan.description}</Text>
+                  {isEditing ? (
+                    <TextInput
+                      style={[styles.planInput, styles.planDescriptionInput]}
+                      value={editDescription}
+                      onChangeText={setEditDescription}
+                      placeholder="descrição do plano"
+                      placeholderTextColor={Color.mainTrunks}
+                      editable={!isSavingPlan}
+                      multiline
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                    />
+                  ) : (
+                    <Text style={styles.planDescription}>
+                      {plan.description}
+                    </Text>
+                  )}
                   {isAdminContext ? (
-                    <View style={styles.priceRow}>
-                      {isEditing ? (
-                        <TextInput
-                          style={[styles.planInput, styles.priceInput]}
-                          value={editPrice}
-                          onChangeText={setEditPrice}
-                          placeholder="Valor em BRL"
-                          placeholderTextColor={Color.mainTrunks}
-                          keyboardType="decimal-pad"
-                          editable={!isSavingPlan}
-                        />
-                      ) : (
-                        <Text style={styles.planPrice}>
-                          {formatCurrency(plan.price)}
-                        </Text>
-                      )}
-                    </View>
+                    <>
+                      <View style={styles.priceRow}>
+                        {isEditing ? (
+                          <TextInput
+                            style={[styles.planInput, styles.priceInput]}
+                            value={editPrice}
+                            onChangeText={setEditPrice}
+                            placeholder="Valor em BRL"
+                            placeholderTextColor={Color.mainTrunks}
+                            keyboardType="decimal-pad"
+                            editable={!isSavingPlan}
+                          />
+                        ) : (
+                          <Text style={styles.planPrice}>
+                            {formatCurrency(plan.price)}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={styles.priceRow}>
+                        {isEditing ? (
+                          <TextInput
+                            style={[styles.planInput, styles.durationInput]}
+                            value={editDuration}
+                            onChangeText={setEditDuration}
+                            placeholder="Duracao (meses)"
+                            placeholderTextColor={Color.mainTrunks}
+                            keyboardType="number-pad"
+                            editable={!isSavingPlan}
+                          />
+                        ) : (
+                          <Text style={styles.planMeta}>
+                            {`${plan.durationMonths ?? 0} meses`}
+                          </Text>
+                        )}
+                      </View>
+                    </>
                   ) : null}
                   {isAdminContext ? (
                     <View style={styles.planActions}>
@@ -617,6 +665,9 @@ const styles = StyleSheet.create({
     color: Color.hit,
     backgroundColor: Color.mainGohan,
   },
+  planDescriptionInput: {
+    minHeight: 64,
+  },
   planName: {
     fontSize: FontSize.fs_14,
     fontFamily: FontFamily.dMSansBold,
@@ -648,10 +699,18 @@ const styles = StyleSheet.create({
   priceInput: {
     maxWidth: 200,
   },
+  durationInput: {
+    maxWidth: 160,
+  },
   planPrice: {
     fontSize: FontSize.fs_14,
     fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
+  },
+  planMeta: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
   },
   planActions: {
     flexDirection: "row",
@@ -718,3 +777,4 @@ const styles = StyleSheet.create({
     color: Color.piccolo,
   },
 });
+

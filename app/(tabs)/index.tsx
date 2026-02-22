@@ -5,28 +5,29 @@ import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Linking,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Card from "../../components/Card";
 import FrameComponent1 from "../../components/FrameComponent1";
 import {
-  Border,
-  Color,
-  FontFamily,
-  FontSize,
-  Gap,
-  LineHeight,
-  Padding,
-  StyleVariable,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    LineHeight,
+    Padding,
+    StyleVariable,
 } from "../../GlobalStyles";
 import { usePushNotifications } from "../../hooks/use-push-notifications";
 import { listMyAppointments } from "../../services/appointments";
@@ -36,10 +37,10 @@ import { isMockEnabled } from "../../services/mock/settings";
 import { registerPushToken } from "../../services/push-tokens";
 import { getCurrentUser, listUsers } from "../../services/users";
 import type {
-  AdminDashboardResponse,
-  AppointmentResponse,
-  MembershipTier,
-  UserProfileResponse,
+    AdminDashboardResponse,
+    AppointmentResponse,
+    MembershipTier,
+    UserProfileResponse,
 } from "../../types/api";
 
 interface DecodedToken {
@@ -81,13 +82,13 @@ const quickActions: QuickAction[] = [
     href: "/appointments",
   },
   {
-    label: "Meus historicos",
+    label: "Meus históricos",
     icon: "time-outline",
     href: "/appointments",
     params: { tab: "history" },
   },
   {
-    label: "Cadastrar usuario",
+    label: "Cadastrar usuário",
     icon: "person-add-outline",
     href: "/register",
   },
@@ -98,7 +99,7 @@ const getStatusMeta = (status?: string) => {
     case "SCHEDULED":
       return { label: "Agendado", background: "#1B9984", text: "#FFFFFF" };
     case "COMPLETED":
-      return { label: "Concluido", background: "#4CAF50", text: "#FFFFFF" };
+      return { label: "concluído", background: "#4CAF50", text: "#FFFFFF" };
     case "CANCELED":
       return { label: "Cancelado", background: "#D7263D", text: "#FFFFFF" };
     default:
@@ -165,10 +166,12 @@ export default function HomeScreen() {
   const [adminDashboard, setAdminDashboard] =
     useState<AdminDashboardResponse | null>(null);
   const [memberCounts, setMemberCounts] = useState<MemberCounts | null>(null);
+  const [isNotificationsModalVisible, setIsNotificationsModalVisible] =
+    useState(false);
 
   useEffect(() => {
     if (notificationsError) {
-      console.warn("Falha ao registrar notificacoes", notificationsError);
+      console.warn("Falha ao registrar notificações", notificationsError);
     }
   }, [notificationsError]);
 
@@ -193,6 +196,14 @@ export default function HomeScreen() {
     },
     [router],
   );
+
+  const handleOpenNotifications = useCallback(() => {
+    setIsNotificationsModalVisible(true);
+  }, []);
+
+  const handleCloseNotifications = useCallback(() => {
+    setIsNotificationsModalVisible(false);
+  }, []);
 
   const pushAppointmentDetails = useCallback(
     (appointmentId?: string | number) => {
@@ -282,9 +293,9 @@ export default function HomeScreen() {
     const alertBody =
       messageByKind[kind] ??
       lastNotification.request.content.body ??
-      "Notificacao recebida.";
+      "notificação recebida.";
 
-    Alert.alert("Notificacao", alertBody, [
+    Alert.alert("notificação", alertBody, [
       {
         text: "Ver",
         onPress: () => handleNotificationNavigation(data),
@@ -644,7 +655,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <FrameComponent1
           userName={displayName}
-          onPressNotifications={() => handleNavigate("/notifications")}
+          onPressNotifications={handleOpenNotifications}
         />
 
         <View style={styles.quickActionsWrapper}>
@@ -656,6 +667,10 @@ export default function HomeScreen() {
               ];
 
               if (item.kind === "link") {
+                const displayLabel =
+                  item.action.label === "Meus agendamentos"
+                    ? "Meus\nagendamentos"
+                    : item.action.label;
                 return (
                   <TouchableOpacity
                     key={item.action.label}
@@ -667,7 +682,8 @@ export default function HomeScreen() {
                   >
                     <View style={styles.quickActionCardContent}>
                       <Card
-                        buttonText={item.action.label}
+                        buttonText={displayLabel}
+                        buttonTextLines={2}
                         size="32px"
                         time="calendar"
                         type="stroke"
@@ -758,32 +774,33 @@ export default function HomeScreen() {
                 );
               }
 
-              if (item.kind === "adminMembersSelect") {
+              if (item.kind === "adminPayments") {
                 return (
                   <TouchableOpacity
-                    key="admin-members-select"
+                    key="admin-payments"
                     style={cardStyle}
                     activeOpacity={0.9}
                     onPress={() =>
-                      handleNavigate("/admin-members", {
-                        tier: "QUINZE_SELECT",
-                      })
+                      handleNavigate("/profile/plans", { fromAdmin: "1" })
                     }
                   >
                     <View style={styles.quickActionCardContent}>
                       <View style={styles.cardHeader}>
-                        <Text style={styles.cardTitle}>Membros</Text>
+                        <View style={styles.cardIconWrapper}>
+                          <Ionicons
+                            name="card-outline"
+                            size={18}
+                            color={Color.piccolo}
+                          />
+                        </View>
                       </View>
                       <View style={styles.cardBody}>
-                        <Text style={styles.cardCount}>
-                          {membersSelectCount.toLocaleString("pt-BR")}
-                        </Text>
-                        <Text style={[styles.cardLabel, { color: "#C9A43C" }]}>
-                          Quinze Select
+                        <Text style={styles.cardTitle}>
+                          Próximos pagamentos
                         </Text>
                       </View>
                       <View style={styles.cardFooter}>
-                        <Text style={styles.cardLink}>Ver lista</Text>
+                        <Text style={styles.cardLink}>Ver detalhes</Text>
                         <Ionicons
                           name="arrow-forward"
                           size={16}
@@ -794,7 +811,6 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 );
               }
-
               if (item.kind === "adminAgenda") {
                 return (
                   <TouchableOpacity
@@ -851,7 +867,7 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.cardBody}>
                         <Text style={styles.cardTitle}>
-                          Proximos pagamentos
+                          próximos pagamentos
                         </Text>
                       </View>
                       <View style={styles.cardFooter}>
@@ -888,7 +904,7 @@ export default function HomeScreen() {
                         </View>
                       </View>
                       <View style={styles.cardBody}>
-                        <Text style={styles.cardTitle}>Cadastrar usuario</Text>
+                        <Text style={styles.cardTitle}>Cadastrar usuário</Text>
                       </View>
                       <View style={styles.cardFooter}>
                         <Text style={styles.cardLink}>Iniciar cadastro</Text>
@@ -952,7 +968,7 @@ export default function HomeScreen() {
                         </View>
                         <View style={styles.cardBody}>
                           <Text style={styles.cardTitle}>
-                            Proximo agendamento
+                            próximo agendamento
                           </Text>
                           <Text style={styles.cardDate}>
                             {formatAppointmentDate(nextAppointment.scheduledAt)}
@@ -1030,6 +1046,37 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={isNotificationsModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseNotifications}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={handleCloseNotifications}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.modalCard}
+            onPress={() => {}}
+          >
+            <Text style={styles.modalTitle}>notificações</Text>
+            <Text style={styles.modalDescription}>
+              Não ha notificações por hora.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalConfirm}
+              onPress={handleCloseNotifications}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.modalConfirmText}>Fechar</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1054,8 +1101,6 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 9,
     borderRadius: Border.br_16,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#E6EAF1",
   },
   nextCard: {
     borderRadius: Border.br_16,
@@ -1098,6 +1143,10 @@ const styles = StyleSheet.create({
     lineHeight: LineHeight.lh_18,
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
+  },
+  cardTitleCompact: {
+    fontSize: FontSize.fs_12,
+    lineHeight: LineHeight.lh_16,
   },
   cardDate: {
     fontSize: FontSize.fs_16,
@@ -1165,5 +1214,49 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: Padding.padding_24,
+  },
+  modalCard: {
+    width: "92%",
+    maxWidth: 520,
+    alignSelf: "center",
+    borderRadius: Border.br_16,
+    backgroundColor: Color.mainGoten,
+    paddingHorizontal: StyleVariable.px4,
+    paddingVertical: StyleVariable.py4,
+    gap: Gap.gap_12,
+    shadowColor: "rgba(0, 0, 0, 0.2)",
+    shadowOpacity: 1,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: FontSize.fs_16,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.hit,
+  },
+  modalDescription: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+  },
+  modalConfirm: {
+    alignSelf: "flex-end",
+    paddingVertical: StyleVariable.py2,
+    paddingHorizontal: StyleVariable.px4,
+    borderRadius: Border.br_10,
+    backgroundColor: Color.piccolo,
+  },
+  modalConfirmText: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainGoten,
   },
 });

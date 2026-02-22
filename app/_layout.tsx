@@ -54,6 +54,17 @@ export default function RootLayout() {
     let isMounted = true;
 
     const resolveRole = async () => {
+      if (
+        pathname === "/login" ||
+        pathname === "/register" ||
+        pathname.startsWith("/reset-password")
+      ) {
+        if (isMounted) {
+          setIsAdmin(false);
+        }
+        return;
+      }
+
       try {
         const user = await getCurrentUser();
         if (isMounted) {
@@ -71,7 +82,7 @@ export default function RootLayout() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [pathname]);
 
   const activeKey = useMemo(() => {
     if (pathname.startsWith("/community")) {
@@ -101,19 +112,19 @@ export default function RootLayout() {
   const handleSelectTab = (key: string) => {
     switch (key) {
       case "home":
-        router.replace("/");
+        router.replace("/(tabs)");
         break;
       case "reserve":
-        router.replace(isAdmin ? "/admin-agenda" : "/reserve");
+        router.replace(isAdmin ? "/admin-agenda" : "/(tabs)/reserve");
         break;
       case "community":
-        router.replace("/community");
+        router.replace("/(tabs)/community");
         break;
       case "profile":
-        router.replace("/profile");
+        router.replace("/(tabs)/profile");
         break;
       default:
-        router.replace("/");
+        router.replace("/(tabs)");
     }
   };
 

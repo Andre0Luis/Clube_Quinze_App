@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     ScrollView,
     StyleSheet,
@@ -27,7 +28,11 @@ import {
     StyleVariable,
 } from "../../GlobalStyles";
 import { uploadMedia } from "../../services/media";
-import { getCurrentUser, updateCurrentUser } from "../../services/users";
+import {
+    deleteUserById,
+    getCurrentUser,
+    updateCurrentUser,
+} from "../../services/users";
 import type { UserProfileResponse } from "../../types/api";
 
 const MAX_GALLERY_ITEMS = 4;
@@ -113,6 +118,8 @@ export default function PersonalDataScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPickingAvatar, setIsPickingAvatar] = useState(false);
   const [isPickingGallery, setIsPickingGallery] = useState(false);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -173,7 +180,7 @@ export default function PersonalDataScreen() {
         } catch (error) {
           console.error("Failed to load personal data", error);
           setProfile(null);
-          setErrorMessage("Nao foi possivel carregar seus dados.");
+          setErrorMessage("Não foi possível carregar seus dados.");
         }
 
         setIsLoading(false);
@@ -266,7 +273,7 @@ export default function PersonalDataScreen() {
       });
     } catch (error) {
       console.error("Failed to pick avatar media", error);
-      setErrorMessage("Nao foi possivel acessar sua galeria agora.");
+      setErrorMessage("Não foi possível acessar sua galeria agora.");
     } finally {
       setIsPickingAvatar(false);
     }
@@ -285,7 +292,7 @@ export default function PersonalDataScreen() {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
         setErrorMessage(
-          "Autorize o acesso a camera para atualizar sua foto de perfil.",
+          "Autorize o acesso à câmera para atualizar sua foto de perfil.",
         );
         return;
       }
@@ -311,7 +318,7 @@ export default function PersonalDataScreen() {
       });
     } catch (error) {
       console.error("Failed to capture avatar media", error);
-      setErrorMessage("Nao foi possivel acessar a camera agora.");
+      setErrorMessage("Não foi possível acessar a câmera agora.");
     } finally {
       setIsPickingAvatar(false);
     }
@@ -372,7 +379,7 @@ export default function PersonalDataScreen() {
       });
     } catch (error) {
       console.error("Failed to pick gallery media", error);
-      setErrorMessage("Nao foi possivel acessar sua galeria agora.");
+      setErrorMessage("Não foi possível acessar sua galeria agora.");
     } finally {
       setIsPickingGallery(false);
     }
@@ -394,7 +401,7 @@ export default function PersonalDataScreen() {
     try {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
-        setErrorMessage("Autorize o acesso a camera para anexar imagens.");
+        setErrorMessage("Autorize o acesso à câmera para anexar imagens.");
         return;
       }
 
@@ -428,7 +435,7 @@ export default function PersonalDataScreen() {
       });
     } catch (error) {
       console.error("Failed to capture gallery media", error);
-      setErrorMessage("Nao foi possivel acessar a camera agora.");
+      setErrorMessage("Não foi possível acessar a câmera agora.");
     } finally {
       setIsPickingGallery(false);
     }
@@ -466,6 +473,38 @@ export default function PersonalDataScreen() {
     router.back();
   }, [router]);
 
+  const handleOpenDeleteModal = () => {
+    setIsDeleteModalVisible(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (isDeleting) {
+      return;
+    }
+    setIsDeleteModalVisible(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (isDeleting || !profile?.id) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      await deleteUserById(profile.id);
+    } catch (error) {
+      console.error("Failed to delete account", error);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalVisible(false);
+      setSuccessMessage("Conta excluida com sucesso.");
+      router.replace("/login");
+    }
+  };
+
   const handleSubmit = useCallback(async () => {
     if (isSaving) {
       return;
@@ -477,7 +516,7 @@ export default function PersonalDataScreen() {
     }
 
     if (!form.email.trim()) {
-      setErrorMessage("Informe um email valido.");
+      setErrorMessage("Informe um email válido.");
       return;
     }
 
@@ -581,7 +620,7 @@ export default function PersonalDataScreen() {
       setSuccessMessage("Dados atualizados com sucesso.");
     } catch (error) {
       console.error("Failed to update personal data", error);
-      setErrorMessage("Nao foi possivel salvar suas alteracoes.");
+      setErrorMessage("Não foi possível salvar suas alteracoes.");
     } finally {
       setIsSaving(false);
     }
@@ -644,7 +683,7 @@ export default function PersonalDataScreen() {
             <View style={styles.planRoleCard}>
               <Text style={styles.sectionTitle}>Plano atual</Text>
               <Text style={styles.planRoleLabel}>
-                {planRoleLabel ?? "Plano nao identificado"}
+                {planRoleLabel ?? "Plano Não identificado"}
               </Text>
               <Text style={styles.planRoleMeta}>
                 {profile.plan?.name ??
@@ -706,7 +745,7 @@ export default function PersonalDataScreen() {
                     color={Color.piccolo}
                   />
                   <Text style={styles.avatarSecondaryButtonText}>
-                    Usar camera
+                    Usar câmera
                   </Text>
                 </TouchableOpacity>
                 {avatar ? (
@@ -852,7 +891,7 @@ export default function PersonalDataScreen() {
           </View>
 
           <View style={styles.formCard}>
-            <Text style={styles.sectionTitle}>Informacoes basicas</Text>
+            <Text style={styles.sectionTitle}>informações pessoais</Text>
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Nome completo</Text>
               <TextInput
@@ -900,7 +939,7 @@ export default function PersonalDataScreen() {
                   handleFieldChange("birthDate", masked)
                 }
                 mask={Masks.DATE_YYYYMMDD}
-                placeholder="AAAA-MM-DD"
+                placeholder="DD-MM-AAAAR"
                 placeholderTextColor={Color.mainTrunks}
                 keyboardType="numbers-and-punctuation"
               />
@@ -922,8 +961,69 @@ export default function PersonalDataScreen() {
               <Text style={styles.submitButtonText}>Salvar alteracoes</Text>
             )}
           </TouchableOpacity>
+
+          <View style={styles.dangerCard}>
+            <Text style={styles.sectionTitle}>Exclusão de conta</Text>
+            <Text style={styles.dangerText}>
+              Esta ação remove seu acesso e apaga seus dados do aplicativo.
+            </Text>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={handleOpenDeleteModal}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.deleteButtonText}>Excluir conta</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={isDeleteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseDeleteModal}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={handleCloseDeleteModal}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.modalCard}
+            onPress={() => {}}
+          >
+            <Text style={styles.modalTitle}>Confirmar exclusao</Text>
+            <Text style={styles.modalDescription}>
+              Tem certeza que deseja excluir sua conta? Esta acao e
+              irreversivel.
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={handleCloseDeleteModal}
+                activeOpacity={0.85}
+                disabled={isDeleting}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmDanger}
+                onPress={handleConfirmDelete}
+                activeOpacity={0.9}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color={Color.mainGoten} />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Excluir</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1246,6 +1346,91 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   submitButtonText: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainGoten,
+  },
+  dangerCard: {
+    borderRadius: Border.br_16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 78, 100, 0.3)",
+    backgroundColor: "rgba(255, 78, 100, 0.06)",
+    paddingHorizontal: StyleVariable.px6,
+    paddingVertical: StyleVariable.py4,
+    gap: Gap.gap_12,
+  },
+  dangerText: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+  },
+  deleteButton: {
+    borderRadius: Border.br_16,
+    borderWidth: 1,
+    borderColor: Color.supportiveChichi,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: StyleVariable.py2,
+  },
+  deleteButtonText: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.supportiveChichi,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: Padding.padding_24,
+  },
+  modalCard: {
+    width: "92%",
+    maxWidth: 520,
+    alignSelf: "center",
+    borderRadius: Border.br_16,
+    backgroundColor: Color.mainGoten,
+    paddingHorizontal: StyleVariable.px4,
+    paddingVertical: StyleVariable.py4,
+    gap: Gap.gap_12,
+    shadowColor: "rgba(0, 0, 0, 0.2)",
+    shadowOpacity: 1,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: FontSize.fs_16,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.hit,
+  },
+  modalDescription: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: Gap.gap_12,
+    marginTop: Gap.gap_4,
+  },
+  modalCancel: {
+    paddingVertical: StyleVariable.py2,
+    paddingHorizontal: StyleVariable.px4,
+  },
+  modalCancelText: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainTrunks,
+  },
+  modalConfirmDanger: {
+    paddingVertical: StyleVariable.py2,
+    paddingHorizontal: StyleVariable.px4,
+    borderRadius: Border.br_10,
+    backgroundColor: Color.supportiveChichi,
+  },
+  modalConfirmText: {
     fontSize: FontSize.fs_14,
     fontFamily: FontFamily.dMSansBold,
     color: Color.mainGoten,

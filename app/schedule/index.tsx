@@ -160,6 +160,14 @@ export default function ScheduleScreen() {
       cells.push({ key: `day-${day}`, date });
     }
 
+    const remainder = cells.length % 7;
+    if (remainder !== 0) {
+      const trailing = 7 - remainder;
+      for (let i = 0; i < trailing; i += 1) {
+        cells.push({ key: `empty-trailing-${i}`, date: null });
+      }
+    }
+
     return cells;
   }, [currentMonth]);
 
@@ -188,8 +196,8 @@ export default function ScheduleScreen() {
       } catch (error) {
         setAvailableSlots([]);
         Alert.alert(
-          "Nao foi possivel carregar",
-          "Revise sua conexao e tente novamente em instantes.",
+          "Não foi possível carregar",
+          "Revise sua conexão e tente novamente em instantes.",
         );
       } finally {
         setIsLoadingSlots(false);
@@ -254,7 +262,7 @@ export default function ScheduleScreen() {
         }
       } catch (error) {
         Alert.alert(
-          "Nao foi possivel carregar",
+          "Não foi possível carregar",
           "Tente novamente mais tarde.",
           [
             {
@@ -464,7 +472,7 @@ export default function ScheduleScreen() {
 
         <View style={styles.notesBlock}>
           <Text style={styles.sectionSubtitle}>
-            Alguma preferencia? (Opcional)
+            Alguma preferência? (Opcional)
           </Text>
           <TextInput
             style={styles.notesInput}
@@ -577,7 +585,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: StyleVariable.px1,
   },
   weekDayLabel: {
-    width: 32,
+    width: "14.2857%",
     textAlign: "center",
     fontSize: FontSize.fs_12,
     lineHeight: LineHeight.lh_16,
@@ -587,17 +595,18 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: StyleVariable.gap1,
+    justifyContent: "space-between",
   },
   dayCell: {
-    width: 40,
-    height: 40,
+    width: "14.2857%",
+    aspectRatio: 1,
     borderRadius: StyleVariable.interactiveBorderRadiusRadiusISm,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Color.mainGoten,
     borderWidth: 1,
     borderColor: "transparent",
+    marginBottom: StyleVariable.gap1,
   },
   dayCellSelected: {
     borderColor: Color.piccolo,
@@ -618,8 +627,9 @@ const styles = StyleSheet.create({
     color: Color.mainBeerus,
   },
   dayCellPlaceholder: {
-    width: 40,
-    height: 40,
+    width: "14.2857%",
+    aspectRatio: 1,
+    marginBottom: StyleVariable.gap1,
   },
   slotsGrid: {
     flexDirection: "row",
@@ -707,3 +717,4 @@ const styles = StyleSheet.create({
     color: Color.mainGoten,
   },
 });
+

@@ -1,14 +1,14 @@
-import { PlanRequest, PlanResponse } from '../types/api';
-import api from './api';
-import { mockData } from './mock/data';
-import { isMockEnabled } from './mock/settings';
-import { clone } from './mock/utils';
-import { getAccessToken } from './storage';
+import { PlanRequest, PlanResponse } from "../types/api";
+import api from "./api";
+import { mockData } from "./mock/data";
+import { isMockEnabled } from "./mock/settings";
+import { clone } from "./mock/utils";
+import { getAccessToken } from "./storage";
 
 const withAuthHeader = async () => {
   const token = await getAccessToken();
   if (!token) {
-    throw new Error('Access token is not available.');
+    throw new Error("Access token is not available.");
   }
   return {
     headers: {
@@ -23,7 +23,7 @@ export const createPlan = async (payload: PlanRequest) => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.post<PlanResponse>('/plans', payload, config);
+  const { data } = await api.post<PlanResponse>("/plans", payload, config);
   return data;
 };
 
@@ -33,7 +33,11 @@ export const updatePlan = async (planId: number, payload: PlanRequest) => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.put<PlanResponse>(`/plans/${planId}`, payload, config);
+  const { data } = await api.put<PlanResponse>(
+    `/plans/${planId}`,
+    payload,
+    config,
+  );
   return data;
 };
 
@@ -53,6 +57,17 @@ export const listPlans = async () => {
   }
 
   const config = await withAuthHeader();
-  const { data } = await api.get<PlanResponse[]>('/plans', config);
+  const { data } = await api.get<PlanResponse[]>("/plans", config);
+  return data;
+};
+
+export const getPlan = async (planId: number) => {
+  if (isMockEnabled()) {
+    const plans = mockData.listPlans();
+    return clone(plans.find((plan) => plan.id === planId));
+  }
+
+  const config = await withAuthHeader();
+  const { data } = await api.get<PlanResponse>(`/plans/${planId}`, config);
   return data;
 };

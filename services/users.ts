@@ -52,6 +52,15 @@ export const updateUserById = async (
   return data;
 };
 
+export const deleteUserById = async (userId: number) => {
+  if (isMockEnabled()) {
+    return;
+  }
+
+  const config = await withAuthHeader();
+  await api.delete(`/users/${userId}`, config);
+};
+
 export const updateUserByIdWithUpload = async (
   userId: number,
   dataPayload: UpdateUserRequest,

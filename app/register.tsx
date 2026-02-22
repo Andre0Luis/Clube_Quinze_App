@@ -1,5 +1,6 @@
+import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker, {
-    type DateTimePickerEvent,
+  type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import type { AxiosError } from "axios";
@@ -7,22 +8,20 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import MaskInput from "react-native-mask-input";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Color } from "../GlobalStyles";
 import { register } from "../services/auth";
-import { upsertPreference } from "../services/preferences";
 import type { MembershipTier, RegisterRequest } from "../types/api";
 
 const MEMBERSHIP_OPTIONS: Array<{ label: string; value: MembershipTier }> = [
@@ -35,16 +34,13 @@ export default function RegisterScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [frequencyDays, setFrequencyDays] = useState<"7" | "15">("7");
-  const [frequencyTime, setFrequencyTime] = useState(() => {
-    const seed = new Date();
-    seed.setHours(9, 0, 0, 0);
-    return seed;
-  });
   const [membershipTier, setMembershipTier] =
     useState<MembershipTier>("QUINZE_STANDARD");
   const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +54,8 @@ export default function RegisterScreen() {
   const isFormValid =
     name.trim().length > 0 &&
     email.trim().length > 0 &&
-    password.trim().length >= 8;
+    password.trim().length >= 8 &&
+    password === confirmPassword;
 
   const handleRegister = async () => {
     if (!isFormValid || isLoading) {
@@ -96,12 +93,6 @@ export default function RegisterScreen() {
       await SecureStore.setItemAsync("accessToken", accessToken);
       await SecureStore.setItemAsync("refreshToken", refreshToken);
 
-      const timeLabel = `${frequencyTime.getHours().toString().padStart(2, "0")}:${frequencyTime.getMinutes().toString().padStart(2, "0")}`;
-      void Promise.allSettled([
-        upsertPreference({ key: "frequency_days", value: frequencyDays }),
-        upsertPreference({ key: "frequency_time", value: timeLabel }),
-      ]);
-
       router.replace("/(tabs)");
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
@@ -128,16 +119,14 @@ export default function RegisterScreen() {
     setShowDatePicker(Platform.OS === "ios");
   };
 
-  const onTimeChange = (event: DateTimePickerEvent, selected?: Date) => {
-    if (event.type === "dismissed") {
-      if (Platform.OS !== "ios") {
-        setShowTimePicker(false);
-      }
+  const handleConfirmBlur = () => {
+    if (!confirmPassword.trim()) {
+      setPasswordMismatch(false);
       return;
     }
-    const current = selected || frequencyTime;
-    setFrequencyTime(current);
-    setShowTimePicker(Platform.OS === "ios");
+    setPasswordMismatch(
+      Boolean(password.trim()) && password !== confirmPassword,
+    );
   };
 
   return (
@@ -199,13 +188,67 @@ export default function RegisterScreen() {
             />
 
             <Text style={styles.label}>Senha</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="João*25"
-              secureTextEntry
-              onChangeText={setPassword}
-              value={password}
-            />
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="João*25"
+                secureTextEntry={!showPassword}
+                onChangeText={setPassword}
+                value={password}
+              />
+              <TouchableOpacity
+                style={styles.passwordToggle}
+                onPress={() => setShowPassword((prev) => !prev)}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showPassword ? "Ocultar senha" : "Mostrar senha"
+                }
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={18}
+                  color="#4B0082"
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.label}>Confirmar senha</Text>
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Repita a senha"
+                secureTextEntry={!showConfirmPassword}
+                onChangeText={(value) => {
+                  setConfirmPassword(value);
+                  if (passwordMismatch && password === value) {
+                    setPasswordMismatch(false);
+                  }
+                }}
+                onBlur={handleConfirmBlur}
+                value={confirmPassword}
+              />
+              <TouchableOpacity
+                style={styles.passwordToggle}
+                onPress={() => setShowConfirmPassword((prev) => !prev)}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showConfirmPassword
+                    ? "Ocultar confirmacao de senha"
+                    : "Mostrar confirmacao de senha"
+                }
+              >
+                <Ionicons
+                  name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                  size={18}
+                  color="#4B0082"
+                />
+              </TouchableOpacity>
+            </View>
+            {passwordMismatch ? (
+              <Text style={styles.helperError}>
+                As senhas precisam ser iguais.
+              </Text>
+            ) : null}
 
             <Text style={styles.label}>Telefone</Text>
             <MaskInput
@@ -249,64 +292,6 @@ export default function RegisterScreen() {
                 ))}
               </Picker>
             </View>
-
-            <Text style={styles.label}>Frequencia de atendimento</Text>
-            <View style={styles.frequencyRow}>
-              <TouchableOpacity
-                style={[
-                  styles.frequencyChip,
-                  frequencyDays === "7" && styles.frequencyChipActive,
-                ]}
-                onPress={() => setFrequencyDays("7")}
-              >
-                <Text
-                  style={[
-                    styles.frequencyChipText,
-                    frequencyDays === "7" && styles.frequencyChipTextActive,
-                  ]}
-                >
-                  1 vez / 7 dias
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.frequencyChip,
-                  frequencyDays === "15" && styles.frequencyChipActive,
-                ]}
-                onPress={() => setFrequencyDays("15")}
-              >
-                <Text
-                  style={[
-                    styles.frequencyChipText,
-                    frequencyDays === "15" && styles.frequencyChipTextActive,
-                  ]}
-                >
-                  1 vez / 15 dias
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.label}>Horario preferido</Text>
-            <TouchableOpacity
-              onPress={() => setShowTimePicker(true)}
-              style={styles.input}
-              accessibilityRole="button"
-              accessibilityLabel="Selecionar horario preferido"
-            >
-              <Text>
-                {frequencyTime.getHours().toString().padStart(2, "0")}:
-                {frequencyTime.getMinutes().toString().padStart(2, "0")}
-              </Text>
-            </TouchableOpacity>
-            {showTimePicker && (
-              <DateTimePicker
-                value={frequencyTime}
-                mode="time"
-                is24Hour
-                display="default"
-                onChange={onTimeChange}
-              />
-            )}
           </Animatable.View>
 
           <Animatable.View
@@ -374,61 +359,49 @@ const styles = StyleSheet.create({
   },
   input: {
     width: "100%",
-    height: 50,
     backgroundColor: "#fff",
     borderRadius: 10,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    fontSize: 16,
-    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: "#ddd",
-    color: Color.tokenColorNeutralDarkest,
+    marginBottom: 12,
+  },
+  passwordRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  passwordToggle: {
+    marginLeft: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  helperError: {
+    color: "#D7263D",
+    fontSize: 12,
+    marginTop: -6,
+    marginBottom: 10,
   },
   pickerContainer: {
     width: "100%",
-    height: 50,
     backgroundColor: "#fff",
     borderRadius: 10,
-    marginBottom: 15,
     borderWidth: 1,
     borderColor: "#ddd",
-    justifyContent: "center",
+    marginBottom: 12,
+    overflow: "hidden",
   },
   picker: {
     width: "100%",
-  },
-  frequencyRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 12,
-  },
-  frequencyChip: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    backgroundColor: "#fff",
-    alignItems: "center",
-  },
-  frequencyChipActive: {
-    borderColor: "#4B0082",
-    backgroundColor: "#f2e9ff",
-  },
-  frequencyChipText: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-  },
-  frequencyChipTextActive: {
-    color: "#4B0082",
-    fontWeight: "bold",
-  },
-  footer: {
-    paddingBottom: 24,
-    gap: 16,
   },
   terms: {
     fontSize: 12,

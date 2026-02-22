@@ -27,7 +27,7 @@ import type { AppointmentResponse } from "../types/api";
 
 const TABS = [
   { id: "upcoming", label: "Meus Agendamentos" },
-  { id: "history", label: "Historico" },
+  { id: "history", label: "Histórico" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -54,7 +54,7 @@ const statusStyles: Record<
   { label: string; background: string; text: string }
 > = {
   SCHEDULED: { label: "Agendado", background: "#1B9984", text: "#FFFFFF" },
-  COMPLETED: { label: "Concluido", background: "#4CAF50", text: "#FFFFFF" },
+  COMPLETED: { label: "concluído", background: "#4CAF50", text: "#FFFFFF" },
   CANCELED: { label: "Cancelado", background: "#D7263D", text: "#FFFFFF" },
 };
 
@@ -156,8 +156,8 @@ export default function AppointmentsScreen() {
           return;
         }
         Alert.alert(
-          "Nao foi possivel carregar",
-          "Verifique sua conexao e tente novamente.",
+          "Não foi possível carregar",
+          "Verifique sua conexão e tente novamente.",
         );
       } finally {
         if (isActive) {
@@ -203,8 +203,8 @@ export default function AppointmentsScreen() {
 
   const subtitle =
     activeTab === "upcoming"
-      ? "Agendamentos dos proximos 30 dias"
-      : "Ultimos agendamentos";
+      ? "Agendamentos dos próximos 30 dias"
+      : "Últimos agendamentos";
 
   const handleCardPress = (appointment: AppointmentResponse) => {
     router.push(`/appointments/${String(appointment.id)}`);
@@ -301,7 +301,7 @@ export default function AppointmentsScreen() {
             </Text>
             <Text style={styles.emptyDescription}>
               {activeTab === "upcoming"
-                ? "Agende seu proximo atendimento agora!"
+                ? "Agende seu próximo atendimento agora!"
                 : "Assim que concluir seus atendimentos, eles aparecem aqui."}
             </Text>
 

@@ -32,7 +32,7 @@ const getStatusMeta = (status?: AppointmentResponse["status"]) => {
     case "SCHEDULED":
       return { label: "Agendado", background: "#1B9984", text: "#FFFFFF" };
     case "COMPLETED":
-      return { label: "Concluido", background: "#4CAF50", text: "#FFFFFF" };
+      return { label: "concluído", background: "#4CAF50", text: "#FFFFFF" };
     case "CANCELED":
       return { label: "Cancelado", background: "#D7263D", text: "#FFFFFF" };
     default:
@@ -79,7 +79,7 @@ const formatTimeLabel = (value?: string) => {
 
 const formatServiceLabel = (value?: string) => {
   if (!value) {
-    return "Servico exclusivo";
+    return "serviço exclusivo";
   }
   return value
     .split(/[_-]/)
@@ -178,8 +178,8 @@ export default function ReserveScreen() {
     activeTab === "upcoming"
       ? { title: "Proximas visitas", subtitle: "Atualizado automaticamente" }
       : {
-          title: "Historico recente",
-          subtitle: "Consulte atendimentos concluidos",
+          title: "Histórico recente",
+          subtitle: "Consulte atendimentos concluídos",
         };
 
   const appointmentsToRender =
@@ -212,7 +212,7 @@ export default function ReserveScreen() {
           <View style={styles.headerTexts}>
             <Text style={styles.title}>Meus agendamentos</Text>
             <Text style={styles.subtitle}>
-              Acompanhe e organize seus proximos horarios no Clube Quinze.
+              Acompanhe e organize seus próximos horarios no Clube Quinze.
             </Text>
           </View>
         </View>
@@ -232,7 +232,7 @@ export default function ReserveScreen() {
                 activeTab === "upcoming" && styles.segmentLabelActive,
               ]}
             >
-              Proximos
+              próximos
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -249,7 +249,7 @@ export default function ReserveScreen() {
                 activeTab === "history" && styles.segmentLabelActive,
               ]}
             >
-              Historico
+              Histórico
             </Text>
           </TouchableOpacity>
         </View>
@@ -277,12 +277,12 @@ export default function ReserveScreen() {
             <Text style={styles.emptyStateTitle}>
               {activeTab === "upcoming"
                 ? "Nenhum horario futuro"
-                : "Historico ainda vazio"}
+                : "Histórico ainda vazio"}
             </Text>
             <Text style={styles.emptyStateSubtitle}>
               {activeTab === "upcoming"
-                ? "Agende um novo horario para ver seus proximos atendimentos."
-                : "Seus atendimentos concluidos aparecerão aqui automaticamente."}
+                ? "Agende um novo horario para ver seus próximos atendimentos."
+                : "Seus atendimentos concluídos aparecerão aqui automaticamente."}
             </Text>
           </View>
         ) : (

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    Image,
     Modal,
     ScrollView,
     StyleSheet,
@@ -22,14 +23,21 @@ import {
     Padding,
     StyleVariable,
 } from "../../GlobalStyles";
+import api from "../../services/api";
 import {
     cancelAppointment,
     listAppointments,
 } from "../../services/appointments";
 import { findMemberById } from "../../services/mock/admin-members";
 import { isMockEnabled } from "../../services/mock/settings";
-import { getUserById } from "../../services/users";
-import type { AppointmentResponse, UserProfileResponse } from "../../types/api";
+import { listPlans } from "../../services/plans";
+import { getUserById, updateUserById } from "../../services/users";
+import type {
+    AppointmentResponse,
+    PlanResponse,
+    UpdateUserRequest,
+    UserProfileResponse,
+} from "../../types/api";
 
 type RenewValue = "1m" | "3m" | "6m" | "12m";
 
@@ -42,12 +50,67 @@ const renewOptions: Array<{ label: string; value: RenewValue }> = [
   { label: "1 ano", value: "12m" },
 ];
 
+const getApiOrigin = () => {
+  const base = api.defaults.baseURL ?? "";
+  try {
+    return new URL(base).origin;
+  } catch {
+    return "";
+  }
+};
+
+const normalizeImageUri = (value?: string | null) => {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("data:image")) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  const origin = getApiOrigin();
+  if (!origin) return trimmed;
+  if (trimmed.startsWith("/")) return `${origin}${trimmed}`;
+  return `${origin}/${trimmed}`;
+};
+
+const formatDateLabel = (date: Date) =>
+  date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+const addMonths = (base: Date, months: number) => {
+  const next = new Date(base);
+  next.setMonth(next.getMonth() + months);
+  return next;
+};
+
+const mapPlanToTier = (
+  plan: PlanResponse,
+  fallback: UserProfileResponse["membershipTier"],
+) => {
+  const name = plan.name.toLowerCase();
+  if (name.includes("select")) return "QUINZE_SELECT";
+  if (name.includes("premium")) return "QUINZE_PREMIUM";
+  if (name.includes("standard")) return "QUINZE_STANDARD";
+  return fallback;
+};
+
 export default function AdminMemberDetailScreen() {
   const router = useRouter();
   const { memberId } = useLocalSearchParams<{ memberId?: string }>();
 
   const [renewVisible, setRenewVisible] = useState(false);
   const [renewSelection, setRenewSelection] = useState<RenewValue>("1m");
+  const [planVisible, setPlanVisible] = useState(false);
+  const [planOptions, setPlanOptions] = useState<PlanResponse[]>([]);
+  const [planOptionsError, setPlanOptionsError] = useState<string | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
+  const [endDateOverride, setEndDateOverride] = useState<Date | null>(null);
+  const [galleryPreviewUri, setGalleryPreviewUri] = useState<string | null>(
+    null,
+  );
+  const [isGalleryModalVisible, setIsGalleryModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [member, setMember] = useState<UserProfileResponse | undefined>(
@@ -116,6 +179,33 @@ export default function AdminMemberDetailScreen() {
 
   useEffect(() => {
     let isActive = true;
+    const loadPlans = async () => {
+      if (!member?.id) return;
+      setPlanOptionsError(null);
+      try {
+        const list = await listPlans();
+        if (!isActive) return;
+        setPlanOptions(list);
+        setSelectedPlanId(member.plan?.id ?? null);
+      } catch (loadError) {
+        console.error("Failed to load plans", loadError);
+        if (isActive) {
+          setPlanOptions([]);
+          setPlanOptionsError("Não foi possível carregar os planos.");
+        }
+      }
+    };
+
+    setEndDateOverride(null);
+    loadPlans();
+
+    return () => {
+      isActive = false;
+    };
+  }, [member?.id, member?.plan?.id]);
+
+  useEffect(() => {
+    let isActive = true;
 
     const loadAppointments = async () => {
       if (!member?.id) {
@@ -153,7 +243,7 @@ export default function AdminMemberDetailScreen() {
         if (isActive) {
           setAppointments([]);
           setAppointmentsError(
-            "Nao foi possivel carregar os proximos atendimentos.",
+            "Não foi possível carregar os próximos atendimentos.",
           );
         }
       } finally {
@@ -176,11 +266,11 @@ export default function AdminMemberDetailScreen() {
         name: "",
         email: "",
         idade: "",
-        preferencias: "",
+        preferências: "",
         agendamentoStatus: "",
         planoLabel: "",
         userStatus: "",
-        vencimento: "",
+        encerramento: "",
       };
     }
 
@@ -189,19 +279,23 @@ export default function AdminMemberDetailScreen() {
         ? "Quinze Select"
         : member.plan?.name || "Clube Quinze";
 
+    const baseDate = member.createdAt ? new Date(member.createdAt) : null;
+    const durationMonths = member.plan?.durationMonths;
+    const computedEndDate =
+      endDateOverride ??
+      (baseDate && durationMonths ? addMonths(baseDate, durationMonths) : null);
+
     return {
       name: member.name,
       email: member.email ?? "",
       idade: member.birthDate ?? "",
-      preferencias: member.preferences?.map((p) => p.value).join(", ") ?? "",
+      preferências: member.preferences?.map((p) => p.value).join(", ") ?? "",
       agendamentoStatus: member.nextAppointment?.status ?? "",
       planoLabel: planLabel,
       userStatus: member.role ?? "",
-      vencimento: member.plan?.durationMonths
-        ? `${member.plan.durationMonths} meses`
-        : "",
+      encerramento: computedEndDate ? formatDateLabel(computedEndDate) : "",
     };
-  }, [member]);
+  }, [endDateOverride, member]);
 
   const avatarInitials = useMemo(() => {
     if (!member?.name) return "";
@@ -212,14 +306,46 @@ export default function AdminMemberDetailScreen() {
       .slice(0, 2);
   }, [member?.name]);
 
+  const avatarSource = useMemo(() => {
+    const profileUrl = normalizeImageUri(member?.profilePictureUrl);
+    if (profileUrl) {
+      return { uri: profileUrl };
+    }
+    if (member?.profilePictureBase64) {
+      const base64 = member.profilePictureBase64.trim();
+      if (!base64) return null;
+      const uri = base64.startsWith("data:image")
+        ? base64
+        : `data:image/jpeg;base64,${base64}`;
+      return { uri };
+    }
+    const galleryItem = member?.gallery?.[0];
+    const galleryUrl = normalizeImageUri(galleryItem?.imageUrl);
+    if (galleryUrl) {
+      return { uri: galleryUrl };
+    }
+    if (galleryItem?.imageBase64) {
+      const base64 = galleryItem.imageBase64.trim();
+      if (!base64) return null;
+      const uri = base64.startsWith("data:image")
+        ? base64
+        : `data:image/jpeg;base64,${base64}`;
+      return { uri };
+    }
+    return null;
+  }, [
+    member?.gallery,
+    member?.profilePictureBase64,
+    member?.profilePictureUrl,
+  ]);
+
   const roleLabel = useMemo(() => {
     if (!member) return "";
+    const planName = member.plan?.name?.trim();
+    if (planName) return planName;
     if (member.membershipTier === "QUINZE_SELECT") return "Select";
-    const planName = member.plan?.name ?? "";
-    const lower = planName.toLowerCase();
-    if (lower.includes("premium")) return "Premium";
-    if (lower.includes("standard")) return "Standard";
-    return planName || "Standard";
+    if (member.membershipTier === "QUINZE_PREMIUM") return "Premium";
+    return "";
   }, [member]);
 
   const formatAppointmentDate = (iso?: string) => {
@@ -260,7 +386,69 @@ export default function AdminMemberDetailScreen() {
     const picked = renewOptions.find((opt) => opt.value === renewSelection);
     setRenewVisible(false);
     if (picked) {
-      Alert.alert("Renovação", `Renovar por ${picked.label}`);
+      const months = Number(picked.value.replace("m", ""));
+      const endDate = addMonths(new Date(), months);
+      setEndDateOverride(endDate);
+      Alert.alert(
+        "Renovação",
+        `Plano renovado por ${picked.label}. Encerramento: ${formatDateLabel(endDate)}.`,
+      );
+    }
+  };
+
+  const handleOpenPlanChange = () => {
+    setPlanOptionsError(null);
+    setSelectedPlanId(member?.plan?.id ?? null);
+    setPlanVisible(true);
+  };
+
+  const handleConfirmPlanChange = async () => {
+    if (!member || isUpdatingPlan) {
+      return;
+    }
+
+    if (!selectedPlanId) {
+      setPlanOptionsError("Selecione um plano para continuar.");
+      return;
+    }
+
+    const selectedPlan = planOptions.find((plan) => plan.id === selectedPlanId);
+    if (!selectedPlan) {
+      setPlanOptionsError("Plano selecionado não encontrado.");
+      return;
+    }
+
+    setIsUpdatingPlan(true);
+    setPlanOptionsError(null);
+
+    const nextTier = mapPlanToTier(selectedPlan, member.membershipTier);
+    const payload: UpdateUserRequest = {
+      name: member.name,
+      email: member.email ?? "",
+      phone: member.phone ?? undefined,
+      birthDate: member.birthDate ?? undefined,
+      membershipTier: nextTier,
+      planId: selectedPlan.id,
+      profilePictureUrl: member.profilePictureUrl ?? undefined,
+      profilePictureBase64: member.profilePictureBase64 ?? undefined,
+      gallery: member.gallery ?? undefined,
+    };
+
+    try {
+      const updated = await updateUserById(member.id, payload);
+      setMember(updated);
+      setPlanVisible(false);
+      const endDate = addMonths(new Date(), selectedPlan.durationMonths);
+      setEndDateOverride(endDate);
+      Alert.alert(
+        "Plano atualizado",
+        "Plano do usuário atualizado com sucesso.",
+      );
+    } catch (updateError) {
+      console.error("Failed to update member plan", updateError);
+      setPlanOptionsError("Não foi possível atualizar o plano.");
+    } finally {
+      setIsUpdatingPlan(false);
     }
   };
 
@@ -307,7 +495,7 @@ export default function AdminMemberDetailScreen() {
             } catch (cancelError) {
               console.error("Failed to cancel appointment", cancelError);
               Alert.alert(
-                "Nao foi possivel cancelar",
+                "Não foi possível cancelar",
                 "Tente novamente em instantes.",
               );
             } finally {
@@ -317,6 +505,16 @@ export default function AdminMemberDetailScreen() {
         },
       ],
     );
+  };
+
+  const handleOpenGalleryPreview = (uri: string) => {
+    setGalleryPreviewUri(uri);
+    setIsGalleryModalVisible(true);
+  };
+
+  const handleCloseGalleryPreview = () => {
+    setIsGalleryModalVisible(false);
+    setGalleryPreviewUri(null);
   };
 
   return (
@@ -365,10 +563,25 @@ export default function AdminMemberDetailScreen() {
             ) : null}
             <View style={styles.centerBlock}>
               <View style={styles.avatarLarge}>
-                <Text style={styles.avatarLargeLabel}>{avatarInitials}</Text>
+                {avatarSource ? (
+                  <Image source={avatarSource} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarLargeLabel}>{avatarInitials}</Text>
+                )}
               </View>
-              <Text style={styles.memberName}>{member.name}</Text>
-              <Text style={styles.memberPlan}>{roleLabel}</Text>
+              <Text
+                style={[
+                  styles.memberName,
+                  roleLabel.toLowerCase().includes("select")
+                    ? styles.memberNameSelect
+                    : null,
+                ]}
+              >
+                {member.name}
+              </Text>
+              {roleLabel ? (
+                <Text style={styles.memberPlan}>{roleLabel}</Text>
+              ) : null}
             </View>
 
             <View style={styles.sectionBlock}>
@@ -384,7 +597,7 @@ export default function AdminMemberDetailScreen() {
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Preferências</Text>
-                  <Text style={styles.infoValue}>{derived.preferencias}</Text>
+                  <Text style={styles.infoValue}>{derived.preferências}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Status</Text>
@@ -407,8 +620,8 @@ export default function AdminMemberDetailScreen() {
                   <Text style={styles.infoValue}>{derived.planoLabel}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Vencimento</Text>
-                  <Text style={styles.infoValue}>{derived.vencimento}</Text>
+                  <Text style={styles.infoLabel}>Encerramento</Text>
+                  <Text style={styles.infoValue}>{derived.encerramento}</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.renewButton}
@@ -416,6 +629,13 @@ export default function AdminMemberDetailScreen() {
                   onPress={handleOpenRenew}
                 >
                   <Text style={styles.renewButtonText}>Fazer Renovação</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.changePlanButton}
+                  activeOpacity={0.85}
+                  onPress={handleOpenPlanChange}
+                >
+                  <Text style={styles.changePlanButtonText}>Trocar plano</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -439,7 +659,7 @@ export default function AdminMemberDetailScreen() {
             </View>
 
             <View style={styles.sectionBlock}>
-              <Text style={styles.cardTitle}>Proximos atendimentos</Text>
+              <Text style={styles.cardTitle}>Próximos atendimentos</Text>
               <View style={styles.card}>
                 {appointmentsLoading ? (
                   <View style={styles.appointmentEmpty}>
@@ -520,16 +740,49 @@ export default function AdminMemberDetailScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.photoRow}
               >
-                {photoPlaceholders.map((item) => (
-                  <View key={item.id} style={styles.photoCard}>
-                    <Ionicons
-                      name="image-outline"
-                      size={24}
-                      color={Color.mainTrunks}
-                    />
-                    <Text style={styles.photoLabel}>Foto {item.id}</Text>
+                {member.gallery && member.gallery.length > 0 ? (
+                  member.gallery.map((item, index) => {
+                    const imageUri =
+                      normalizeImageUri(item.imageUrl) ??
+                      (item.imageBase64
+                        ? item.imageBase64.startsWith("data:image")
+                          ? item.imageBase64
+                          : `data:image/jpeg;base64,${item.imageBase64}`
+                        : null);
+                    return (
+                      <TouchableOpacity
+                        key={item.id ?? `gallery-${index}`}
+                        style={styles.photoCard}
+                        activeOpacity={imageUri ? 0.85 : 1}
+                        onPress={() => {
+                          if (imageUri) {
+                            handleOpenGalleryPreview(imageUri);
+                          }
+                        }}
+                        disabled={!imageUri}
+                      >
+                        {imageUri ? (
+                          <Image
+                            source={{ uri: imageUri }}
+                            style={styles.photoImage}
+                          />
+                        ) : (
+                          <Ionicons
+                            name="image-outline"
+                            size={24}
+                            color={Color.mainTrunks}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })
+                ) : (
+                  <View style={styles.photoEmpty}>
+                    <Text style={styles.helperText}>
+                      Nenhuma foto cadastrada.
+                    </Text>
                   </View>
-                ))}
+                )}
               </ScrollView>
             </View>
           </View>
@@ -599,6 +852,122 @@ export default function AdminMemberDetailScreen() {
                 <Text style={styles.modalConfirmText}>Confirmar</Text>
               </TouchableOpacity>
             </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={planVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPlanVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setPlanVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.modalCard}
+            onPress={() => {}}
+          >
+            <Text style={styles.modalTitle}>Trocar plano</Text>
+            <Text style={styles.modalSubtitle}>
+              Selecione o plano para este usuário
+            </Text>
+
+            {planOptionsError ? (
+              <View style={styles.feedbackBanner}>
+                <Text style={styles.feedbackText}>{planOptionsError}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.optionGrid}>
+              {planOptions.map((plan) => {
+                const active = selectedPlanId === plan.id;
+                return (
+                  <TouchableOpacity
+                    key={plan.id}
+                    style={[
+                      styles.optionButton,
+                      styles.planOptionButton,
+                      active && styles.optionButtonActive,
+                    ]}
+                    onPress={() => setSelectedPlanId(plan.id)}
+                    activeOpacity={0.85}
+                  >
+                    <Text
+                      style={[
+                        styles.optionLabel,
+                        styles.planOptionLabel,
+                        active && styles.optionLabelActive,
+                      ]}
+                    >
+                      {plan.name}
+                    </Text>
+                    <Text style={styles.planOptionMeta}>
+                      {`${plan.durationMonths} meses`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setPlanVisible(false)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirm}
+                onPress={handleConfirmPlanChange}
+                activeOpacity={0.9}
+                disabled={isUpdatingPlan}
+              >
+                {isUpdatingPlan ? (
+                  <ActivityIndicator size="small" color={Color.mainGoten} />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Confirmar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={isGalleryModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseGalleryPreview}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={handleCloseGalleryPreview}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.galleryModalCard}
+            onPress={() => {}}
+          >
+            {galleryPreviewUri ? (
+              <Image
+                source={{ uri: galleryPreviewUri }}
+                style={styles.galleryModalImage}
+              />
+            ) : null}
+            <TouchableOpacity
+              style={styles.modalConfirm}
+              onPress={handleCloseGalleryPreview}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.modalConfirmText}>Fechar</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -676,11 +1045,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#EEF5FF",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
     shadowColor: "rgba(0, 0, 0, 0.08)",
     shadowOpacity: 1,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 12,
     elevation: 3,
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   avatarLargeLabel: {
     fontSize: FontSize.fs_24,
@@ -691,6 +1066,9 @@ const styles = StyleSheet.create({
     fontSize: FontSize.fs_18,
     fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
+  },
+  memberNameSelect: {
+    color: "#C9A227",
   },
   memberPlan: {
     fontSize: FontSize.fs_12,
@@ -750,6 +1128,20 @@ const styles = StyleSheet.create({
     fontSize: FontSize.fs_14,
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
+  },
+  changePlanButton: {
+    marginTop: Gap.gap_8,
+    paddingVertical: StyleVariable.py2,
+    borderRadius: Border.br_10,
+    borderWidth: 1,
+    borderColor: "rgba(0, 5, 61, 0.12)",
+    alignItems: "center",
+    backgroundColor: Color.mainGohan,
+  },
+  changePlanButtonText: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainTrunks,
   },
   helperText: {
     fontSize: FontSize.fs_12,
@@ -832,11 +1224,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: Gap.gap_8,
+    overflow: "hidden",
     shadowColor: "rgba(0, 0, 0, 0.04)",
     shadowOpacity: 1,
     shadowOffset: { width: 0, height: 6 },
     shadowRadius: 10,
     elevation: 2,
+  },
+  photoImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  photoEmpty: {
+    justifyContent: "center",
+    paddingVertical: StyleVariable.py2,
+  },
+  galleryModalCard: {
+    width: "92%",
+    maxWidth: 520,
+    alignSelf: "center",
+    borderRadius: Border.br_16,
+    backgroundColor: Color.mainGoten,
+    paddingHorizontal: StyleVariable.px4,
+    paddingVertical: StyleVariable.py4,
+    gap: Gap.gap_12,
+    shadowColor: "rgba(0, 0, 0, 0.2)",
+    shadowOpacity: 1,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  galleryModalImage: {
+    width: "100%",
+    height: 320,
+    borderRadius: Border.br_12,
+    backgroundColor: Color.mainGohan,
+    resizeMode: "contain",
   },
   photoLabel: {
     fontSize: FontSize.fs_12,
@@ -891,6 +1315,10 @@ const styles = StyleSheet.create({
     backgroundColor: Color.mainGohan,
     minWidth: 120,
   },
+  planOptionButton: {
+    alignItems: "center",
+    gap: Gap.gap_4,
+  },
   optionButtonActive: {
     borderColor: Color.piccolo,
     backgroundColor: "#EEF2FF",
@@ -900,9 +1328,17 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansRegular,
     color: Color.mainTrunks,
   },
+  planOptionLabel: {
+    fontFamily: FontFamily.dMSansBold,
+  },
   optionLabelActive: {
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
+  },
+  planOptionMeta: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
   },
   modalActions: {
     flexDirection: "row",

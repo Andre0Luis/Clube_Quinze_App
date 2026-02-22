@@ -117,7 +117,7 @@ export default function PreferencesScreen() {
             return;
           }
           setPreferences([]);
-          setErrorMessage("Nao foi possivel carregar suas preferencias.");
+          setErrorMessage("Não foi possível carregar suas preferências.");
         } finally {
           if (!isActive) {
             return;
@@ -143,7 +143,7 @@ export default function PreferencesScreen() {
       setPreferences(data);
     } catch (error) {
       console.error("Failed to refresh preferences", error);
-      setErrorMessage("Nao foi possivel atualizar as preferencias.");
+      setErrorMessage("Não foi possível atualizar as preferências.");
     } finally {
       setIsRefreshing(false);
     }
@@ -174,18 +174,18 @@ export default function PreferencesScreen() {
     const trimmedValue = valueInput.trim();
 
     if (!trimmedValue) {
-      setErrorMessage("Informe a preferencia.");
+      setErrorMessage("Informe a preferência.");
       return;
     }
 
-    const generatedKey = slugify(trimmedValue) || `preferencia-${Date.now()}`;
+    const generatedKey = slugify(trimmedValue) || `preferência-${Date.now()}`;
 
     const duplicate = preferences.find(
       (item) => item.id !== selectedPreference?.id && item.key === generatedKey,
     );
     if (duplicate) {
       setErrorMessage(
-        "Ja existe uma preferencia com esse nome. Atualize a existente ou escolha outro nome.",
+        "Ja existe uma preferência com esse nome. Atualize a existente ou escolha outro nome.",
       );
       return;
     }
@@ -206,7 +206,7 @@ export default function PreferencesScreen() {
           ),
         );
         setSelectedPreference(updated);
-        setSuccessMessage("Preferencia atualizada com sucesso.");
+        setSuccessMessage("preferência atualizada com sucesso.");
       } else {
         const created = await upsertPreference({
           key: generatedKey,
@@ -214,12 +214,12 @@ export default function PreferencesScreen() {
         });
         setPreferences((prev) => [created, ...prev]);
         setSelectedPreference(created);
-        setSuccessMessage("Preferencia adicionada com sucesso.");
+        setSuccessMessage("preferência adicionada com sucesso.");
       }
       setValueInput(trimmedValue);
     } catch (error) {
       console.error("Failed to persist preference", error);
-      setErrorMessage("Nao foi possivel salvar esta preferencia.");
+      setErrorMessage("Não foi possível salvar esta preferência.");
     } finally {
       setIsSaving(false);
     }
@@ -241,10 +241,10 @@ export default function PreferencesScreen() {
       );
       setSelectedPreference(null);
       setValueInput("");
-      setSuccessMessage("Preferencia removida com sucesso.");
+      setSuccessMessage("preferência removida com sucesso.");
     } catch (error) {
       console.error("Failed to delete preference", error);
-      setErrorMessage("Nao foi possivel remover esta preferencia.");
+      setErrorMessage("Não foi possível remover esta preferência.");
     } finally {
       setIsDeleting(false);
     }
@@ -307,14 +307,14 @@ export default function PreferencesScreen() {
           >
             <Ionicons name="arrow-back" size={20} color={Color.hit} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Preferencias</Text>
+          <Text style={styles.headerTitle}>preferências</Text>
           <View style={styles.headerSpacer} />
         </View>
 
         {isLoading ? (
           <View style={styles.loader}>
             <ActivityIndicator size="small" color={Color.piccolo} />
-            <Text style={styles.loaderLabel}>Carregando preferencias...</Text>
+            <Text style={styles.loaderLabel}>Carregando preferências...</Text>
           </View>
         ) : null}
 
@@ -343,7 +343,7 @@ export default function PreferencesScreen() {
         <View style={styles.listCard}>
           <View style={styles.listHeader}>
             <View style={styles.listHeaderTexts}>
-              <Text style={styles.sectionTitle}>Preferencias salvas</Text>
+              <Text style={styles.sectionTitle}>preferências salvas</Text>
               <Text
                 style={styles.listMeta}
               >{`${sortedPreferences.length} itens`}</Text>
@@ -351,7 +351,7 @@ export default function PreferencesScreen() {
           </View>
           {sortedPreferences.length === 0 ? (
             <Text style={styles.emptyState}>
-              Nenhuma preferencia cadastrada ainda.
+              Nenhuma preferência cadastrada ainda.
             </Text>
           ) : (
             <FlatList
@@ -368,7 +368,7 @@ export default function PreferencesScreen() {
 
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>
-            {selectedPreference ? "Editar preferencia" : "Nova preferencia"}
+            {selectedPreference ? "Editar preferência" : "Nova preferência"}
           </Text>
           {selectedPreference ? (
             <TouchableOpacity
@@ -382,17 +382,17 @@ export default function PreferencesScreen() {
                 color={Color.piccolo}
               />
               <Text style={styles.resetSelectionText}>
-                Adicionar nova preferencia
+                Adicionar nova preferência
               </Text>
             </TouchableOpacity>
           ) : null}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Preferencia</Text>
+            <Text style={styles.fieldLabel}>preferência</Text>
             <TextInput
               style={styles.fieldInput}
               value={valueInput}
               onChangeText={setValueInput}
-              placeholder="Descreva a preferencia"
+              placeholder="Descreva a preferência"
               placeholderTextColor={Color.mainTrunks}
             />
           </View>
@@ -439,7 +439,7 @@ export default function PreferencesScreen() {
               {isDeleting ? (
                 <ActivityIndicator size="small" color={Color.mainGoten} />
               ) : (
-                <Text style={styles.dangerButtonText}>Remover preferencia</Text>
+                <Text style={styles.dangerButtonText}>Remover preferência</Text>
               )}
             </TouchableOpacity>
           ) : null}
@@ -696,3 +696,4 @@ const styles = StyleSheet.create({
     color: Color.mainGoten,
   },
 });
+

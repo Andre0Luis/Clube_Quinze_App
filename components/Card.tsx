@@ -15,6 +15,7 @@ import Time from "./Time";
 
 export type CardType = {
   buttonText?: string;
+  buttonTextLines?: number;
   size?: string;
   time?: "calendar" | "calendar-add" | "time" | "calendar-date";
   type?: string;
@@ -34,6 +35,7 @@ export type CardType = {
 
 const Card = ({
   buttonText,
+  buttonTextLines = 1,
   size,
   time = "calendar",
   type,
@@ -73,7 +75,15 @@ const Card = ({
           />
         </View>
       </View>
-      <Text style={styles.buttonText}>{buttonText}</Text>
+      <Text
+        style={styles.buttonText}
+        numberOfLines={buttonTextLines}
+        ellipsizeMode="tail"
+        adjustsFontSizeToFit={buttonTextLines === 1}
+        minimumFontScale={0.85}
+      >
+        {buttonText}
+      </Text>
     </View>
   );
 };

@@ -56,26 +56,38 @@ export default function PoliciesScreen() {
           >
             <Ionicons name="arrow-back" size={20} color={Color.hit} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Termos e politicas</Text>
+          <Text style={styles.headerTitle}>Termos e políticas</Text>
           <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Compromisso com a seguranca</Text>
           <Text style={styles.paragraph}>
-            Mantemos seus dados protegidos de acordo com as diretrizes da LGPD. Aqui voce encontra um resumo dos principais pontos das nossas politicas.
+            Mantemos seus dados protegidos de acordo com as diretrizes da LGPD.
+            Aqui Você encontra um resumo dos principais pontos das nossas
+            políticas.
           </Text>
         </View>
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="document-text-outline" size={20} color={Color.piccolo} />
+            <Ionicons
+              name="document-text-outline"
+              size={20}
+              color={Color.piccolo}
+            />
             <Text style={styles.sectionTitle}>Termos de uso</Text>
           </View>
           <Text style={styles.paragraph}>
-            Definimos como voce pode utilizar os servicos do Clube Quinze, incluindo regras de agendamento, comunicacao e limites de uso da plataforma.
+            Definimos como Você pode utilizar os serviços do Clube Quinze,
+            incluindo regras de agendamento, comunicação e limites de uso da
+            plataforma.
           </Text>
-          <TouchableOpacity style={styles.linkButton} onPress={handleOpenTerms} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={handleOpenTerms}
+            activeOpacity={0.85}
+          >
             <Text style={styles.linkText}>Abrir termos completos</Text>
             <Ionicons name="open-outline" size={16} color={Color.piccolo} />
           </TouchableOpacity>
@@ -83,13 +95,22 @@ export default function PoliciesScreen() {
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="shield-checkmark-outline" size={20} color={Color.piccolo} />
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={20}
+              color={Color.piccolo}
+            />
             <Text style={styles.sectionTitle}>Politica de privacidade</Text>
           </View>
           <Text style={styles.paragraph}>
-            Explicamos como coletamos, tratamos e armazenamos suas informacoes pessoais, alem de suas opcoes para gerenciar consentimentos.
+            Explicamos como coletamos, tratamos e armazenamos suas informações
+            pessoais, alem de suas opcoes para gerenciar consentimentos.
           </Text>
-          <TouchableOpacity style={styles.linkButton} onPress={handleOpenPrivacy} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={handleOpenPrivacy}
+            activeOpacity={0.85}
+          >
             <Text style={styles.linkText}>Consultar documento</Text>
             <Ionicons name="open-outline" size={16} color={Color.piccolo} />
           </TouchableOpacity>
@@ -97,13 +118,22 @@ export default function PoliciesScreen() {
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="help-circle-outline" size={20} color={Color.piccolo} />
+            <Ionicons
+              name="help-circle-outline"
+              size={20}
+              color={Color.piccolo}
+            />
             <Text style={styles.sectionTitle}>Precisa de ajuda?</Text>
           </View>
           <Text style={styles.paragraph}>
-            Se tiver duvidas ou quiser atualizar consentimentos especificos, nossa equipe de privacidade pode ajudar voce a qualquer momento.
+            Se tiver dúvidas ou quiser atualizar consentimentos específicos,
+            nossa equipe de privacidade pode ajudar você a qualquer momento.
           </Text>
-          <TouchableOpacity style={styles.linkButton} onPress={handleOpenEmail} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={handleOpenEmail}
+            activeOpacity={0.85}
+          >
             <Text style={styles.linkText}>Enviar email para suporte</Text>
             <Ionicons name="mail-outline" size={16} color={Color.piccolo} />
           </TouchableOpacity>

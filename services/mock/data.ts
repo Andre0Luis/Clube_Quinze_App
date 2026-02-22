@@ -116,7 +116,7 @@ const personaPresets: Record<MockPersona, PersonaPreset> = {
     email: "premium@clubequinze.com",
     name: "Cliente Clube 15 Premium",
     phone: "+55 11 90000-0021",
-    description: "Cliente premium com beneficios extendidos",
+    description: "Cliente premium com benef�cios extendidos",
   },
   QUINZE_SELECT: {
     id: "QUINZE_SELECT",
@@ -127,7 +127,7 @@ const personaPresets: Record<MockPersona, PersonaPreset> = {
     email: "select@clubequinze.com",
     name: "Cliente Quinze Select",
     phone: "+55 11 90000-0029",
-    description: "Cliente Select com beneficios e agenda prioritaria",
+    description: "Cliente Select com benef�cios e agenda prioritaria",
   },
 };
 
@@ -335,7 +335,7 @@ const feedbackEntries: FeedbackResponse[] = [
     appointmentId: 4,
     userId: 1,
     rating: 5,
-    comment: "Servico excelente, corte impecavel.",
+    comment: "serviço excelente, corte impecavel.",
     createdAt: nowIso,
   },
   {
@@ -394,7 +394,7 @@ const posts: PostResponse[] = [
         id: 2,
         postId: 1,
         authorId: 3,
-        content: "Contem comigo para os proximos eventos.",
+        content: "Contem comigo para os próximos eventos.",
         createdAt: addDays(-2, 17, 45),
         updatedAt: addDays(-2, 17, 45),
       },
@@ -435,7 +435,7 @@ const posts: PostResponse[] = [
     id: 3,
     authorId: 4,
     title: "Lembrete de avaliacao",
-    content: "Avalie seu atendimento e ajude a melhorar nossos servicos.",
+    content: "Avalie seu atendimento e ajude a melhorar nossos serviços.",
     media: [],
     createdAt: addDays(-5, 12, 0),
     updatedAt: addDays(-5, 12, 0),
@@ -597,7 +597,7 @@ const calculateServiceRatings = () => {
     if (!appointment) {
       return;
     }
-    const serviceKey = appointment.serviceType ?? "servico";
+    const serviceKey = appointment.serviceType ?? "serviço";
     const rating = entry.rating ?? 0;
     if (!rating) {
       return;
@@ -611,7 +611,7 @@ const calculateServiceRatings = () => {
   if (!serviceStats.size) {
     const fallback = new Map<string, { total: number; count: number }>();
     appointments.forEach((appointment) => {
-      const serviceKey = appointment.serviceType ?? "servico";
+      const serviceKey = appointment.serviceType ?? "serviço";
       const next = fallback.get(serviceKey) ?? { total: 0, count: 0 };
       next.total += 4.5;
       next.count += 1;
@@ -901,7 +901,7 @@ export const mockData = {
       },
       {
         id: "appointments_completed",
-        label: "Concluidos",
+        label: "concluídos",
         value: completedAppointmentsCount,
       },
       {
@@ -1043,3 +1043,4 @@ export const mockData = {
   }),
   logout: (payload: RefreshTokenRequest) => undefined,
 };
+

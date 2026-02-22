@@ -30,7 +30,7 @@ import type { AppointmentResponse } from "../../../types/api";
 
 const statusStyles: Record<string, { label: string; color: string }> = {
   SCHEDULED: { label: "Agendado", color: "#1B9984" },
-  COMPLETED: { label: "Concluido", color: "#4CAF50" },
+  COMPLETED: { label: "Concluído", color: "#4CAF50" },
   CANCELED: { label: "Cancelado", color: "#D7263D" },
 };
 
@@ -118,7 +118,7 @@ export default function AppointmentDetailsScreen() {
   const loadAppointment = useCallback(async () => {
     const id = Number(appointmentId);
     if (!appointmentId || Number.isNaN(id)) {
-      setErrorMessage("Agendamento invalido.");
+      setErrorMessage("Agendamento inválido.");
       setAppointment(null);
       setIsLoading(false);
       return;
@@ -153,7 +153,7 @@ export default function AppointmentDetailsScreen() {
       console.error("Failed to load appointment", error);
       setAppointment(null);
       setErrorMessage(
-        "Nao foi possivel carregar os detalhes. Tente novamente.",
+        "Não foi possível carregar os detalhes. Tente novamente.",
       );
     } finally {
       setIsLoading(false);
@@ -219,7 +219,7 @@ export default function AppointmentDetailsScreen() {
       router.back();
     } catch (error) {
       setCancelError(
-        "Nao foi possivel cancelar. Tente novamente em instantes.",
+        "Não foi possível cancelar. Tente novamente em instantes.",
       );
     } finally {
       setIsCancelling(false);
@@ -281,11 +281,11 @@ export default function AppointmentDetailsScreen() {
               value={formatTime(appointment.scheduledAt)}
             />
             <DetailRow
-              label="Preferencias"
+              label="Preferências"
               value={
                 appointment.notes?.trim()
                   ? appointment.notes
-                  : "Sem preferencias"
+                  : "Sem preferências"
               }
             />
             <DetailRow
@@ -298,7 +298,7 @@ export default function AppointmentDetailsScreen() {
       ) : (
         <View style={styles.loaderWrapper}>
           <Text style={styles.errorText}>
-            Nao encontramos os detalhes deste agendamento.
+            Não encontramos os detalhes deste agendamento.
           </Text>
           <TouchableOpacity
             style={styles.retryButton}

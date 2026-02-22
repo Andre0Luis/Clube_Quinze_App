@@ -4,47 +4,47 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  Modal,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Modal,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    Share,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  Border,
-  Color,
-  FontFamily,
-  FontSize,
-  Gap,
-  LineHeight,
-  Padding,
-  StyleVariable,
+    Border,
+    Color,
+    FontFamily,
+    FontSize,
+    Gap,
+    LineHeight,
+    Padding,
+    StyleVariable,
 } from "../../GlobalStyles";
 import {
-  createPost,
-  deletePost,
-  likePost,
-  listPosts,
-  unlikePost,
+    createPost,
+    deletePost,
+    likePost,
+    listPosts,
+    unlikePost,
 } from "../../services/community";
 import { uploadMedia } from "../../services/media";
 import { getCurrentUser, getUserById } from "../../services/users";
 import type {
-  MediaAsset,
-  PageResponse,
-  PostResponse,
-  UserProfileResponse,
+    MediaAsset,
+    PageResponse,
+    PostResponse,
+    UserProfileResponse,
 } from "../../types/api";
 
 type TabName = "posts" | "communities";
@@ -123,7 +123,7 @@ const formatDateLabel = (value?: string) => {
 export default function CommunityScreen() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
-  const [activeTab, setActiveTab] = useState<TabName>("posts");
+  const [activeTab, setActiveTab] = useState<TabName>("communities");
   const [postsPage, setPostsPage] = useState<PageResponse<PostResponse> | null>(
     null,
   );
@@ -279,7 +279,7 @@ export default function CommunityScreen() {
         void ensureAuthorProfiles(pageResponse.content ?? []);
       } catch (error) {
         console.error("Failed to load community data", error);
-        setErrorMessage("Nao foi possivel carregar a comunidade agora.");
+        setErrorMessage("Não foi possível carregar a comunidade agora.");
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
@@ -312,15 +312,15 @@ export default function CommunityScreen() {
   const displayedPosts = activeTab === "posts" ? myPosts : posts;
   const sectionCopy =
     activeTab === "posts"
-      ? { title: "Meus posts recentes", subtitle: "Gerencie suas publicacoes" }
+      ? { title: "Meus posts recentes", subtitle: "Gerencie suas publicações" }
       : {
-          title: "Publicacoes da comunidade",
-          subtitle: "Veja o que os membros estao compartilhando",
+          title: "Publicações da comunidade",
+          subtitle: "Veja o que os membros estão compartilhando",
         };
   const emptyCopy =
     activeTab === "posts"
       ? {
-          title: "Voce ainda nao publicou",
+          title: "Você ainda não publicou",
           subtitle: "Compartilhe algo novo para iniciar a conversa.",
         }
       : {
@@ -347,7 +347,7 @@ export default function CommunityScreen() {
       const permission =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        setErrorMessage("Autorize o acesso a galeria para anexar imagens.");
+        setErrorMessage("Autorize o acesso à galeria para anexar imagens.");
         return;
       }
       const remainingSlots =
@@ -372,7 +372,7 @@ export default function CommunityScreen() {
       });
     } catch (error) {
       console.error("Failed to pick media", error);
-      setErrorMessage("Nao foi possivel acessar sua galeria agora.");
+      setErrorMessage("Não foi possível acessar sua galeria agora.");
     } finally {
       setIsPickingMedia(false);
     }
@@ -425,7 +425,7 @@ export default function CommunityScreen() {
       }
 
       await createPost({
-        title: "Compartilhamento rapido",
+        title: "Compartilhamento rápido",
         content: postContent.trim(),
         media: uploadedMedia,
       });
@@ -440,10 +440,10 @@ export default function CommunityScreen() {
           : undefined;
       if (responseStatus === 413) {
         setErrorMessage(
-          "Imagem muito grande para upload. Tente uma foto menor ou com menos midias.",
+          "Imagem muito grande para upload. Tente uma foto menor ou com menos mídias.",
         );
       } else {
-        setErrorMessage("Nao foi possivel publicar agora. Tente novamente.");
+        setErrorMessage("Não foi possível publicar agora. Tente novamente.");
       }
     } finally {
       setIsSubmitting(false);
@@ -487,7 +487,7 @@ export default function CommunityScreen() {
       } catch (error) {
         console.error("Failed to toggle like", error);
         setErrorMessage(
-          "Nao foi possivel atualizar a curtida. Tente novamente.",
+          "Não foi possível atualizar a curtida. Tente novamente.",
         );
       }
     },
@@ -537,7 +537,7 @@ export default function CommunityScreen() {
                 setLikedPostIds((prev) => prev.filter((id) => id !== post.id));
               } catch (error) {
                 console.error("Failed to delete post", error);
-                setErrorMessage("Nao foi possivel excluir o post agora.");
+                setErrorMessage("Não foi possível excluir o post agora.");
               } finally {
                 setDeletingPostIds((prev) =>
                   prev.filter((id) => id !== post.id),
@@ -686,7 +686,7 @@ export default function CommunityScreen() {
                   Escreva algo para a comunidade
                 </Text>
                 <Text style={styles.composeSubtitle}>
-                  Compartilhe novidades, conquistas ou duvidas.
+                  Compartilhe novidades, conquistas ou dúvidas.
                 </Text>
               </View>
             </View>
@@ -719,7 +719,7 @@ export default function CommunityScreen() {
                       <TouchableOpacity
                         style={styles.removeMediaButton}
                         onPress={() => handleRemoveMedia(item.uri)}
-                        accessibilityLabel="Remover midia selecionada"
+                        accessibilityLabel="Remover mídia selecionada"
                       >
                         <Ionicons
                           name="close"
@@ -754,7 +754,7 @@ export default function CommunityScreen() {
                 )}
                 <Text style={styles.mediaButtonLabel}>
                   {canAddMedia
-                    ? `Adicionar midia (${selectedMedia.length}/${MAX_MEDIA_ITEMS})`
+                    ? `Adicionar mídia (${selectedMedia.length}/${MAX_MEDIA_ITEMS})`
                     : `Limite de ${MAX_MEDIA_ITEMS} imagens`}
                 </Text>
               </TouchableOpacity>
@@ -893,7 +893,7 @@ export default function CommunityScreen() {
                           setOpenMenuPostId(null);
                           Alert.alert(
                             "Edicao",
-                            "Funcao de editar post ainda nao esta disponivel.",
+                            "Funcao de editar post ainda Não esta disponivel.",
                           );
                         }}
                         activeOpacity={0.85}

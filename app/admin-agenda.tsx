@@ -5,6 +5,7 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
+    Image,
     ScrollView,
     StyleSheet,
     Text,
@@ -23,9 +24,19 @@ import {
     Padding,
     StyleVariable,
 } from "../GlobalStyles";
+import api from "../services/api";
 import { cancelAppointment, listAppointments } from "../services/appointments";
 import { getCurrentUser, getUserById } from "../services/users";
 import type { AppointmentResponse } from "../types/api";
+
+type ClientInfo = {
+  name?: string;
+  membershipTier?: string;
+  planName?: string;
+  profilePictureUrl?: string | null;
+  profilePictureBase64?: string | null;
+  gallery?: Array<{ imageUrl?: string | null; imageBase64?: string | null }>;
+};
 
 const formatDateLong = (iso: string) => {
   const date = new Date(iso);
@@ -74,15 +85,61 @@ const buildMonthDays = (anchor: Date) => {
   for (let d = 1; d <= totalDays; d += 1) {
     days.push(d);
   }
+  const remainder = days.length % 7;
+  if (remainder !== 0) {
+    const trailing = 7 - remainder;
+    for (let i = 0; i < trailing; i += 1) {
+      days.push(null);
+    }
+  }
   return days;
 };
 
 const formatDateParam = (date: Date) => date.toISOString().slice(0, 10);
 
+const getApiOrigin = () => {
+  const base = api.defaults.baseURL ?? "";
+  try {
+    return new URL(base).origin;
+  } catch {
+    return "";
+  }
+};
+
+const normalizeImageUri = (value?: string | null) => {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("data:image")) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  const origin = getApiOrigin();
+  if (!origin) return trimmed;
+  if (trimmed.startsWith("/")) return `${origin}${trimmed}`;
+  return `${origin}/${trimmed}`;
+};
+
 const clientLabel = (
   appointment: AppointmentResponse,
   names: Record<number, string>,
 ) => names[appointment.clientId] ?? `Cliente ${appointment.clientId}`;
+
+const getInitials = (name?: string) => {
+  if (!name) return "";
+  return name
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("")
+    .slice(0, 2);
+};
+
+const getRoleLabel = (info?: ClientInfo) => {
+  const planName = info?.planName?.trim();
+  if (planName) return planName;
+  if (info?.membershipTier === "QUINZE_SELECT") return "Select";
+  if (info?.membershipTier === "QUINZE_PREMIUM") return "Premium";
+  if (info?.membershipTier === "QUINZE_STANDARD") return "Standard";
+  return "";
+};
 
 const AdminAgendaScreen = () => {
   const router = useRouter();
@@ -91,6 +148,7 @@ const AdminAgendaScreen = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [anchorMonth, setAnchorMonth] = useState<Date>(new Date());
   const [clientNames, setClientNames] = useState<Record<number, string>>({});
+  const [clientInfo, setClientInfo] = useState<Record<number, ClientInfo>>({});
   const [isMutating, setIsMutating] = useState(false);
 
   const loadAppointments = useCallback(() => {
@@ -130,7 +188,9 @@ const AdminAgendaScreen = () => {
         const uniqueIds = Array.from(
           new Set(items.map((item) => item.clientId).filter(Boolean)),
         );
-        const missingIds = uniqueIds.filter((id) => !clientNames[id]);
+        const missingIds = uniqueIds.filter(
+          (id) => !clientNames[id] || !clientInfo[id],
+        );
 
         if (missingIds.length) {
           const responses = await Promise.allSettled(
@@ -140,13 +200,31 @@ const AdminAgendaScreen = () => {
             return;
           }
           const nextNames: Record<number, string> = {};
+          const nextInfo: Record<number, ClientInfo> = {};
           responses.forEach((result, index) => {
-            if (result.status === "fulfilled" && result.value?.name) {
-              nextNames[missingIds[index]] = result.value.name;
+            if (result.status === "fulfilled" && result.value) {
+              const user = result.value;
+              if (user.name) {
+                nextNames[missingIds[index]] = user.name;
+              }
+              nextInfo[missingIds[index]] = {
+                name: user.name,
+                membershipTier: user.membershipTier,
+                planName: user.plan?.name,
+                profilePictureUrl: user.profilePictureUrl,
+                profilePictureBase64: user.profilePictureBase64,
+                gallery: user.gallery?.map((item) => ({
+                  imageUrl: item.imageUrl ?? null,
+                  imageBase64: item.imageBase64 ?? null,
+                })),
+              };
             }
           });
           if (Object.keys(nextNames).length) {
             setClientNames((prev) => ({ ...prev, ...nextNames }));
+          }
+          if (Object.keys(nextInfo).length) {
+            setClientInfo((prev) => ({ ...prev, ...nextInfo }));
           }
         }
       } catch (error) {
@@ -154,7 +232,7 @@ const AdminAgendaScreen = () => {
           return;
         }
         Alert.alert(
-          "Nao foi possivel carregar",
+          "Não foi possível carregar",
           "Tente novamente em instantes.",
         );
       } finally {
@@ -174,6 +252,10 @@ const AdminAgendaScreen = () => {
   useFocusEffect(loadAppointments);
 
   const nextAppointment = useMemo(() => findNext(appointments), [appointments]);
+  const nextClientRole = useMemo(() => {
+    if (!nextAppointment) return "";
+    return getRoleLabel(clientInfo[nextAppointment.clientId]);
+  }, [clientInfo, nextAppointment]);
 
   const appointmentsForDay = useMemo(() => {
     return appointments
@@ -214,7 +296,7 @@ const AdminAgendaScreen = () => {
         onPress: () => {
           Alert.alert(
             "Confirmar cancelamento",
-            "Essa acao nao pode ser desfeita.",
+            "Essa acao Não pode ser desfeita.",
             [
               { text: "Voltar", style: "cancel" },
               {
@@ -280,14 +362,39 @@ const AdminAgendaScreen = () => {
           hour: "2-digit",
           minute: "2-digit",
         });
+    const info = clientInfo[item.clientId];
+    const roleLabel = getRoleLabel(info);
+    const avatarUri =
+      normalizeImageUri(info?.profilePictureUrl) ??
+      (info?.profilePictureBase64
+        ? info.profilePictureBase64.startsWith("data:image")
+          ? info.profilePictureBase64
+          : `data:image/jpeg;base64,${info.profilePictureBase64}`
+        : null) ??
+      normalizeImageUri(info?.gallery?.[0]?.imageUrl) ??
+      (info?.gallery?.[0]?.imageBase64
+        ? info.gallery[0].imageBase64.startsWith("data:image")
+          ? info.gallery[0].imageBase64
+          : `data:image/jpeg;base64,${info.gallery[0].imageBase64}`
+        : null);
+    const initials = getInitials(info?.name ?? clientNames[item.clientId]);
     return (
       <View style={styles.slotCard}>
         <View style={styles.slotHeader}>
-          <View style={styles.avatar} />
+          <View style={styles.avatar}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarLabel}>{initials}</Text>
+            )}
+          </View>
           <View style={styles.slotTitleArea}>
             <Text style={styles.slotName}>
               {clientLabel(item, clientNames)}
             </Text>
+            {roleLabel ? (
+              <Text style={styles.slotRole}>{roleLabel}</Text>
+            ) : null}
           </View>
           <TouchableOpacity
             onPress={() => handleOpenOptions(item)}
@@ -329,7 +436,7 @@ const AdminAgendaScreen = () => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Proximo cliente</Text>
+          <Text style={styles.sectionLabel}>próximo cliente</Text>
           <View style={styles.nextCard}>
             {isLoading ? (
               <View style={styles.nextLoading}>
@@ -339,7 +446,10 @@ const AdminAgendaScreen = () => {
               <>
                 <Text
                   style={styles.nextClient}
-                >{`${clientLabel(nextAppointment, clientNames)} e o seu proximo cliente`}</Text>
+                >{`${clientLabel(nextAppointment, clientNames)} e o seu próximo cliente`}</Text>
+                {nextClientRole ? (
+                  <Text style={styles.nextRole}>{nextClientRole}</Text>
+                ) : null}
                 <Text style={styles.nextDate}>
                   {formatDateLong(nextAppointment.scheduledAt)}
                 </Text>
@@ -493,6 +603,12 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansRegular,
     color: Color.mainTrunks,
   },
+  nextRole: {
+    fontSize: FontSize.fs_12,
+    lineHeight: LineHeight.lh_16,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.piccolo,
+  },
   linkRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -595,15 +711,35 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: Border.br_100,
     backgroundColor: "#E7F6FF",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  avatarLabel: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.piccolo,
   },
   slotTitleArea: {
     flex: 1,
+    gap: StyleVariable.gap1,
   },
   slotName: {
     fontSize: FontSize.fs_14,
     lineHeight: LineHeight.lh_18,
     fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
+  },
+  slotRole: {
+    fontSize: FontSize.fs_12,
+    lineHeight: LineHeight.lh_16,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
   },
   slotDivider: {
     height: 1,
@@ -627,3 +763,4 @@ const styles = StyleSheet.create({
     color: Color.mainTrunks,
   },
 });
+

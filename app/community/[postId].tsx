@@ -224,7 +224,7 @@ export default function CommunityPostScreen() {
 
   const loadPost = useCallback(async () => {
     if (Number.isNaN(numericPostId)) {
-      setErrorMessage("Nao foi possivel identificar a publicacao.");
+      setErrorMessage("Não foi possível identificar a publicacao.");
       setIsLoading(false);
       return;
     }
@@ -247,7 +247,7 @@ export default function CommunityPostScreen() {
       }
     } catch (error) {
       console.error("Failed to load post", error);
-      setErrorMessage("Nao foi possivel carregar a publicacao.");
+      setErrorMessage("Não foi possível carregar a publicacao.");
     } finally {
       setIsLoading(false);
     }
@@ -297,7 +297,7 @@ export default function CommunityPostScreen() {
       }
     } catch (error) {
       console.error("Failed to toggle like on detail", error);
-      setErrorMessage("Nao foi possivel atualizar a curtida.");
+      setErrorMessage("Não foi possível atualizar a curtida.");
     } finally {
       setIsProcessingLike(false);
     }
@@ -332,7 +332,7 @@ export default function CommunityPostScreen() {
       setCommentContent("");
     } catch (error) {
       console.error("Failed to submit comment", error);
-      setErrorMessage("Nao foi possivel enviar seu comentario.");
+      setErrorMessage("Não foi possível enviar seu comentario.");
     } finally {
       setIsSubmittingComment(false);
     }
@@ -420,7 +420,7 @@ export default function CommunityPostScreen() {
                 size={32}
                 color={Color.mainTrunks}
               />
-              <Text style={styles.emptyTitle}>Publicacao nao encontrada</Text>
+              <Text style={styles.emptyTitle}>Publicacao não encontrada</Text>
               <Text style={styles.emptySubtitle}>
                 Tente voltar e selecionar outra publicacao da comunidade.
               </Text>

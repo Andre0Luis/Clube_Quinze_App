@@ -184,6 +184,15 @@ export interface LikeResponse {
   createdAt: string;
 }
 
+export interface NotificationResponse {
+  id: number;
+  title?: string;
+  body?: string;
+  createdAt: string;
+  readAt?: string | null;
+  data?: Record<string, string | number | boolean | null>;
+}
+
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;

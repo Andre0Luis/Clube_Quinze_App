@@ -73,7 +73,7 @@ export default function AppointmentFeedbackScreen() {
   useEffect(() => {
     const id = Number(appointmentId);
     if (!appointmentId || Number.isNaN(id)) {
-      Alert.alert("Agendamento invalido", "Nao conseguimos carregar este atendimento.");
+      Alert.alert("Agendamento inválido", "Não conseguimos carregar este atendimento.");
       router.back();
       return;
     }
@@ -94,7 +94,7 @@ export default function AppointmentFeedbackScreen() {
         }
         Alert.alert(
           "Falha ao carregar",
-          "Nao foi possivel carregar os detalhes. Tente novamente mais tarde.",
+          "Não foi possível carregar os detalhes. Tente novamente mais tarde.",
         );
         router.back();
       } finally {
@@ -135,7 +135,7 @@ export default function AppointmentFeedbackScreen() {
         },
       ]);
     } catch (error) {
-      Alert.alert("Nao foi possivel enviar", "Tente novamente em instantes.");
+      Alert.alert("Não foi possível enviar", "Tente novamente em instantes.");
     } finally {
       setIsSubmitting(false);
     }
@@ -186,7 +186,7 @@ export default function AppointmentFeedbackScreen() {
             </View>
 
             <View style={styles.ratingBlock}>
-              <Text style={styles.ratingLabel}>Como voce avalia este atendimento?</Text>
+              <Text style={styles.ratingLabel}>Como você avalia este atendimento?</Text>
               <View style={styles.starsRow}>
                 {STAR_VALUES.map((value) => {
                   const isActive = rating !== null && value <= rating;
@@ -241,7 +241,7 @@ export default function AppointmentFeedbackScreen() {
         </KeyboardAvoidingView>
       ) : (
         <View style={styles.loaderWrapper}>
-          <Text style={styles.errorText}>Nao encontramos os dados deste atendimento.</Text>
+          <Text style={styles.errorText}>Não encontramos os dados deste atendimento.</Text>
         </View>
       )}
     </SafeAreaView>

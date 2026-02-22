@@ -89,7 +89,7 @@ export default function AdminMembersScreen() {
         setMembers(mapped);
       } catch (err) {
         console.error("Failed to load members", err);
-        if (isActive) setError("Nao foi possivel carregar os membros.");
+        if (isActive) setError("Não foi possível carregar os membros.");
       } finally {
         if (isActive) setIsLoading(false);
       }
@@ -529,3 +529,4 @@ const styles = StyleSheet.create({
     color: Color.hit,
   },
 });
+

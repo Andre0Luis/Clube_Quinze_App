@@ -46,21 +46,21 @@ const profileOptions: ProfileOption[] = [
   },
   {
     id: "preferences",
-    title: "Preferencias",
-    description: "Gerencie temas, comunicacoes e acessos.",
+    title: "Preferências",
+    description: "Gerencie temas, comunicações e acessos.",
     icon: "options-outline",
     route: "/profile/preferences",
   },
   {
     id: "plans",
     title: "Planos",
-    description: "Revise beneficios e historico do seu plano.",
+    description: "Revise benefícios e histórico do seu plano.",
     icon: "card-outline",
     route: "/profile/plans",
   },
   {
     id: "policies",
-    title: "Termos e politicas",
+    title: "Termos e políticas",
     description: "Consulte nossos termos de uso e privacidade.",
     icon: "document-text-outline",
     route: "/profile/policies",
@@ -75,7 +75,7 @@ const membershipLabels: Record<UserProfileResponse["membershipTier"], string> =
   };
 
 const roleLabels: Record<UserProfileResponse["role"], string> = {
-  CLUB_STANDARD: "Membro Padrao",
+  CLUB_STANDARD: "Membro Padrão",
   CLUB_SELECT: "Membro Select",
   CLUB_EMPLOYE: "Colaborador",
   CLUB_ADMIN: "Administrador",
@@ -139,7 +139,7 @@ export default function ProfileScreen() {
             return;
           }
           setProfile(null);
-          setErrorMessage("Nao foi possivel carregar seu perfil.");
+          setErrorMessage("Não foi possível carregar seu perfil.");
         } finally {
           if (!isActive) {
             return;
@@ -164,7 +164,7 @@ export default function ProfileScreen() {
       setProfile(currentUser);
     } catch (error) {
       console.error("Failed to refresh profile", error);
-      setErrorMessage("Nao foi possivel atualizar seu perfil.");
+      setErrorMessage("Não foi possível atualizar seu perfil.");
     } finally {
       setIsRefreshing(false);
     }
@@ -202,7 +202,7 @@ export default function ProfileScreen() {
 
   const headerSubtitle = useMemo(() => {
     const defaultMessage =
-      "Tenha uma experiencia personalizada e mantenha seus dados sempre atualizados.";
+      "Tenha uma experiência personalizada e mantenha seus dados sempre atualizados.";
     if (!profile) {
       return defaultMessage;
     }
@@ -225,14 +225,14 @@ export default function ProfileScreen() {
         const count = profile?.preferences?.length ?? 0;
         const label =
           count > 0
-            ? `${count} preferencia${count > 1 ? "s" : ""} configurada${count > 1 ? "s" : ""}.`
-            : "Defina preferencias de atendimento.";
+            ? `${count} preferência${count > 1 ? "s" : ""} configurada${count > 1 ? "s" : ""}.`
+            : "Defina preferências de atendimento.";
         return { ...option, description: label };
       }
       if (option.id === "plans") {
         const label = profile?.plan
           ? profile.plan.name
-          : "Conheca os planos disponiveis.";
+          : "Conheça os planos disponíveis.";
         return { ...option, description: label };
       }
       return option;
@@ -301,7 +301,7 @@ export default function ProfileScreen() {
           ) : null}
           <View style={styles.headerCard}>
             <View style={styles.headerTexts}>
-              <Text style={styles.headerGreeting}>Ola, {displayName}!</Text>
+              <Text style={styles.headerGreeting}>Olá, {displayName}!</Text>
               <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
               <View style={styles.badgeRow}>
                 {membershipLabel ? (

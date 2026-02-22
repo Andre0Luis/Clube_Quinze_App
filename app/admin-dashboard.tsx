@@ -77,7 +77,7 @@ const AdminDashboardScreen = () => {
       } catch (dashboardError) {
         console.error("Failed to load admin dashboard metrics", dashboardError);
         setDashboard(null);
-        setErrorMessage("Nao foi possivel carregar os dados do dashboard.");
+        setErrorMessage("Não foi possível carregar os dados do dashboard.");
       }
 
       let scheduledTotal = dashboardData?.upcomingAppointments ?? 0;
@@ -117,7 +117,7 @@ const AdminDashboardScreen = () => {
       }
 
       console.error("Failed to load admin dashboard", error);
-      setErrorMessage("Nao foi possivel carregar os dados do dashboard.");
+      setErrorMessage("Não foi possível carregar os dados do dashboard.");
       setDashboard(null);
       setScheduledAppointmentsTotal(0);
       return true;
@@ -365,7 +365,7 @@ const AdminDashboardScreen = () => {
             <Text style={styles.metricValue}>
               {scheduledAppointmentsTotal.toLocaleString("pt-BR")}
             </Text>
-            <Text style={styles.metricSubtitle}>Atendimentos proximos</Text>
+            <Text style={styles.metricSubtitle}>Atendimentos próximos</Text>
             <View style={styles.metricFooter}>
               <Text style={styles.metricLink}>Gerenciar agenda</Text>
               <Ionicons name="arrow-forward" size={16} color={Color.piccolo} />
@@ -386,7 +386,7 @@ const AdminDashboardScreen = () => {
               <View style={styles.metricPillNeutral}>
                 <Ionicons name="card-outline" size={16} color={Color.piccolo} />
                 <Text style={styles.metricPillTextNeutral}>
-                  Proximos pagamentos
+                  próximos pagamentos
                 </Text>
               </View>
             </View>
@@ -636,3 +636,4 @@ const styles = StyleSheet.create({
 });
 
 export default AdminDashboardScreen;
+

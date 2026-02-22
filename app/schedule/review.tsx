@@ -171,7 +171,7 @@ export default function ScheduleReviewScreen() {
 
       if (!userContext) {
         Alert.alert(
-          "Nao foi possivel confirmar",
+          "Não foi possível confirmar",
           "Atualize a pagina e tente novamente.",
         );
         return;
@@ -194,7 +194,7 @@ export default function ScheduleReviewScreen() {
         ],
       );
     } catch (error) {
-      Alert.alert("Nao foi possivel concluir", "Tente novamente em instantes.");
+      Alert.alert("Não foi possível concluir", "Tente novamente em instantes.");
     } finally {
       setIsSubmitting(false);
     }
@@ -206,7 +206,7 @@ export default function ScheduleReviewScreen() {
   const dataRows = [
     { label: "Data", value: displayDate },
     { label: "Horario", value: displayTime || "Selecione um horario" },
-    { label: "Preferencias", value: trimmedNotes || "Sem preferencias" },
+    { label: "preferências", value: trimmedNotes || "Sem preferências" },
   ];
 
   const isConfirmDisabled =
@@ -345,3 +345,4 @@ const styles = StyleSheet.create({
     color: Color.mainGoten,
   },
 });
+

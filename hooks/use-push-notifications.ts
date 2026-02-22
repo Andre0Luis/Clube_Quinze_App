@@ -15,7 +15,7 @@ const isDevice = Constants?.isDevice ?? false;
 
 async function registerForPushNotificationsAsync() {
   if (!isDevice) {
-    throw new Error('Notificacoes push exigem um dispositivo fisico.');
+    throw new Error('notificações push exigem um dispositivo fisico.');
   }
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -27,7 +27,7 @@ async function registerForPushNotificationsAsync() {
   }
 
   if (finalStatus !== 'granted') {
-    throw new Error('Permissao de notificacoes negada.');
+    throw new Error('Permissao de notificações negada.');
   }
 
   const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
@@ -56,7 +56,7 @@ export function usePushNotifications() {
         }
       } catch (err) {
         if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Falha ao registrar notificacoes');
+          setError(err instanceof Error ? err.message : 'Falha ao registrar notificações');
         }
       }
 
@@ -91,3 +91,4 @@ export function usePushNotifications() {
 
   return { expoPushToken, lastNotification, lastResponse, error, appVersion } as const;
 }
+
