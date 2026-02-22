@@ -90,6 +90,14 @@ export default function RootLayout() {
     return "home";
   }, [pathname]);
 
+  const showNav = useMemo(() => {
+    return !(
+      pathname === "/login" ||
+      pathname === "/register" ||
+      pathname.startsWith("/reset-password")
+    );
+  }, [pathname]);
+
   const handleSelectTab = (key: string) => {
     switch (key) {
       case "home":
@@ -114,12 +122,16 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: styles.stackContent,
+          contentStyle: showNav ? styles.stackContent : undefined,
         }}
       />
-      <View style={[styles.navWrapper, { paddingBottom: insets.bottom + 16 }]}>
-        <MenuDeNavegao activeKey={activeKey} onSelectTab={handleSelectTab} />
-      </View>
+      {showNav ? (
+        <View
+          style={[styles.navWrapper, { paddingBottom: insets.bottom + 16 }]}
+        >
+          <MenuDeNavegao activeKey={activeKey} onSelectTab={handleSelectTab} />
+        </View>
+      ) : null}
     </View>
   );
 }
