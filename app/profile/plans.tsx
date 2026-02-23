@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Linking,
     RefreshControl,
     ScrollView,
@@ -24,7 +25,12 @@ import {
     Padding,
     StyleVariable,
 } from "../../GlobalStyles";
-import { listPlans, updatePlan } from "../../services/plans";
+import {
+    createPlan,
+    deletePlan,
+    listPlans,
+    updatePlan,
+} from "../../services/plans";
 import { getCurrentUser } from "../../services/users";
 import type { PlanResponse, UserProfileResponse } from "../../types/api";
 
@@ -64,6 +70,17 @@ const addMonths = (value: string, months: number) => {
   return next;
 };
 
+const toTitleCase = (value?: string | null) => {
+  if (!value) return "";
+  const normalized = value.replace(/[_-]+/g, " ").trim().toLowerCase();
+  if (!normalized) return "";
+  return normalized
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
 export default function PlansScreen() {
   const router = useRouter();
   const { fromAdmin } = useLocalSearchParams<{
@@ -81,6 +98,12 @@ export default function PlansScreen() {
   const [editPrice, setEditPrice] = useState("");
   const [editDuration, setEditDuration] = useState("");
   const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createDescription, setCreateDescription] = useState("");
+  const [createPrice, setCreatePrice] = useState("");
+  const [createDuration, setCreateDuration] = useState("");
+  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
 
   const loadData = useCallback(async () => {
     const [currentUser, availablePlans] = await Promise.all([
@@ -194,6 +217,27 @@ export default function PlansScreen() {
     setEditDuration("");
   };
 
+  const resetCreateForm = () => {
+    setCreateName("");
+    setCreateDescription("");
+    setCreatePrice("");
+    setCreateDuration("");
+  };
+
+  const handleOpenCreate = () => {
+    resetCreateForm();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setIsCreateModalVisible(true);
+  };
+
+  const handleCloseCreate = () => {
+    if (isCreatingPlan) {
+      return;
+    }
+    setIsCreateModalVisible(false);
+  };
+
   const handleSavePlan = async () => {
     if (!editingPlanId || isSavingPlan) return;
 
@@ -250,6 +294,81 @@ export default function PlansScreen() {
     }
   };
 
+  const handleCreatePlan = async () => {
+    if (isCreatingPlan) return;
+
+    const name = createName.trim();
+    const description = createDescription.trim();
+    const numericPrice = Number(
+      createPrice.replace(/[^0-9.,]/g, "").replace(",", "."),
+    );
+    const numericDuration = Number(createDuration.replace(/\D/g, ""));
+
+    if (!name) {
+      setErrorMessage("Informe um nome para o plano.");
+      return;
+    }
+
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      setErrorMessage("Informe um valor válido para o plano.");
+      return;
+    }
+
+    if (!Number.isFinite(numericDuration) || numericDuration <= 0) {
+      setErrorMessage("Informe a duração em meses.");
+      return;
+    }
+
+    setIsCreatingPlan(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const created = await createPlan({
+        name,
+        description,
+        price: numericPrice,
+        durationMonths: numericDuration,
+      });
+      setPlans((prev) => [created, ...prev]);
+      setSuccessMessage("Plano criado com sucesso.");
+      setIsCreateModalVisible(false);
+      resetCreateForm();
+    } catch (error) {
+      console.error("Failed to create plan", error);
+      setErrorMessage("Não foi possível criar o plano.");
+    } finally {
+      setIsCreatingPlan(false);
+    }
+  };
+
+  const handleDeletePlan = (plan: PlanResponse) => {
+    Alert.alert(
+      "Excluir plano",
+      `Deseja remover o plano ${toTitleCase(plan.name)}?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deletePlan(plan.id);
+              setPlans((prev) => prev.filter((item) => item.id !== plan.id));
+              if (editingPlanId === plan.id) {
+                cancelEdit();
+              }
+              setSuccessMessage("Plano removido com sucesso.");
+            } catch (error) {
+              console.error("Failed to delete plan", error);
+              setErrorMessage("Não foi possível remover o plano.");
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView
       style={styles.safeArea}
@@ -276,7 +395,24 @@ export default function PlansScreen() {
             <Ionicons name="arrow-back" size={20} color={Color.hit} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Planos</Text>
-          <View style={styles.headerSpacer} />
+          {isAdminContext ? (
+            <TouchableOpacity
+              style={styles.headerAction}
+              onPress={handleOpenCreate}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Criar novo plano"
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={20}
+                color={Color.piccolo}
+              />
+              <Text style={styles.headerActionText}>Novo</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.headerSpacer} />
+          )}
         </View>
 
         {isLoading ? (
@@ -311,11 +447,11 @@ export default function PlansScreen() {
         <View style={styles.currentPlanCard}>
           <Text style={styles.sectionTitle}>Plano ativo</Text>
           <Text style={styles.currentPlanName}>
-            {profile?.plan?.name ?? "Nenhum plano selecionado"}
+            {toTitleCase(profile?.plan?.name) || "Nenhum plano selecionado"}
           </Text>
           <Text style={styles.currentPlanDescription}>
             {profile?.plan?.description ??
-              "Escolha um plano para desbloquear benef�cios exclusivos."}
+              "Escolha um plano para desbloquear benefícios exclusivos."}
           </Text>
           {currentPlanExpiration ? (
             <Text style={styles.currentPlanMeta}>
@@ -332,12 +468,12 @@ export default function PlansScreen() {
               )
             }
           >
-            <Text style={styles.secondaryButtonText}>Fazer Renovacao</Text>
+            <Text style={styles.secondaryButtonText}>Fazer Renovação</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.listCard}>
-          <Text style={styles.sectionTitle}>Planos disponiveis</Text>
+          <Text style={styles.sectionTitle}>Planos disponíveis</Text>
           {plans.length === 0 ? (
             <Text style={styles.emptyState}>
               Nenhum plano configurado ainda.
@@ -357,16 +493,21 @@ export default function PlansScreen() {
                 >
                   <View style={styles.planHeader}>
                     {isEditing ? (
-                      <TextInput
-                        style={styles.planInput}
-                        value={editName}
-                        onChangeText={setEditName}
-                        placeholder="Nome do plano"
-                        placeholderTextColor={Color.mainTrunks}
-                        editable={!isSavingPlan}
-                      />
+                      <View style={styles.fieldGroup}>
+                        <Text style={styles.fieldLabel}>Nome do plano</Text>
+                        <TextInput
+                          style={styles.planInput}
+                          value={editName}
+                          onChangeText={setEditName}
+                          placeholder="Ex: Quinze Standard"
+                          placeholderTextColor={Color.mainTrunks}
+                          editable={!isSavingPlan}
+                        />
+                      </View>
                     ) : (
-                      <Text style={styles.planName}>{plan.name}</Text>
+                      <Text style={styles.planName}>
+                        {toTitleCase(plan.name)}
+                      </Text>
                     )}
                     {showActiveHighlight ? (
                       <View style={styles.planBadge}>
@@ -380,17 +521,20 @@ export default function PlansScreen() {
                     ) : null}
                   </View>
                   {isEditing ? (
-                    <TextInput
-                      style={[styles.planInput, styles.planDescriptionInput]}
-                      value={editDescription}
-                      onChangeText={setEditDescription}
-                      placeholder="descrição do plano"
-                      placeholderTextColor={Color.mainTrunks}
-                      editable={!isSavingPlan}
-                      multiline
-                      numberOfLines={3}
-                      textAlignVertical="top"
-                    />
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.fieldLabel}>Descrição</Text>
+                      <TextInput
+                        style={[styles.planInput, styles.planDescriptionInput]}
+                        value={editDescription}
+                        onChangeText={setEditDescription}
+                        placeholder="Explique o que o cliente recebe"
+                        placeholderTextColor={Color.mainTrunks}
+                        editable={!isSavingPlan}
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                    </View>
                   ) : (
                     <Text style={styles.planDescription}>
                       {plan.description}
@@ -400,15 +544,18 @@ export default function PlansScreen() {
                     <>
                       <View style={styles.priceRow}>
                         {isEditing ? (
-                          <TextInput
-                            style={[styles.planInput, styles.priceInput]}
-                            value={editPrice}
-                            onChangeText={setEditPrice}
-                            placeholder="Valor em BRL"
-                            placeholderTextColor={Color.mainTrunks}
-                            keyboardType="decimal-pad"
-                            editable={!isSavingPlan}
-                          />
+                          <View style={styles.fieldGroup}>
+                            <Text style={styles.fieldLabel}>Valor</Text>
+                            <TextInput
+                              style={[styles.planInput, styles.priceInput]}
+                              value={editPrice}
+                              onChangeText={setEditPrice}
+                              placeholder="Ex: 199,90"
+                              placeholderTextColor={Color.mainTrunks}
+                              keyboardType="decimal-pad"
+                              editable={!isSavingPlan}
+                            />
+                          </View>
                         ) : (
                           <Text style={styles.planPrice}>
                             {formatCurrency(plan.price)}
@@ -417,15 +564,18 @@ export default function PlansScreen() {
                       </View>
                       <View style={styles.priceRow}>
                         {isEditing ? (
-                          <TextInput
-                            style={[styles.planInput, styles.durationInput]}
-                            value={editDuration}
-                            onChangeText={setEditDuration}
-                            placeholder="Duracao (meses)"
-                            placeholderTextColor={Color.mainTrunks}
-                            keyboardType="number-pad"
-                            editable={!isSavingPlan}
-                          />
+                          <View style={styles.fieldGroup}>
+                            <Text style={styles.fieldLabel}>Duração</Text>
+                            <TextInput
+                              style={[styles.planInput, styles.durationInput]}
+                              value={editDuration}
+                              onChangeText={setEditDuration}
+                              placeholder="Ex: 1, 3, 6, 12"
+                              placeholderTextColor={Color.mainTrunks}
+                              keyboardType="number-pad"
+                              editable={!isSavingPlan}
+                            />
+                          </View>
                         ) : (
                           <Text style={styles.planMeta}>
                             {`${plan.durationMonths ?? 0} meses`}
@@ -478,6 +628,15 @@ export default function PlansScreen() {
                           <Text style={styles.secondaryButtonText}>Editar</Text>
                         </TouchableOpacity>
                       )}
+                      {!isEditing ? (
+                        <TouchableOpacity
+                          style={styles.dangerButton}
+                          onPress={() => handleDeletePlan(plan)}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={styles.dangerButtonText}>Excluir</Text>
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
                   ) : null}
                 </View>
@@ -501,6 +660,115 @@ export default function PlansScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <View
+        style={styles.modalRoot}
+        pointerEvents={isCreateModalVisible ? "auto" : "none"}
+      >
+        {isCreateModalVisible ? (
+          <View style={styles.modalBackdrop}>
+            <KeyboardAvoidingView
+              behavior={Platform.select({ ios: "padding", android: undefined })}
+              keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+              style={styles.modalKeyboard}
+            >
+              <ScrollView
+                style={styles.modalScroll}
+                contentContainerStyle={styles.modalCard}
+                keyboardShouldPersistTaps="handled"
+              >
+                <Text style={styles.modalTitle}>Novo plano</Text>
+                <View style={styles.modalFieldGroup}>
+                  <Text style={styles.fieldLabel}>Nome do plano</Text>
+                  <TextInput
+                    style={[styles.planInput, styles.modalInput]}
+                    value={createName}
+                    onChangeText={setCreateName}
+                    placeholder="Ex: Quinze Standard"
+                    placeholderTextColor={Color.mainTrunks}
+                    editable={!isCreatingPlan}
+                  />
+                </View>
+                <View style={styles.modalFieldGroup}>
+                  <Text style={styles.fieldLabel}>Descrição</Text>
+                  <TextInput
+                    style={[
+                      styles.planInput,
+                      styles.planDescriptionInput,
+                      styles.modalInput,
+                    ]}
+                    value={createDescription}
+                    onChangeText={setCreateDescription}
+                    placeholder="Explique o que o cliente recebe"
+                    placeholderTextColor={Color.mainTrunks}
+                    editable={!isCreatingPlan}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+                <View style={styles.modalFieldGroup}>
+                  <Text style={styles.fieldLabel}>Valor</Text>
+                  <TextInput
+                    style={[
+                      styles.planInput,
+                      styles.priceInput,
+                      styles.modalInput,
+                    ]}
+                    value={createPrice}
+                    onChangeText={setCreatePrice}
+                    placeholder="Ex: 199,90"
+                    placeholderTextColor={Color.mainTrunks}
+                    keyboardType="decimal-pad"
+                    editable={!isCreatingPlan}
+                  />
+                </View>
+                <View style={styles.modalFieldGroup}>
+                  <Text style={styles.fieldLabel}>Duração</Text>
+                  <TextInput
+                    style={[
+                      styles.planInput,
+                      styles.durationInput,
+                      styles.modalInput,
+                    ]}
+                    value={createDuration}
+                    onChangeText={setCreateDuration}
+                    placeholder="Ex: 1, 3, 6, 12"
+                    placeholderTextColor={Color.mainTrunks}
+                    keyboardType="number-pad"
+                    editable={!isCreatingPlan}
+                  />
+                </View>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.secondaryButton}
+                    onPress={handleCloseCreate}
+                    activeOpacity={0.85}
+                    disabled={isCreatingPlan}
+                  >
+                    <Text style={styles.secondaryButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.primaryButton,
+                      isCreatingPlan && styles.primaryButtonDisabled,
+                    ]}
+                    onPress={handleCreatePlan}
+                    activeOpacity={0.85}
+                    disabled={isCreatingPlan}
+                  >
+                    {isCreatingPlan ? (
+                      <ActivityIndicator size="small" color={Color.mainGoten} />
+                    ) : (
+                      <Text style={styles.primaryButtonText}>Criar</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          </View>
+        ) : null}
+      </View>
     </SafeAreaView>
   );
 }
@@ -541,6 +809,16 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40,
     height: 40,
+  },
+  headerAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Gap.gap_4,
+  },
+  headerActionText: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.piccolo,
   },
   loader: {
     borderRadius: Border.br_16,
@@ -629,6 +907,17 @@ const styles = StyleSheet.create({
     paddingVertical: StyleVariable.py4,
     gap: Gap.gap_16,
   },
+  fieldGroup: {
+    gap: Gap.gap_6,
+    marginBottom: Gap.gap_12,
+    flex: 1,
+    minWidth: 0,
+  },
+  fieldLabel: {
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainTrunks,
+  },
   emptyState: {
     fontSize: FontSize.fs_12,
     fontFamily: FontFamily.dMSansRegular,
@@ -648,18 +937,18 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(71, 82, 214, 0.05)",
   },
   planHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: "column",
+    alignItems: "stretch",
+    justifyContent: "flex-start",
     gap: Gap.gap_8,
   },
   planInput: {
     flex: 1,
-    borderRadius: Border.br_12,
+    borderRadius: Border.br_16,
     borderWidth: 1,
     borderColor: "rgba(0, 5, 61, 0.12)",
     paddingHorizontal: StyleVariable.px3,
-    paddingVertical: StyleVariable.py2,
+    paddingVertical: StyleVariable.py3,
     fontSize: FontSize.fs_14,
     fontFamily: FontFamily.dMSansRegular,
     color: Color.hit,
@@ -719,6 +1008,20 @@ const styles = StyleSheet.create({
     gap: Gap.gap_8,
     marginTop: Gap.gap_12,
   },
+  dangerButton: {
+    marginTop: Gap.gap_4,
+    backgroundColor: "rgba(215, 38, 61, 0.1)",
+    borderRadius: Border.br_16,
+    paddingVertical: StyleVariable.py3,
+    paddingHorizontal: StyleVariable.px4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dangerButtonText: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.supportiveChichi,
+  },
   priceRow: {
     marginTop: Gap.gap_8,
   },
@@ -755,6 +1058,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  primaryButtonDisabled: {
+    opacity: 0.6,
+  },
   primaryButtonText: {
     fontSize: FontSize.fs_14,
     fontFamily: FontFamily.dMSansBold,
@@ -776,5 +1082,49 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansBold,
     color: Color.piccolo,
   },
+  modalRoot: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    paddingHorizontal: Padding.padding_24,
+    justifyContent: "center",
+  },
+  modalKeyboard: {
+    width: "100%",
+    maxHeight: "90%",
+  },
+  modalScroll: {
+    width: "100%",
+  },
+  modalCard: {
+    borderRadius: Border.br_16,
+    borderWidth: 1,
+    borderColor: "rgba(0, 5, 61, 0.08)",
+    backgroundColor: Color.mainGohan,
+    paddingHorizontal: StyleVariable.px6,
+    paddingVertical: StyleVariable.py6,
+    gap: Gap.gap_24,
+  },
+  modalFieldGroup: {
+    gap: Gap.gap_8,
+    marginBottom: Gap.gap_12,
+  },
+  modalInput: {
+    minHeight: 48,
+  },
+  modalTitle: {
+    fontSize: FontSize.fs_16,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.hit,
+    textAlign: "center",
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: Gap.gap_8,
+  },
 });
-

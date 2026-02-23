@@ -61,6 +61,24 @@ export const deleteUserById = async (userId: number) => {
   await api.delete(`/users/${userId}`, config);
 };
 
+export const renewUserPlan = async (
+  userId: number,
+  durationMonths?: number,
+) => {
+  if (isMockEnabled()) {
+    return;
+  }
+
+  const config = await withAuthHeader();
+  const payload = durationMonths ? { durationMonths } : {};
+  const { data } = await api.post<UserProfileResponse>(
+    `/users/${userId}/plan/renew`,
+    payload,
+    config,
+  );
+  return data;
+};
+
 export const updateUserByIdWithUpload = async (
   userId: number,
   dataPayload: UpdateUserRequest,

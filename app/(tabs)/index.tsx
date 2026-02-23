@@ -5,29 +5,29 @@ import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Linking,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Card from "../../components/Card";
 import FrameComponent1 from "../../components/FrameComponent1";
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    LineHeight,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  LineHeight,
+  Padding,
+  StyleVariable,
 } from "../../GlobalStyles";
 import { usePushNotifications } from "../../hooks/use-push-notifications";
 import { listMyAppointments } from "../../services/appointments";
@@ -37,10 +37,10 @@ import { isMockEnabled } from "../../services/mock/settings";
 import { registerPushToken } from "../../services/push-tokens";
 import { getCurrentUser, listUsers } from "../../services/users";
 import type {
-    AdminDashboardResponse,
-    AppointmentResponse,
-    MembershipTier,
-    UserProfileResponse,
+  AdminDashboardResponse,
+  AppointmentResponse,
+  MembershipTier,
+  UserProfileResponse,
 } from "../../types/api";
 
 interface DecodedToken {
@@ -492,16 +492,17 @@ export default function HomeScreen() {
 
     const loadMemberCounts = async () => {
       try {
-        const members = await listUsers();
+        const [standardMembers, premiumMembers, selectMembers] =
+          await Promise.all([
+            listUsers({ membershipTier: "QUINZE_STANDARD" }),
+            listUsers({ membershipTier: "QUINZE_PREMIUM" }),
+            listUsers({ membershipTier: "QUINZE_SELECT" }),
+          ]);
         if (!isActive) {
           return;
         }
-        const standardCount = members.filter((user) =>
-          STANDARD_TIER_SET.includes(user.membershipTier),
-        ).length;
-        const selectCount = members.filter(
-          (user) => user.membershipTier === SELECT_TIER,
-        ).length;
+        const standardCount = standardMembers.length + premiumMembers.length;
+        const selectCount = selectMembers.length;
         setMemberCounts({ standard: standardCount, select: selectCount });
       } catch (error) {
         console.error("Failed to load member counts", error);
@@ -774,15 +775,50 @@ export default function HomeScreen() {
                 );
               }
 
+              if (item.kind === "adminMembersSelect") {
+                return (
+                  <TouchableOpacity
+                    key="admin-members-select"
+                    style={cardStyle}
+                    activeOpacity={0.9}
+                    onPress={() =>
+                      handleNavigate("/admin-members", {
+                        tier: "QUINZE_SELECT",
+                      })
+                    }
+                  >
+                    <View style={styles.quickActionCardContent}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>Membros</Text>
+                      </View>
+                      <View style={styles.cardBody}>
+                        <Text style={styles.cardCount}>
+                          {membersSelectCount.toLocaleString("pt-BR")}
+                        </Text>
+                        <Text style={[styles.cardLabel, { color: "#F4D35E" }]}>
+                          Quinze Select
+                        </Text>
+                      </View>
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.cardLink}>Ver lista</Text>
+                        <Ionicons
+                          name="arrow-forward"
+                          size={16}
+                          color={Color.piccolo}
+                        />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+
               if (item.kind === "adminPayments") {
                 return (
                   <TouchableOpacity
                     key="admin-payments"
                     style={cardStyle}
                     activeOpacity={0.9}
-                    onPress={() =>
-                      handleNavigate("/profile/plans", { fromAdmin: "1" })
-                    }
+                    onPress={() => handleNavigate("/admin-payments")}
                   >
                     <View style={styles.quickActionCardContent}>
                       <View style={styles.cardHeader}>
@@ -834,44 +870,6 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.cardFooter}>
                         <Text style={styles.cardLink}>Abrir agenda</Text>
-                        <Ionicons
-                          name="arrow-forward"
-                          size={16}
-                          color={Color.piccolo}
-                        />
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              }
-
-              if (item.kind === "adminPayments") {
-                return (
-                  <TouchableOpacity
-                    key="admin-payments"
-                    style={cardStyle}
-                    activeOpacity={0.9}
-                    onPress={() =>
-                      handleNavigate("/profile/plans", { fromAdmin: "1" })
-                    }
-                  >
-                    <View style={styles.quickActionCardContent}>
-                      <View style={styles.cardHeader}>
-                        <View style={styles.cardIconWrapper}>
-                          <Ionicons
-                            name="card-outline"
-                            size={18}
-                            color={Color.piccolo}
-                          />
-                        </View>
-                      </View>
-                      <View style={styles.cardBody}>
-                        <Text style={styles.cardTitle}>
-                          próximos pagamentos
-                        </Text>
-                      </View>
-                      <View style={styles.cardFooter}>
-                        <Text style={styles.cardLink}>Ver detalhes</Text>
                         <Ionicons
                           name="arrow-forward"
                           size={16}

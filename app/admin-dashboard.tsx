@@ -126,13 +126,14 @@ const AdminDashboardScreen = () => {
 
   const loadMemberCounts = useCallback(async () => {
     try {
-      const members = await listUsers();
-      const standardCount = members.filter((user) =>
-        STANDARD_TIER_SET.includes(user.membershipTier),
-      ).length;
-      const selectCount = members.filter(
-        (user) => user.membershipTier === SELECT_TIER,
-      ).length;
+      const [standardMembers, premiumMembers, selectMembers] =
+        await Promise.all([
+          listUsers({ membershipTier: "QUINZE_STANDARD" }),
+          listUsers({ membershipTier: "QUINZE_PREMIUM" }),
+          listUsers({ membershipTier: "QUINZE_SELECT" }),
+        ]);
+      const standardCount = standardMembers.length + premiumMembers.length;
+      const selectCount = selectMembers.length;
       setMemberCounts({ standard: standardCount, select: selectCount });
     } catch (membersError) {
       console.error("Failed to load member counts", membersError);
@@ -636,4 +637,3 @@ const styles = StyleSheet.create({
 });
 
 export default AdminDashboardScreen;
-

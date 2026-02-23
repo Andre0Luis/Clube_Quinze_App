@@ -71,7 +71,7 @@ export default function RegisterScreen() {
       const payload: RegisterRequest = {
         name: name.trim(),
         email: email.trim(),
-        password,
+        password: password.trim(),
         membershipTier,
         birthDate: formattedDate,
         phone: phoneDigits ? phoneDigits : undefined,
@@ -136,12 +136,14 @@ export default function RegisterScreen() {
     >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
+        behavior={Platform.select({ ios: "padding", android: "height" })}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <Animatable.View animation="fadeInDown" style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
@@ -333,7 +335,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: 120,
   },
   header: {
     flexDirection: "row",
@@ -366,6 +368,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
     marginBottom: 12,
+    color: "#131416",
   },
   passwordRow: {
     flexDirection: "row",
@@ -416,7 +419,7 @@ const styles = StyleSheet.create({
   button: {
     width: "100%",
     height: 50,
-    backgroundColor: "#4B0082",
+    backgroundColor: "#0A4DFF",
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 10,

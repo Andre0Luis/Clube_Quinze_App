@@ -4,34 +4,34 @@ import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import MaskedTextInput, { Masks } from "react-native-mask-input";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    Border,
-    Color,
-    FontFamily,
-    FontSize,
-    Gap,
-    Padding,
-    StyleVariable,
+  Border,
+  Color,
+  FontFamily,
+  FontSize,
+  Gap,
+  Padding,
+  StyleVariable,
 } from "../../GlobalStyles";
 import { uploadMedia } from "../../services/media";
 import {
-    deleteUserById,
-    getCurrentUser,
-    updateCurrentUser,
+  deleteUserById,
+  getCurrentUser,
+  updateCurrentUser,
 } from "../../services/users";
 import type { UserProfileResponse } from "../../types/api";
 
@@ -60,28 +60,50 @@ const formatPhoneInput = (value?: string | null) => {
   if (!value) {
     return "";
   }
-  const digits = sanitizeDigits(value);
-  if (!digits) {
+  return sanitizeDigits(value);
+};
+
+const formatBirthDateInput = (value?: string | null) => {
+  if (!value) {
     return "";
   }
-  const localDigits =
-    digits.length > 11 ? digits.slice(digits.length - 11) : digits;
-  if (localDigits.length <= 10) {
-    const area = localDigits.slice(0, 2);
-    const prefix = localDigits.slice(2, 6);
-    const suffix = localDigits.slice(6);
-    if (!area || !prefix) {
-      return value;
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return `${day}/${month}/${year}`;
+  }
+  return trimmed;
+};
+
+const parseBirthDateToIso = (value: string): string | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const ddmmyyyy = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (ddmmyyyy) {
+    const [, day, month, year] = ddmmyyyy;
+    const iso = `${year}-${month}-${day}`;
+    const parsed = new Date(iso);
+    if (Number.isNaN(parsed.getTime())) {
+      return undefined;
     }
-    return `(${area}) ${prefix}${suffix ? `-${suffix}` : ""}`.trim();
+    const validDay = parsed.getUTCDate() === Number(day);
+    const validMonth = parsed.getUTCMonth() + 1 === Number(month);
+    if (!validDay || !validMonth) {
+      return undefined;
+    }
+    return iso;
   }
-  const area = localDigits.slice(0, 2);
-  const prefix = localDigits.slice(2, 7);
-  const suffix = localDigits.slice(7);
-  if (!area || !prefix) {
-    return value;
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return trimmed;
   }
-  return `(${area}) ${prefix}${suffix ? `-${suffix}` : ""}`.trim();
+  return undefined;
 };
 
 const sanitizePhonePayload = (value: string): string | undefined => {
@@ -148,7 +170,7 @@ export default function PersonalDataScreen() {
             name: currentUser.name ?? "",
             email: currentUser.email ?? "",
             phone: formatPhoneInput(currentUser.phone),
-            birthDate: currentUser.birthDate ?? "",
+            birthDate: formatBirthDateInput(currentUser.birthDate),
           });
           const avatarMedia = currentUser.profilePictureBase64
             ? {
@@ -520,6 +542,20 @@ export default function PersonalDataScreen() {
       return;
     }
 
+    const sanitizedPhone = sanitizePhonePayload(form.phone ?? "");
+    if (!sanitizedPhone) {
+      setErrorMessage("Informe um telefone válido.");
+      return;
+    }
+
+    const parsedBirthDate = form.birthDate.trim()
+      ? parseBirthDateToIso(form.birthDate)
+      : undefined;
+    if (form.birthDate.trim() && !parsedBirthDate) {
+      setErrorMessage("Informe a data de nascimento em DD/MM/AAAA.");
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -561,27 +597,28 @@ export default function PersonalDataScreen() {
           galleryPayload.push({ position: index + 1, imageUrl });
         }
       }
-      const sanitizedPhone = sanitizePhonePayload(form.phone ?? "");
-      const normalizedBirthDate = form.birthDate.trim()
-        ? form.birthDate.trim()
-        : undefined;
+      const normalizedBirthDate = parsedBirthDate;
+      const hasExistingGallery = (profile?.gallery?.length ?? 0) > 0;
+      const shouldSendGallery =
+        galleryPayload.length > 0 ||
+        (hasExistingGallery && galleryMedia.length === 0);
 
       const payload = {
         name: form.name.trim(),
         email: form.email.trim(),
-        phone: sanitizedPhone,
-        birthDate: normalizedBirthDate,
         membershipTier: profile?.membershipTier ?? "QUINZE_STANDARD",
-        planId: profile?.plan?.id,
         ...(avatar === null
           ? { profilePictureUrl: null }
           : avatarUrlCandidate
             ? { profilePictureUrl: avatarUrlCandidate }
             : {}),
-        ...(galleryPayload.length || galleryMedia.length === 0
-          ? { gallery: galleryPayload }
-          : {}),
+        phone: sanitizedPhone,
+        ...(normalizedBirthDate ? { birthDate: normalizedBirthDate } : {}),
+        ...(profile?.plan?.id ? { planId: profile.plan.id } : {}),
+        ...(shouldSendGallery ? { gallery: galleryPayload } : {}),
       };
+
+      console.log("PUT /users/me payload", payload);
 
       const updated = await updateCurrentUser(payload);
       setProfile(updated);
@@ -589,7 +626,7 @@ export default function PersonalDataScreen() {
         name: updated.name ?? payload.name,
         email: updated.email ?? payload.email,
         phone: formatPhoneInput(updated.phone),
-        birthDate: updated.birthDate ?? "",
+        birthDate: formatBirthDateInput(updated.birthDate),
       });
       const updatedAvatar = updated.profilePictureBase64
         ? {
@@ -938,10 +975,21 @@ export default function PersonalDataScreen() {
                 onChangeText={(masked: string) =>
                   handleFieldChange("birthDate", masked)
                 }
-                mask={Masks.DATE_YYYYMMDD}
-                placeholder="DD-MM-AAAAR"
+                mask={[
+                  /\d/,
+                  /\d/,
+                  "/",
+                  /\d/,
+                  /\d/,
+                  "/",
+                  /\d/,
+                  /\d/,
+                  /\d/,
+                  /\d/,
+                ]}
+                placeholder="DD/MM/AAAA"
                 placeholderTextColor={Color.mainTrunks}
-                keyboardType="numbers-and-punctuation"
+                keyboardType="number-pad"
               />
             </View>
           </View>

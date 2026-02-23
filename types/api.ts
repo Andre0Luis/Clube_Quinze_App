@@ -193,6 +193,16 @@ export interface NotificationResponse {
   data?: Record<string, string | number | boolean | null>;
 }
 
+export interface PaymentRenewalResponse {
+  userId: number;
+  userName: string;
+  membershipTier: MembershipTier;
+  plan: PlanSummary;
+  planRenewalDate: string;
+  planEndDate: string;
+  allowedDurations: number[];
+}
+
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
