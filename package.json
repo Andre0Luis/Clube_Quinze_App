@@ -12,6 +12,7 @@
     "@react-navigation/native-stack": "^7.3.16",
     "@react-navigation/routers": "^7.5.0",
     "@react-navigation/stack": "^7.6.0",
+    "@sentry/react-native": "~7.2.0",
     "@types/react": "~19.1.10",
     "axios": "^1.13.2",
     "expo": "~54.0.33",
@@ -55,5 +56,5 @@
     "start": "expo start",
     "web": "expo start --web"
   },
-  "version": "1.0.2"
+  "version": "1.0.3"
 }
