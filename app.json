@@ -2,14 +2,12 @@
   "expo": {
     "name": "Clube_Quinze_App",
     "slug": "ProjetoQuinze",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "icon": "./assets/images/icon.png",
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "web": {
       "favicon": "./assets/images/icon.png"
     },
