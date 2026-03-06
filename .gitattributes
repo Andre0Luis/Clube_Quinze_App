@@ -1,0 +1,5 @@
+# Ensure shell scripts and iOS env files always use LF line endings
+*.sh text eol=lf
+.xcode.env text eol=lf
+.xcode.env.local text eol=lf
+ios/sentry.properties text eol=lf
