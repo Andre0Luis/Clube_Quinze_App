@@ -13,27 +13,32 @@ Notifications.setNotificationHandler({
 
 const isDevice = Constants?.isDevice ?? false;
 
-async function registerForPushNotificationsAsync() {
-  if (!isDevice) {
-    throw new Error('notificações push exigem um dispositivo fisico.');
-  }
+// Passive: only checks current permission status, never prompts the user.
+async function registerForPushNotificationsAsync(): Promise<string | null> {
+  if (!isDevice) return null;
 
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== 'granted') return null;
 
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
+  const projectId =
+    Constants?.expoConfig?.extra?.eas?.projectId ??
+    Constants?.easConfig?.projectId;
+  const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
+  return data;
+}
 
-  if (finalStatus !== 'granted') {
-    throw new Error('Permissao de notificações negada.');
-  }
+// Active: explicitly requests permission then retrieves the push token.
+// Attach this to a UI button; never call it on app startup.
+export async function requestPushPermissions(): Promise<string | null> {
+  if (!isDevice) return null;
 
-  const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-  const { data } = await Notifications.getExpoPushTokenAsync({
-    projectId,
-  });
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return null;
+
+  const projectId =
+    Constants?.expoConfig?.extra?.eas?.projectId ??
+    Constants?.easConfig?.projectId;
+  const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
   return data;
 }
 
@@ -49,6 +54,15 @@ export function usePushNotifications() {
     let isMounted = true;
 
     const setup = async () => {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      }
+
       try {
         const token = await registerForPushNotificationsAsync();
         if (isMounted) {
@@ -58,15 +72,6 @@ export function usePushNotifications() {
         if (isMounted) {
           setError(err instanceof Error ? err.message : 'Falha ao registrar notificações');
         }
-      }
-
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'default',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FF231F7C',
-        });
       }
     };
 

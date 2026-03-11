@@ -37,14 +37,6 @@
     "plugins": [
       "expo-router",
       [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "react-native",
-          "organization": "luizinhos-house"
-        }
-      ],
-      [
         "expo-image-picker",
         {
           "photosPermission": "O Clube Quinze precisa de acesso à sua galeria para você selecionar fotos para o seu perfil e publicações.",

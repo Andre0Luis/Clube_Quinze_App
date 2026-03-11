@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/react-native";
 import * as Linking from "expo-linking";
 import { SplashScreen, Stack, usePathname, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -9,10 +8,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import MenuDeNavegao from "../components/MenuDeNavegao";
 import { getCurrentUser } from "../services/users";
-
-Sentry.init({
-  dsn: "https://685bda8e0d370ae91fe753f5c9fd14d8@o4510949392646144.ingest.us.sentry.io/4510949401165824",
-});
 
 SplashScreen.preventAutoHideAsync();
 
