@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -29,12 +28,10 @@ import {
   Padding,
   StyleVariable,
 } from "../../GlobalStyles";
-import { usePushNotifications } from "../../hooks/use-push-notifications";
 import { listMyAppointments } from "../../services/appointments";
 import { logout as logoutService } from "../../services/auth";
 import { getAdminDashboardMetrics } from "../../services/dashboard";
 import { isMockEnabled } from "../../services/mock/settings";
-import { registerPushToken } from "../../services/push-tokens";
 import { getCurrentUser, listUsers } from "../../services/users";
 import type {
   AdminDashboardResponse,
@@ -146,16 +143,6 @@ const findNextAppointment = (items: AppointmentResponse[]) => {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const {
-    expoPushToken,
-    appVersion,
-    lastResponse: lastNotificationResponse,
-    lastNotification,
-    error: notificationsError,
-  } = usePushNotifications();
-  const [registeredPushToken, setRegisteredPushToken] = useState<string | null>(
-    null,
-  );
   const mockActive = isMockEnabled();
   const [userName, setUserName] = useState<string>("");
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
@@ -166,25 +153,6 @@ export default function HomeScreen() {
   const [adminDashboard, setAdminDashboard] =
     useState<AdminDashboardResponse | null>(null);
   const [memberCounts, setMemberCounts] = useState<MemberCounts | null>(null);
-  const [isNotificationsModalVisible, setIsNotificationsModalVisible] =
-    useState(false);
-
-  useEffect(() => {
-    if (notificationsError) {
-      console.warn("Falha ao registrar notificações", notificationsError);
-    }
-  }, [notificationsError]);
-
-  useEffect(() => {
-    if (expoPushToken) {
-      console.log("Expo push token obtido", expoPushToken);
-      if (expoPushToken !== registeredPushToken) {
-        registerPushToken(expoPushToken, appVersion).finally(() => {
-          setRegisteredPushToken(expoPushToken);
-        });
-      }
-    }
-  }, [expoPushToken, registeredPushToken, appVersion]);
 
   const handleNavigate = useCallback(
     (path: string, params?: Record<string, string>) => {
@@ -197,14 +165,6 @@ export default function HomeScreen() {
     [router],
   );
 
-  const handleOpenNotifications = useCallback(() => {
-    setIsNotificationsModalVisible(true);
-  }, []);
-
-  const handleCloseNotifications = useCallback(() => {
-    setIsNotificationsModalVisible(false);
-  }, []);
-
   const pushAppointmentDetails = useCallback(
     (appointmentId?: string | number) => {
       if (!appointmentId) {
@@ -215,117 +175,6 @@ export default function HomeScreen() {
     },
     [router, isAdmin],
   );
-
-  const handleNotificationNavigation = useCallback(
-    (data?: {
-      appointmentId?: string | number;
-      href?: string;
-      kind?: string;
-      scheduledAt?: string;
-      offset?: string;
-    }) => {
-      if (!data) return;
-
-      if (data.href) {
-        router.push(data.href as any);
-        return;
-      }
-
-      if (data.appointmentId) {
-        pushAppointmentDetails(data.appointmentId);
-      }
-    },
-    [pushAppointmentDetails, router],
-  );
-
-  useEffect(() => {
-    if (!lastNotificationResponse) {
-      return;
-    }
-
-    const data =
-      (lastNotificationResponse.notification.request.content.data as
-        | {
-            appointmentId?: string | number;
-            href?: string;
-            kind?: string;
-            scheduledAt?: string;
-            offset?: string;
-          }
-        | undefined) ?? {};
-
-    handleNotificationNavigation(data);
-  }, [lastNotificationResponse, handleNotificationNavigation]);
-
-  useEffect(() => {
-    if (!lastNotification) {
-      return;
-    }
-
-    const data =
-      (lastNotification.request.content.data as
-        | {
-            appointmentId?: string | number;
-            href?: string;
-            kind?: string;
-            scheduledAt?: string;
-            offset?: string;
-          }
-        | undefined) ?? {};
-
-    const kind = data.kind ?? "";
-    const scheduledAt = data.scheduledAt;
-    const offset = data.offset;
-
-    const messageByKind: Record<string, string> = {
-      SCHEDULED: scheduledAt
-        ? `Agendamento confirmado para ${scheduledAt}.`
-        : "Agendamento confirmado.",
-      RESCHEDULED: scheduledAt
-        ? `Agendamento remarcado para ${scheduledAt}.`
-        : "Agendamento remarcado.",
-      CANCELLED: "Agendamento cancelado.",
-      reminder: offset
-        ? `Lembrete do seu agendamento (${offset}).`
-        : "Lembrete do seu agendamento.",
-    };
-
-    const alertBody =
-      messageByKind[kind] ??
-      lastNotification.request.content.body ??
-      "notificação recebida.";
-
-    Alert.alert("notificação", alertBody, [
-      {
-        text: "Ver",
-        onPress: () => handleNotificationNavigation(data),
-      },
-      {
-        text: "Ok",
-        style: "cancel",
-      },
-    ]);
-  }, [lastNotification, handleNotificationNavigation]);
-
-  useEffect(() => {
-    if (!lastNotificationResponse) {
-      return;
-    }
-
-    const data =
-      (lastNotificationResponse.notification.request.content.data as
-        | { appointmentId?: string | number; href?: string }
-        | undefined) ?? {};
-
-    if (data.href) {
-      router.push(data.href as any);
-      return;
-    }
-
-    if (data.appointmentId) {
-      pushAppointmentDetails(data.appointmentId);
-    }
-  }, [lastNotificationResponse, pushAppointmentDetails, router]);
 
   useEffect(() => {
     let isMounted = true;
@@ -656,7 +505,6 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <FrameComponent1
           userName={displayName}
-          onPressNotifications={handleOpenNotifications}
         />
 
         <View style={styles.quickActionsWrapper}>
@@ -1045,36 +893,6 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <Modal
-        visible={isNotificationsModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={handleCloseNotifications}
-      >
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={handleCloseNotifications}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={styles.modalCard}
-            onPress={() => {}}
-          >
-            <Text style={styles.modalTitle}>notificações</Text>
-            <Text style={styles.modalDescription}>
-              Não ha notificações por hora.
-            </Text>
-            <TouchableOpacity
-              style={styles.modalConfirm}
-              onPress={handleCloseNotifications}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.modalConfirmText}>Fechar</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -1212,49 +1030,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: Padding.padding_24,
-  },
-  modalCard: {
-    width: "92%",
-    maxWidth: 520,
-    alignSelf: "center",
-    borderRadius: Border.br_16,
-    backgroundColor: Color.mainGoten,
-    paddingHorizontal: StyleVariable.px4,
-    paddingVertical: StyleVariable.py4,
-    gap: Gap.gap_12,
-    shadowColor: "rgba(0, 0, 0, 0.2)",
-    shadowOpacity: 1,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 18,
-    elevation: 8,
-  },
-  modalTitle: {
-    fontSize: FontSize.fs_16,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.hit,
-  },
-  modalDescription: {
-    fontSize: FontSize.fs_12,
-    fontFamily: FontFamily.dMSansRegular,
-    color: Color.mainTrunks,
-  },
-  modalConfirm: {
-    alignSelf: "flex-end",
-    paddingVertical: StyleVariable.py2,
-    paddingHorizontal: StyleVariable.px4,
-    borderRadius: Border.br_10,
-    backgroundColor: Color.piccolo,
-  },
-  modalConfirmText: {
-    fontSize: FontSize.fs_14,
-    fontFamily: FontFamily.dMSansBold,
-    color: Color.mainGoten,
   },
 });

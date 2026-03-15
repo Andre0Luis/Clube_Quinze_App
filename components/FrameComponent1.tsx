@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import {
     Border,
     Color,
@@ -11,16 +11,13 @@ import {
     Padding,
     Width,
 } from "../GlobalStyles";
-import Notifications from "./Notifications";
 
 type FrameComponent1Props = {
   userName?: string;
-  onPressNotifications?: () => void;
 };
 
 const FrameComponent1 = ({
   userName = "João",
-  onPressNotifications,
 }: FrameComponent1Props) => {
   return (
     <View style={styles.frameParent}>
@@ -37,15 +34,6 @@ const FrameComponent1 = ({
             Clube Quinze
           </Text>
         </View>
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="Abrir notificações"
-          onPress={onPressNotifications}
-          activeOpacity={0.7}
-          style={styles.notificationsWrapper}
-        >
-          <Notifications notifications="bell" size="32px" type="stroke" />
-        </TouchableOpacity>
       </View>
       <Text style={[styles.olJoo, styles.olJooTypo]}>Olá, {userName} 👋</Text>
     </View>
@@ -88,15 +76,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.fs_14,
     lineHeight: LineHeight.lh_24,
     textAlign: "center",
-  },
-  notificationsWrapper: {
-    height: Height.height_36,
-    width: Width.width_36,
-    borderRadius: Border.br_58,
-    borderStyle: "solid",
-    borderColor: Color.jiren,
-    borderWidth: 2,
-    overflow: "hidden",
   },
   olJoo: {
     fontSize: FontSize.fs_24,

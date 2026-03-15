@@ -42,13 +42,6 @@
           "photosPermission": "O Clube Quinze precisa de acesso à sua galeria para você selecionar fotos para o seu perfil e publicações.",
           "cameraPermission": "O Clube Quinze precisa da câmera para você tirar fotos e compartilhar na comunidade."
         }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/icon.png",
-          "color": "#ffffff"
-        }
       ]
     ]
   }
