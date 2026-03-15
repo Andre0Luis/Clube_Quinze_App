@@ -2,7 +2,7 @@
   "expo": {
     "name": "Clube_Quinze_App",
     "slug": "ProjetoQuinze",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "icon": "./assets/images/icon.png",
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -20,7 +20,7 @@
     "owner": "andre0luis",
     "ios": {
       "bundleIdentifier": "com.andre0luis.ProjetoQuinze",
-      "buildNumber": "4",
+      "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
