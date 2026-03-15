@@ -49,6 +49,13 @@
   "main": "expo-router/entry",
   "name": "Clube_Quinze_App",
   "private": true,
+  "expo": {
+    "doctor": {
+      "appConfigFieldsNotSyncedCheck": {
+        "enabled": false
+      }
+    }
+  },
   "scripts": {
     "android": "expo run:android",
     "ios": "expo run:ios",

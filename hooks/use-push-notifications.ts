@@ -3,13 +3,29 @@ import * as Notifications from 'expo-notifications';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+let hasConfiguredNotificationHandler = false;
+
+function ensureNotificationHandlerConfigured() {
+  if (hasConfiguredNotificationHandler) {
+    return;
+  }
+
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        // Keep both legacy and modern keys for cross-version compatibility.
+        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+    hasConfiguredNotificationHandler = true;
+  } catch (error) {
+    console.warn('Falha ao configurar NotificationHandler', error);
+  }
+}
 
 const isDevice = Constants?.isDevice ?? false;
 
@@ -54,6 +70,10 @@ export function usePushNotifications() {
     let isMounted = true;
 
     const setup = async () => {
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
+        ensureNotificationHandlerConfigured();
+      }
+
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
           name: 'default',
