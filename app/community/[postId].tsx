@@ -99,6 +99,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 export default function CommunityPostScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { postId, liked: likedParam } = useLocalSearchParams<RouteParams>();
   const numericPostId = Number(postId);
   const [post, setPost] = useState<PostResponse | null>(null);
@@ -612,7 +613,7 @@ export default function CommunityPostScreen() {
       >
         <View style={styles.viewerBackdrop}>
           <TouchableOpacity
-            style={styles.viewerClose}
+            style={[styles.viewerClose, { top: Math.max(insets.top + 16, 40) }]}
             onPress={handleCloseViewer}
             accessibilityRole="button"
             accessibilityLabel="Fechar imagem"
@@ -897,7 +898,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   avatarInitialsTiny: {
-    fontSize: FontSize.fs_10,
+    fontSize: FontSize.fs_12,
     fontFamily: FontFamily.dMSansBold,
     color: Color.mainGoten,
   },

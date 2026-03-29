@@ -1,5 +1,5 @@
 import * as Linking from "expo-linking";
-import { SplashScreen, Stack, usePathname, useRouter } from "expo-router";
+import { SplashScreen, Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import "react-native-gesture-handler";
@@ -8,14 +8,29 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import MenuDeNavegao from "../components/MenuDeNavegao";
 import { getCurrentUser } from "../services/users";
+import * as Notifications from "expo-notifications";
+import { usePushNotifications } from "../hooks/usePushNotifications";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
+  const segments = useSegments();
   const insets = useSafeAreaInsets();
   const [isAdmin, setIsAdmin] = useState(false);
+
+  usePushNotifications();
 
   useEffect(() => {
     const handleIncomingUrl = (url?: string | null) => {
@@ -104,12 +119,13 @@ export default function RootLayout() {
   }, [pathname]);
 
   const showNav = useMemo(() => {
+    if (pathname === "/" && !segments[0]) return false;
     return !(
       pathname === "/login" ||
       pathname === "/register" ||
       pathname.startsWith("/reset-password")
     );
-  }, [pathname]);
+  }, [pathname, segments]);
 
   const handleSelectTab = (key: string) => {
     switch (key) {

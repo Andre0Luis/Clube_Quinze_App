@@ -27,3 +27,8 @@ export const listNotifications = async () => {
   );
   return data;
 };
+
+export const registerPushToken = async (token: string, platform: string) => {
+  const config = await withAuthHeader();
+  await api.post("/notifications/tokens", { token, platform }, config);
+};

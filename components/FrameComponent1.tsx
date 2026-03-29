@@ -1,5 +1,7 @@
+import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
     Border,
     Color,
@@ -19,6 +21,8 @@ type FrameComponent1Props = {
 const FrameComponent1 = ({
   userName = "João",
 }: FrameComponent1Props) => {
+  const router = useRouter();
+
   return (
     <View style={styles.frameParent}>
       <View style={[styles.frameGroup, styles.frameGroupFlexBox]}>
@@ -34,6 +38,12 @@ const FrameComponent1 = ({
             Clube Quinze
           </Text>
         </View>
+        <TouchableOpacity
+          onPress={() => router.push("/notifications")}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="notifications-outline" size={24} color={Color.white} />
+        </TouchableOpacity>
       </View>
       <Text style={[styles.olJoo, styles.olJooTypo]}>Olá, {userName} 👋</Text>
     </View>

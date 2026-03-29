@@ -79,17 +79,19 @@ export default function AdminMembersScreen() {
             name: user.name,
             membershipTier: user.membershipTier,
             roleLabel,
-            avatarInitials: user.name
+            avatarInitials: (user.name || "Usuario")
               .split(" ")
-              .map((part) => part.charAt(0).toUpperCase())
+              .filter(Boolean)
+              .map((part: string) => part.charAt(0).toUpperCase())
               .join("")
               .slice(0, 2),
           };
         });
         setMembers(mapped);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to load members", err);
-        if (isActive) setError("Não foi possível carregar os membros.");
+        const errorMsg = err?.response?.data?.message || err.message || "Não foi possível carregar os membros.";
+        if (isActive) setError(`Erro: ${errorMsg}`);
       } finally {
         if (isActive) setIsLoading(false);
       }
@@ -433,7 +435,7 @@ const styles = StyleSheet.create({
     color: Color.hit,
   },
   feedbackBanner: {
-    borderRadius: Border.br_12,
+    borderRadius: Border.br_16,
     borderWidth: 1,
     borderColor: "rgba(0, 5, 61, 0.08)",
     backgroundColor: Color.mainGohan,

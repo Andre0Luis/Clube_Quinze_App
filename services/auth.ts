@@ -72,3 +72,14 @@ export const resetPassword = async (
 
   await api.post("/auth/reset-password", { token, newPassword });
 };
+
+export const changePassword = async (
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> => {
+  if (isMockEnabled()) {
+    return;
+  }
+
+  await api.put("/auth/change-password", { currentPassword, newPassword });
+};

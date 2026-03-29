@@ -290,6 +290,7 @@ export default function RegisterScreen() {
                     key={option.value}
                     label={option.label}
                     value={option.value}
+                    color={Platform.OS === 'ios' ? '#131416' : undefined}
                   />
                 ))}
               </Picker>

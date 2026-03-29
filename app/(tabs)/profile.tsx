@@ -59,6 +59,20 @@ const profileOptions: ProfileOption[] = [
     route: "/profile/plans",
   },
   {
+    id: "notifications",
+    title: "Notificações",
+    description: "Habilitar ou desabilitar alertas.",
+    icon: "notifications-outline",
+    route: "/profile/notifications",
+  },
+  {
+    id: "change-password",
+    title: "Alterar Senha",
+    description: "Mantenha sua conta segura.",
+    icon: "lock-closed-outline",
+    route: "/profile/change-password",
+  },
+  {
     id: "policies",
     title: "Termos e políticas",
     description: "Consulte nossos termos de uso e privacidade.",

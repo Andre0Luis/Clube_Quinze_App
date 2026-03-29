@@ -63,6 +63,19 @@ export interface UserProfileResponse {
   gallery?: GalleryItem[];
 }
 
+export interface UserSummary {
+  id: number;
+  name?: string | null;
+  email: string;
+  phone?: string | null;
+  birthDate?: string | null;
+  membershipTier?: MembershipTier | null;
+  role?: UserRole | null;
+  plan?: PlanSummary | null;
+  createdAt: string;
+  lastLogin?: string | null;
+}
+
 export interface PreferenceRequest {
   key: string;
   value: string;

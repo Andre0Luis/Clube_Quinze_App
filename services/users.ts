@@ -231,13 +231,36 @@ export const listUsers = async (params?: ListUsersParams) => {
   }
 
   const config = await withAuthHeader();
+
+  // WORKAROUND: The backend throws a 500 Internal Server Error when "membershipTier" is not provided.
+  // To get "all" members, we must fetch the three tiers individually and combine them.
+  if (!params?.membershipTier) {
+    const fetchTier = async (tier: string) => {
+      try {
+        const { data } = await api.get<UserSummary[] | { content?: UserSummary[] }>(
+          "/users",
+          { ...config, params: { membershipTier: tier } },
+        );
+        return Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : [];
+      } catch (e) {
+        console.error(`Failed to fetch tier ${tier}`, e);
+        return [];
+      }
+    };
+
+    const [standard, premium, select] = await Promise.all([
+      fetchTier("QUINZE_STANDARD"),
+      fetchTier("QUINZE_PREMIUM"),
+      fetchTier("QUINZE_SELECT"),
+    ]);
+    return [...standard, ...premium, ...select];
+  }
+
   const { data } = await api.get<UserSummary[] | { content?: UserSummary[] }>(
     "/users",
     {
       ...config,
-      params: params?.membershipTier
-        ? { membershipTier: params.membershipTier }
-        : undefined,
+      params: { membershipTier: params.membershipTier },
     },
   );
   const resolved = Array.isArray(data)

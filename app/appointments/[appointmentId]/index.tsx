@@ -9,7 +9,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
     Border,
@@ -114,6 +114,7 @@ export default function AppointmentDetailsScreen() {
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   const loadAppointment = useCallback(async () => {
     const id = Number(appointmentId);
@@ -310,7 +311,7 @@ export default function AppointmentDetailsScreen() {
         </View>
       )}
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 16, 24) }]}>
         {canReschedule ? (
           <View style={styles.actionStack}>
             <TouchableOpacity
@@ -481,7 +482,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     paddingHorizontal: Padding.padding_24,
-    paddingBottom: Padding.padding_24,
     paddingTop: StyleVariable.py2,
     backgroundColor: Color.mainGohan,
   },
