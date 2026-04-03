@@ -1,4 +1,4 @@
-package com.andre0luis.ProjetoQuinze
+package com.andre0luis.clubequinze
 
 import android.os.Build
 import android.os.Bundle

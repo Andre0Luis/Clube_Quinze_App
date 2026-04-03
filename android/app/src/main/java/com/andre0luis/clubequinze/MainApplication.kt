@@ -1,4 +1,4 @@
-package com.andre0luis.ProjetoQuinze
+package com.andre0luis.clubequinze
 
 import android.app.Application
 import android.content.res.Configuration

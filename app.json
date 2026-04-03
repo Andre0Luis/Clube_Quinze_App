@@ -2,8 +2,8 @@
   "expo": {
     "name": "Clube Quinze",
     "slug": "ProjetoQuinze",
-    "scheme": "com.andre0luis.ProjetoQuinze",
-    "version": "1.0.8",
+    "scheme": "com.andre0luis.clubequinze",
+    "version": "1.0.9",
     "icon": "./assets/images/icon.png",
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -22,13 +22,14 @@
     },
     "owner": "andre0luis",
     "ios": {
-      "bundleIdentifier": "com.andre0luis.ProjetoQuinze",
-      "buildNumber": "18",
+      "bundleIdentifier": "com.andre0luis.clubequinze",
+      "buildNumber": "19",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "versionCode": 6,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -43,7 +44,7 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.andre0luis.ProjetoQuinze"
+      "package": "com.andre0luis.clubequinze"
     },
     "plugins": [
       "expo-router",
