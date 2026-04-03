@@ -8,18 +8,24 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import MenuDeNavegao from "../components/MenuDeNavegao";
 import { getCurrentUser } from "../services/users";
-import * as Notifications from "expo-notifications";
-import { usePushNotifications } from "../hooks/usePushNotifications";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+let Notifications: typeof import("expo-notifications") | null = null;
+try {
+  Notifications = require("expo-notifications");
+  Notifications!.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch {
+  console.warn("expo-notifications not available (Expo Go on SDK 53+). Push notifications disabled.");
+}
+
+import { usePushNotifications } from "../hooks/usePushNotifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -119,10 +125,18 @@ export default function RootLayout() {
   }, [pathname]);
 
   const showNav = useMemo(() => {
-    if (pathname === "/" && !segments[0]) return false;
+    const firstSegment = segments[0];
+
+    // Root index / splash loading: pathname is "/" but NOT inside (tabs)
+    if (pathname === "/" && firstSegment !== "(tabs)") return false;
+    if (pathname === "/index") return false;
+    // On Android, segments may resolve before pathname updates
+    if (!firstSegment || firstSegment === "index") return false;
+
     return !(
       pathname === "/login" ||
       pathname === "/register" ||
+      pathname === "/splash" ||
       pathname.startsWith("/reset-password")
     );
   }, [pathname, segments]);

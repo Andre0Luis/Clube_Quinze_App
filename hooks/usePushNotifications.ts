@@ -1,17 +1,25 @@
 import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { registerPushToken } from "../services/notifications";
 import { getAccessToken } from "../services/storage";
 
+let Notifications: typeof import("expo-notifications") | null = null;
+try {
+  Notifications = require("expo-notifications");
+} catch {
+  // expo-notifications unavailable (Expo Go SDK 53+)
+}
+
 export function usePushNotifications() {
-  const notificationListener = useRef<Notifications.Subscription | null>(null);
-  const responseListener = useRef<Notifications.Subscription | null>(null);
+  const notificationListener = useRef<any>(null);
+  const responseListener = useRef<any>(null);
   const router = useRouter();
 
   useEffect(() => {
+    if (!Notifications) return;
+
     registerForPushNotificationsAsync().then((token) => {
       if (token) {
         handleRegisterToken(token);
@@ -55,6 +63,8 @@ export function usePushNotifications() {
 }
 
 async function registerForPushNotificationsAsync() {
+  if (!Notifications) return;
+
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("agendamentos", {
       name: "Agendamentos",
@@ -87,3 +97,4 @@ async function registerForPushNotificationsAsync() {
     console.log("Must use physical device for Push Notifications");
   }
 }
+
