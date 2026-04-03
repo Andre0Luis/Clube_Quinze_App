@@ -47,3 +47,10 @@ turtle-build/
 .env.local
 
 .env.local
+
+# Keystores and Certificates
+*.jks
+*.keystore
+*.pem
+credentials.json
+credentials/

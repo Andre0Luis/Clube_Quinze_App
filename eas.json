@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 16.27.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -13,6 +13,9 @@
     },
     "production": {
       "autoIncrement": true,
+      "android": {
+        "credentialsSource": "local"
+      },
       "env": {
         "NODE_ENV": "production",
         "EXPO_NO_DOCTOR": "1"

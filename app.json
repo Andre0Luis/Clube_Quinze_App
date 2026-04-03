@@ -2,8 +2,8 @@
   "expo": {
     "name": "Clube Quinze",
     "slug": "ProjetoQuinze",
-    "scheme": "com.andre0luis.clubequinze",
-    "version": "1.0.9",
+    "scheme": "com.andre0luis.ProjetoQuinze",
+    "version": "1.10.0",
     "icon": "./assets/images/icon.png",
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -22,14 +22,14 @@
     },
     "owner": "andre0luis",
     "ios": {
-      "bundleIdentifier": "com.andre0luis.clubequinze",
-      "buildNumber": "19",
+      "bundleIdentifier": "com.andre0luis.ProjetoQuinze",
+      "buildNumber": "20",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "versionCode": 6,
+      "versionCode": 7,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",

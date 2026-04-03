@@ -27,7 +27,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>com.andre0luis.clubequinze</string>
+          <string>com.andre0luis.ProjetoQuinze</string>
           <string>com.andre0luis.clubequinze</string>
         </array>
       </dict>
