@@ -222,7 +222,7 @@ export default function ScheduleScreen() {
       try {
         const user = await getCurrentUser();
         if (isMounted) {
-          setIsAdmin(user.role === "CLUB_ADMIN");
+          setIsAdmin(user.role === "CLUB_ADMIN" || user.role === "CLUB_EMPLOYE");
           if (!resolvedTier) {
             setMembershipTier(user.membershipTier);
           }
@@ -312,11 +312,30 @@ export default function ScheduleScreen() {
       return;
     }
 
+    if (isAdmin && selectedSlots.length > 1) {
+      const sorted = [...selectedSlots].sort();
+      const expectedDiff = membershipTier === "QUINZE_SELECT" ? 120 : 30;
+      let isContiguous = true;
+      for (let i = 1; i < sorted.length; i++) {
+        const diff = (new Date(sorted[i]).getTime() - new Date(sorted[i-1]).getTime()) / 60000;
+        if (diff !== expectedDiff) {
+          isContiguous = false;
+          break;
+        }
+      }
+      if (!isContiguous) {
+        Alert.alert("Seleção Inválida", "Para agendar múltiplos horários, eles precisam ser consecutivos para formar um único bloco de tempo.");
+        return;
+      }
+    }
+
+    const sortedSlots = [...selectedSlots].sort();
+
     router.push({
       pathname: "/schedule/review",
       params: {
         date: selectedDate.toISOString(),
-        slots: JSON.stringify(selectedSlots),
+        slots: JSON.stringify(sortedSlots),
         notes: notes.trim() ? notes.trim() : "",
         appointmentId: appointmentId ?? undefined,
         clientId: resolvedClientId ? String(resolvedClientId) : undefined,
@@ -407,21 +426,9 @@ export default function ScheduleScreen() {
                 }
                 setSelectedSlots((prev) => {
                   if (prev.includes(slot)) {
-                    return [slot];
+                    return prev.filter((s) => s !== slot);
                   }
-                  if (prev.length === 0) return [slot];
-                  
-                  const lastTime = new Date(prev[prev.length - 1]).getTime();
-                  const currentTime = new Date(slot).getTime();
-                  const diffMinutes = (currentTime - lastTime) / (1000 * 60);
-                  
-                  const expectedDiff = membershipTier === "QUINZE_SELECT" ? 120 : 30;
-                  
-                  if (diffMinutes === expectedDiff) {
-                    return [...prev, slot]; // Select consecutive
-                  } else {
-                    return [slot]; // Not consecutive, start over
-                  }
+                  return [...prev, slot];
                 });
               }}
             >

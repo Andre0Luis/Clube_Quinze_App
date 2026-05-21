@@ -30,7 +30,9 @@ import {
 } from "../../services/appointments";
 import { findMemberById } from "../../services/mock/admin-members";
 import { isMockEnabled } from "../../services/mock/settings";
+import * as ImagePicker from "expo-image-picker";
 import { listPlans } from "../../services/plans";
+import { uploadMedia } from "../../services/media";
 import { getUserById, updateUserById } from "../../services/users";
 import type {
     AppointmentResponse,
@@ -124,6 +126,8 @@ export default function AdminMemberDetailScreen() {
   const [updatingAppointmentId, setUpdatingAppointmentId] = useState<
     number | null
   >(null);
+  const [isPickingImage, setIsPickingImage] = useState(false);
+  const [isRemovingGalleryIndex, setIsRemovingGalleryIndex] = useState<number | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -517,6 +521,139 @@ export default function AdminMemberDetailScreen() {
     setGalleryPreviewUri(null);
   };
 
+  const IMAGE_MEDIA_TYPE =
+    (ImagePicker as any).MediaType?.Images ??
+    (ImagePicker as any).MediaTypeOptions?.Images;
+
+  const handleAddGalleryMedia = async () => {
+    if (isPickingImage || !member) return;
+
+    if (member.gallery && member.gallery.length >= 4) {
+      Alert.alert("Limite atingido", "O membro já possui o limite de 4 fotos.");
+      return;
+    }
+
+    setIsPickingImage(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Permissão negada", "Autorize o acesso a galeria para anexar imagens.");
+        return;
+      }
+
+      const remainingSlots = Math.max(0, 4 - (member.gallery?.length ?? 0)) || 1;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: IMAGE_MEDIA_TYPE,
+        allowsMultipleSelection: remainingSlots > 1,
+        selectionLimit: remainingSlots,
+        quality: 0.7,
+      });
+
+      if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
+      const nextGallery = [...(member.gallery || [])];
+      let hasError = false;
+
+      for (let i = 0; i < result.assets.length; i++) {
+        if (nextGallery.length >= 4) break;
+        const asset = result.assets[i];
+        
+        try {
+          const extension = asset.uri.split(".").pop()?.toLowerCase() || "jpg";
+          let mimeType = "image/jpeg";
+          if (extension === "png") mimeType = "image/png";
+          if (extension === "heic") mimeType = "image/heic";
+          
+          const uploaded = await uploadMedia(
+            {
+              uri: asset.uri,
+              name: `gallery-${Date.now()}-${i}.${extension}`,
+              type: mimeType,
+            },
+            "gallery"
+          );
+          
+          const imageUrl = uploaded.url ?? uploaded.path;
+          if (imageUrl) {
+            nextGallery.push({
+              position: nextGallery.length + 1,
+              imageUrl,
+            });
+          }
+        } catch (uploadErr) {
+          console.error("Failed to upload image", uploadErr);
+          hasError = true;
+        }
+      }
+
+      if (hasError) {
+        Alert.alert("Aviso", "Algumas imagens não puderam ser enviadas.");
+      }
+
+      const payload: UpdateUserRequest = {
+        name: member.name,
+        email: member.email ?? "",
+        phone: member.phone ?? undefined,
+        birthDate: member.birthDate ?? undefined,
+        membershipTier: member.membershipTier,
+        planId: member.plan?.id ?? undefined,
+        gallery: nextGallery,
+      };
+
+      const updated = await updateUserById(member.id, payload);
+      setMember(updated);
+      Alert.alert("Sucesso", "Fotos atualizadas.");
+      
+    } catch (error) {
+      console.error("Failed to pick gallery media", error);
+      Alert.alert("Erro", "Não foi possível acessar a galeria.");
+    } finally {
+      setIsPickingImage(false);
+    }
+  };
+
+  const handleRemoveGalleryImage = (index: number) => {
+    if (!member || isRemovingGalleryIndex !== null) return;
+    
+    Alert.alert("Remover foto", "Tem certeza que deseja remover esta foto?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Remover",
+        style: "destructive",
+        onPress: async () => {
+          setIsRemovingGalleryIndex(index);
+          try {
+            const currentGallery = member.gallery || [];
+            const nextGallery = currentGallery.filter((_, i) => i !== index).map((item, i) => ({
+              ...item,
+              position: i + 1,
+            }));
+            
+            const payload: UpdateUserRequest = {
+              name: member.name,
+              email: member.email ?? "",
+              phone: member.phone ?? undefined,
+              birthDate: member.birthDate ?? undefined,
+              membershipTier: member.membershipTier,
+              planId: member.plan?.id ?? undefined,
+              gallery: nextGallery,
+            };
+
+            const updated = await updateUserById(member.id, payload);
+            setMember(updated);
+          } catch (error) {
+            console.error("Failed to remove gallery image", error);
+            Alert.alert("Erro", "Não foi possível remover a foto.");
+          } finally {
+            setIsRemovingGalleryIndex(null);
+          }
+        }
+      }
+    ]);
+  };
+
   return (
     <SafeAreaView
       style={styles.safeArea}
@@ -734,7 +871,25 @@ export default function AdminMemberDetailScreen() {
             </View>
 
             <View style={styles.sectionBlock}>
-              <Text style={styles.cardTitle}>Fotos</Text>
+              <View style={[styles.infoRow, { paddingHorizontal: 0, paddingBottom: Gap.gap_12 }]}>
+                <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Fotos</Text>
+                {(!member.gallery || member.gallery.length < 4) && (
+                  <TouchableOpacity 
+                    onPress={handleAddGalleryMedia} 
+                    disabled={isPickingImage}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: Gap.gap_4 }}
+                  >
+                    {isPickingImage ? (
+                      <ActivityIndicator size="small" color={Color.piccolo} />
+                    ) : (
+                      <>
+                        <Ionicons name="add-circle-outline" size={20} color={Color.piccolo} />
+                        <Text style={{ color: Color.piccolo, fontFamily: FontFamily.dMSansBold, fontSize: FontSize.fs_12 }}>Adicionar</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -749,31 +904,59 @@ export default function AdminMemberDetailScreen() {
                           ? item.imageBase64
                           : `data:image/jpeg;base64,${item.imageBase64}`
                         : null);
+                    
+                    const isRemoving = isRemovingGalleryIndex === index;
+
                     return (
-                      <TouchableOpacity
-                        key={item.id ?? `gallery-${index}`}
-                        style={styles.photoCard}
-                        activeOpacity={imageUri ? 0.85 : 1}
-                        onPress={() => {
-                          if (imageUri) {
-                            handleOpenGalleryPreview(imageUri);
-                          }
-                        }}
-                        disabled={!imageUri}
-                      >
-                        {imageUri ? (
-                          <Image
-                            source={{ uri: imageUri }}
-                            style={styles.photoImage}
-                          />
-                        ) : (
-                          <Ionicons
-                            name="image-outline"
-                            size={24}
-                            color={Color.mainTrunks}
-                          />
+                      <View key={item.id ?? `gallery-${index}`} style={{ position: 'relative' }}>
+                        <TouchableOpacity
+                          style={[styles.photoCard, isRemoving && { opacity: 0.5 }]}
+                          activeOpacity={imageUri ? 0.85 : 1}
+                          onPress={() => {
+                            if (imageUri) {
+                              handleOpenGalleryPreview(imageUri);
+                            }
+                          }}
+                          disabled={!imageUri || isRemoving}
+                        >
+                          {imageUri ? (
+                            <Image
+                              source={{ uri: imageUri }}
+                              style={styles.photoImage}
+                            />
+                          ) : (
+                            <Ionicons
+                              name="image-outline"
+                              size={24}
+                              color={Color.mainTrunks}
+                            />
+                          )}
+                        </TouchableOpacity>
+                        
+                        {imageUri && !isRemoving && (
+                          <TouchableOpacity
+                            style={{
+                              position: 'absolute',
+                              top: -8,
+                              right: -8,
+                              backgroundColor: Color.mainGoten,
+                              borderRadius: 12,
+                              padding: 2,
+                              shadowColor: "#000",
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.25,
+                              shadowRadius: 3.84,
+                              elevation: 5,
+                            }}
+                            onPress={() => handleRemoveGalleryImage(index)}
+                          >
+                            <Ionicons name="close-circle" size={22} color={Color.supportiveChichi} />
+                          </TouchableOpacity>
                         )}
-                      </TouchableOpacity>
+                        {isRemoving && (
+                           <ActivityIndicator size="small" color={Color.piccolo} style={{ position: 'absolute', top: '40%', left: '40%' }} />
+                        )}
+                      </View>
                     );
                   })
                 ) : (
