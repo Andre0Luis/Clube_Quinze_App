@@ -112,6 +112,7 @@ export default function AdminMemberDetailScreen() {
   const [galleryPreviewUri, setGalleryPreviewUri] = useState<string | null>(
     null,
   );
+  const [galleryPreviewIndex, setGalleryPreviewIndex] = useState<number | null>(null);
   const [isGalleryModalVisible, setIsGalleryModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -511,14 +512,16 @@ export default function AdminMemberDetailScreen() {
     );
   };
 
-  const handleOpenGalleryPreview = (uri: string) => {
+  const handleOpenGalleryPreview = (uri: string, index: number) => {
     setGalleryPreviewUri(uri);
+    setGalleryPreviewIndex(index);
     setIsGalleryModalVisible(true);
   };
 
   const handleCloseGalleryPreview = () => {
     setIsGalleryModalVisible(false);
     setGalleryPreviewUri(null);
+    setGalleryPreviewIndex(null);
   };
 
   const IMAGE_MEDIA_TYPE =
@@ -914,7 +917,7 @@ export default function AdminMemberDetailScreen() {
                           activeOpacity={imageUri ? 0.85 : 1}
                           onPress={() => {
                             if (imageUri) {
-                              handleOpenGalleryPreview(imageUri);
+                              handleOpenGalleryPreview(imageUri, index);
                             }
                           }}
                           disabled={!imageUri || isRemoving}
@@ -933,26 +936,6 @@ export default function AdminMemberDetailScreen() {
                           )}
                         </TouchableOpacity>
                         
-                        {imageUri && !isRemoving && (
-                          <TouchableOpacity
-                            style={{
-                              position: 'absolute',
-                              top: -8,
-                              right: -8,
-                              backgroundColor: Color.mainGoten,
-                              borderRadius: 12,
-                              padding: 2,
-                              shadowColor: "#000",
-                              shadowOffset: { width: 0, height: 2 },
-                              shadowOpacity: 0.25,
-                              shadowRadius: 3.84,
-                              elevation: 5,
-                            }}
-                            onPress={() => handleRemoveGalleryImage(index)}
-                          >
-                            <Ionicons name="close-circle" size={22} color={Color.supportiveChichi} />
-                          </TouchableOpacity>
-                        )}
                         {isRemoving && (
                            <ActivityIndicator size="small" color={Color.piccolo} style={{ position: 'absolute', top: '40%', left: '40%' }} />
                         )}
@@ -1144,13 +1127,27 @@ export default function AdminMemberDetailScreen() {
                 style={styles.galleryModalImage}
               />
             ) : null}
-            <TouchableOpacity
-              style={styles.modalConfirm}
-              onPress={handleCloseGalleryPreview}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.modalConfirmText}>Fechar</Text>
-            </TouchableOpacity>
+            <View style={[styles.modalActions, { marginTop: Gap.gap_16 }]}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={handleCloseGalleryPreview}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.modalCancelText}>Fechar</Text>
+              </TouchableOpacity>
+              {galleryPreviewIndex !== null && (
+                <TouchableOpacity
+                  style={[styles.modalConfirm, { backgroundColor: Color.supportiveChichi }]}
+                  onPress={() => {
+                    handleCloseGalleryPreview();
+                    handleRemoveGalleryImage(galleryPreviewIndex);
+                  }}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.modalConfirmText}>Remover</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
