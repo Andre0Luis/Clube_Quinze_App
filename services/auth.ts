@@ -8,6 +8,7 @@ import api from "./api";
 import { mockData } from "./mock/data";
 import { isMockEnabled } from "./mock/settings";
 import { clone } from "./mock/utils";
+import { getAccessToken } from "./storage";
 
 export const login = async (payload: LoginRequest): Promise<AuthResponse> => {
   if (isMockEnabled()) {
@@ -81,5 +82,8 @@ export const changePassword = async (
     return;
   }
 
-  await api.put("/auth/change-password", { currentPassword, newPassword });
+  const token = await getAccessToken();
+  const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+  await api.put("/auth/change-password", { currentPassword, newPassword }, config);
 };

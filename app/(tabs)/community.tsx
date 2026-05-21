@@ -19,7 +19,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
     Border,
@@ -122,6 +122,7 @@ const formatDateLabel = (value?: string) => {
 
 export default function CommunityScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<TabName>("communities");
   const [postsPage, setPostsPage] = useState<PageResponse<PostResponse> | null>(
@@ -1016,7 +1017,7 @@ export default function CommunityScreen() {
       >
         <View style={styles.viewerBackdrop}>
           <TouchableOpacity
-            style={styles.viewerClose}
+            style={[styles.viewerClose, { top: Math.max(insets.top, 20) + 8 }]}
             onPress={handleCloseViewer}
             accessibilityRole="button"
             accessibilityLabel="Fechar imagem"
@@ -1529,7 +1530,6 @@ const styles = StyleSheet.create({
   },
   viewerClose: {
     position: "absolute",
-    top: StyleVariable.py4,
     right: StyleVariable.px4,
     width: 40,
     height: 40,

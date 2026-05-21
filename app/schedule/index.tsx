@@ -10,8 +10,9 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Switch,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
     Border,
@@ -82,6 +83,7 @@ interface DayCell {
 
 export default function ScheduleScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { appointmentId, clientId, tier } = useLocalSearchParams<{
     appointmentId?: string;
     clientId?: string | string[];
@@ -113,16 +115,23 @@ export default function ScheduleScreen() {
 
   const [currentMonth, setCurrentMonth] = useState(() => toStartOfMonth(today));
   const [selectedDate, setSelectedDate] = useState<Date>(today);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  
+  // Recurrence states
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrencePeriod, setRecurrencePeriod] = useState<"WEEKLY" | "BIWEEKLY" | "MONTHLY">("WEEKLY");
+  const [recurrenceMonths, setRecurrenceMonths] = useState<3 | 6>(3);
+
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [membershipTier, setMembershipTier] = useState<
     MembershipTier | undefined
   >();
+  const [isAdmin, setIsAdmin] = useState(false);
   const [notes, setNotes] = useState("");
   const [isPrefetching, setIsPrefetching] = useState(true);
 
-  const isReviewDisabled = !selectedDate || !selectedSlot;
+  const isReviewDisabled = !selectedDate || selectedSlots.length === 0;
 
   const isPreviousMonthDisabled = useMemo(() => {
     const previous = new Date(currentMonth);
@@ -173,7 +182,7 @@ export default function ScheduleScreen() {
 
   const handleSelectDate = useCallback((date: Date) => {
     setSelectedDate(toStartOfDay(date));
-    setSelectedSlot(null);
+    setSelectedSlots([]);
   }, []);
 
   const handleChangeMonth = useCallback((direction: -1 | 1) => {
@@ -213,20 +222,25 @@ export default function ScheduleScreen() {
       try {
         const user = await getCurrentUser();
         if (isMounted) {
-          setMembershipTier(user.membershipTier);
+          setIsAdmin(user.role === "CLUB_ADMIN");
+          if (!resolvedTier) {
+            setMembershipTier(user.membershipTier);
+          }
         }
       } catch (error) {
         if (isMounted) {
-          setMembershipTier(undefined);
+          setIsAdmin(false);
+          if (!resolvedTier) {
+            setMembershipTier(undefined);
+          }
         }
       }
     };
 
     if (resolvedTier) {
       setMembershipTier(resolvedTier);
-    } else {
-      loadUser();
     }
+    loadUser();
 
     return () => {
       isMounted = false;
@@ -255,7 +269,7 @@ export default function ScheduleScreen() {
           const normalized = toStartOfDay(scheduled);
           setCurrentMonth(toStartOfMonth(normalized));
           setSelectedDate(normalized);
-          setSelectedSlot(appointment.scheduledAt);
+          setSelectedSlots([appointment.scheduledAt]);
         }
         if (appointment.notes) {
           setNotes(appointment.notes);
@@ -294,7 +308,7 @@ export default function ScheduleScreen() {
   }, [selectedDate, fetchSlots, isPrefetching]);
 
   const handleContinue = () => {
-    if (isReviewDisabled || !selectedSlot) {
+    if (isReviewDisabled || selectedSlots.length === 0) {
       return;
     }
 
@@ -302,11 +316,14 @@ export default function ScheduleScreen() {
       pathname: "/schedule/review",
       params: {
         date: selectedDate.toISOString(),
-        slot: selectedSlot,
+        slots: JSON.stringify(selectedSlots),
         notes: notes.trim() ? notes.trim() : "",
         appointmentId: appointmentId ?? undefined,
         clientId: resolvedClientId ? String(resolvedClientId) : undefined,
         tier: resolvedTier ?? undefined,
+        isRecurring: isRecurring ? "true" : "false",
+        recurrencePeriod: isRecurring ? recurrencePeriod : undefined,
+        recurrenceMonths: isRecurring ? String(recurrenceMonths) : undefined,
       },
     });
   };
@@ -374,7 +391,7 @@ export default function ScheduleScreen() {
     return (
       <View style={styles.slotsGrid}>
         {availableSlots.map((slot) => {
-          const isSelected = selectedSlot === slot;
+          const isSelected = selectedSlots.includes(slot);
           return (
             <TouchableOpacity
               key={slot}
@@ -383,7 +400,30 @@ export default function ScheduleScreen() {
                 isSelected ? styles.slotCardSelected : null,
               ]}
               activeOpacity={0.85}
-              onPress={() => setSelectedSlot(slot)}
+              onPress={() => {
+                if (!isAdmin) {
+                  setSelectedSlots([slot]);
+                  return;
+                }
+                setSelectedSlots((prev) => {
+                  if (prev.includes(slot)) {
+                    return [slot];
+                  }
+                  if (prev.length === 0) return [slot];
+                  
+                  const lastTime = new Date(prev[prev.length - 1]).getTime();
+                  const currentTime = new Date(slot).getTime();
+                  const diffMinutes = (currentTime - lastTime) / (1000 * 60);
+                  
+                  const expectedDiff = membershipTier === "QUINZE_SELECT" ? 120 : 30;
+                  
+                  if (diffMinutes === expectedDiff) {
+                    return [...prev, slot]; // Select consecutive
+                  } else {
+                    return [slot]; // Not consecutive, start over
+                  }
+                });
+              }}
             >
               <Text
                 style={[
@@ -470,6 +510,70 @@ export default function ScheduleScreen() {
         <Text style={styles.sectionTitle}>Selecione um horario</Text>
         {slotsContent()}
 
+        {isAdmin && selectedSlots.length > 0 && (
+          <View style={styles.recurrenceBlock}>
+            <View style={styles.recurrenceHeader}>
+              <Text style={styles.sectionTitle}>Agendamento Recorrente?</Text>
+              <Switch
+                value={isRecurring}
+                onValueChange={setIsRecurring}
+                trackColor={{ false: Color.mainBeerus, true: Color.piccolo }}
+                thumbColor={Color.mainGoten}
+              />
+            </View>
+            
+            {isRecurring && (
+              <View style={styles.recurrenceOptions}>
+                <Text style={styles.sectionSubtitle}>Periodicidade</Text>
+                <View style={styles.optionsRow}>
+                  {(["WEEKLY", "BIWEEKLY", "MONTHLY"] as const).map((period) => (
+                    <TouchableOpacity
+                      key={period}
+                      style={[
+                        styles.optionChip,
+                        recurrencePeriod === period && styles.optionChipSelected
+                      ]}
+                      onPress={() => setRecurrencePeriod(period)}
+                    >
+                      <Text style={[
+                        styles.optionChipText,
+                        recurrencePeriod === period && styles.optionChipTextSelected
+                      ]}>
+                        {period === "WEEKLY" ? "Semanal" : period === "BIWEEKLY" ? "Quinzenal" : "Mensal"}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={[styles.sectionSubtitle, { marginTop: 12 }]}>Duração (Horizonte)</Text>
+                <View style={styles.optionsRow}>
+                  {([3, 6] as const).map((months) => (
+                    <TouchableOpacity
+                      key={months}
+                      style={[
+                        styles.optionChip,
+                        recurrenceMonths === months && styles.optionChipSelected
+                      ]}
+                      onPress={() => setRecurrenceMonths(months)}
+                    >
+                      <Text style={[
+                        styles.optionChipText,
+                        recurrenceMonths === months && styles.optionChipTextSelected
+                      ]}>
+                        {months} meses
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                
+                <Text style={styles.recurrencePreviewText}>
+                  Uma série de agendamentos será criada automaticamente.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.notesBlock}>
           <Text style={styles.sectionSubtitle}>
             Alguma preferência? (Opcional)
@@ -536,7 +640,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Padding.padding_24,
     paddingTop: StyleVariable.py4,
-    paddingBottom: 160,
+    paddingBottom: Padding.padding_24,
     gap: StyleVariable.py4,
   },
   sectionTitle: {
@@ -691,10 +795,6 @@ const styles = StyleSheet.create({
     color: Color.mainBulma,
   },
   footer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     paddingHorizontal: Padding.padding_24,
     paddingBottom: Padding.padding_24,
     paddingTop: StyleVariable.py2,
@@ -716,5 +816,57 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansBold,
     color: Color.mainGoten,
   },
+  recurrenceBlock: {
+    marginTop: 8,
+    padding: 16,
+    backgroundColor: Color.mainGoten,
+    borderRadius: Border.br_16,
+    borderWidth: 1,
+    borderColor: Color.mainBeerus,
+  },
+  recurrenceHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  recurrenceOptions: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: Color.mainBeerus,
+  },
+  optionsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+  },
+  optionChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Color.mainBeerus,
+    backgroundColor: Color.mainGohan,
+  },
+  optionChipSelected: {
+    borderColor: Color.piccolo,
+    backgroundColor: "#E7F6FF",
+  },
+  optionChipText: {
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainTrunks,
+  },
+  optionChipTextSelected: {
+    color: Color.piccolo,
+  },
+  recurrencePreviewText: {
+    marginTop: 16,
+    fontSize: FontSize.fs_12,
+    color: Color.mainTrunks,
+    fontFamily: FontFamily.dMSansRegular,
+    fontStyle: "italic",
+    textAlign: "center"
+  }
 });
 

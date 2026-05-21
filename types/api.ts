@@ -96,6 +96,9 @@ export interface AppointmentRequest {
   serviceType?: string;
   notes?: string;
   durationMinutes?: number;
+  recurring?: boolean;
+  recurrencePeriod?: string;
+  recurrenceMonths?: number;
 }
 
 export interface AppointmentStatusUpdateRequest {
@@ -117,6 +120,8 @@ export interface AppointmentResponse {
   serviceType?: string;
   notes?: string | null;
   durationMinutes?: number;
+  recurrenceGroupId?: string;
+  recurrencePeriod?: string;
 }
 
 export interface AvailableSlotResponse {

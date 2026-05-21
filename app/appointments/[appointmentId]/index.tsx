@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Padding.padding_24,
     paddingTop: StyleVariable.py4,
-    paddingBottom: 120,
+    paddingBottom: Padding.padding_24,
     gap: StyleVariable.py4,
   },
   detailCard: {
@@ -477,10 +477,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   footer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     paddingHorizontal: Padding.padding_24,
     paddingTop: StyleVariable.py2,
     backgroundColor: Color.mainGohan,

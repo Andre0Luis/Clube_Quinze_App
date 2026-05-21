@@ -23,6 +23,9 @@ export default function ChangePasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
@@ -73,40 +76,55 @@ export default function ChangePasswordScreen() {
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Senha Atual</Text>
-            <TextInput
-              style={[styles.input, errors.currentPassword ? styles.inputError : null]}
-              secureTextEntry
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              placeholder="Digite sua senha atual"
-              placeholderTextColor={Color.mainTrunks}
-            />
+            <View style={[styles.passwordWrapper, errors.currentPassword ? styles.inputError : null]}>
+              <TextInput
+                style={styles.passwordInput}
+                secureTextEntry={!showCurrent}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                placeholder="Digite sua senha atual"
+                placeholderTextColor={Color.mainTrunks}
+              />
+              <TouchableOpacity onPress={() => setShowCurrent(p => !p)}>
+                <Ionicons name={showCurrent ? "eye-off" : "eye"} size={20} color={Color.mainTrunks} />
+              </TouchableOpacity>
+            </View>
             {errors.currentPassword && <Text style={styles.errorText}>{errors.currentPassword}</Text>}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Nova Senha</Text>
-            <TextInput
-              style={[styles.input, errors.newPassword ? styles.inputError : null]}
-              secureTextEntry
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="Mínimo 6 caracteres"
-              placeholderTextColor={Color.mainTrunks}
-            />
+            <View style={[styles.passwordWrapper, errors.newPassword ? styles.inputError : null]}>
+              <TextInput
+                style={styles.passwordInput}
+                secureTextEntry={!showNew}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="Mínimo 6 caracteres"
+                placeholderTextColor={Color.mainTrunks}
+              />
+              <TouchableOpacity onPress={() => setShowNew(p => !p)}>
+                <Ionicons name={showNew ? "eye-off" : "eye"} size={20} color={Color.mainTrunks} />
+              </TouchableOpacity>
+            </View>
             {errors.newPassword && <Text style={styles.errorText}>{errors.newPassword}</Text>}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Confirmar Nova Senha</Text>
-            <TextInput
-              style={[styles.input, errors.confirmPassword ? styles.inputError : null]}
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Repita a nova senha"
-              placeholderTextColor={Color.mainTrunks}
-            />
+            <View style={[styles.passwordWrapper, errors.confirmPassword ? styles.inputError : null]}>
+              <TextInput
+                style={styles.passwordInput}
+                secureTextEntry={!showConfirm}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Repita a nova senha"
+                placeholderTextColor={Color.mainTrunks}
+              />
+              <TouchableOpacity onPress={() => setShowConfirm(p => !p)}>
+                <Ionicons name={showConfirm ? "eye-off" : "eye"} size={20} color={Color.mainTrunks} />
+              </TouchableOpacity>
+            </View>
             {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
           </View>
 
@@ -168,13 +186,18 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansBold,
     color: Color.hit,
   },
-  input: {
+  passwordWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
     height: 56,
     borderRadius: Border.br_16,
     borderWidth: 1,
     borderColor: "rgba(0, 5, 61, 0.08)",
     backgroundColor: Color.mainGoten,
     paddingHorizontal: Padding.padding_16,
+  },
+  passwordInput: {
+    flex: 1,
     color: Color.hit,
     fontSize: FontSize.fs_14,
     fontFamily: FontFamily.dMSansRegular,

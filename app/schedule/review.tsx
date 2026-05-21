@@ -9,7 +9,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
     Border,
@@ -42,31 +42,70 @@ const formatDateDisplay = (iso?: string) => {
   });
 };
 
-const formatTimeDisplay = (iso?: string) => {
-  if (!iso) {
+const formatTimeDisplay = (slotsJson?: string, tier?: string) => {
+  if (!slotsJson) {
     return "";
   }
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return iso;
+  try {
+    const slots = JSON.parse(slotsJson) as string[];
+    if (slots.length === 0) return "";
+    
+    const first = new Date(slots[0]);
+    if (Number.isNaN(first.getTime())) return slotsJson;
+    
+    const startStr = first.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const slotDuration = tier === "QUINZE_SELECT" ? 120 : 30;
+    
+    if (slots.length === 1) {
+      const end = new Date(first.getTime() + slotDuration * 60000);
+      const endStr = end.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      return `${startStr} às ${endStr}`;
+    }
+
+    const last = new Date(slots[slots.length - 1]);
+    const end = new Date(last.getTime() + slotDuration * 60000);
+    const endStr = end.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return `${startStr} às ${endStr}`;
+  } catch (e) {
+    return slotsJson;
   }
-  return date.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 };
 
 export default function ScheduleReviewScreen() {
   const router = useRouter();
-  const { date, slot, notes, appointmentId, clientId, tier } =
-    useLocalSearchParams<{
-      date?: string;
-      slot?: string;
-      notes?: string;
-      appointmentId?: string;
-      clientId?: string | string[];
-      tier?: string | string[];
-    }>();
+  const insets = useSafeAreaInsets();
+  const {
+    date,
+    slots,
+    notes,
+    appointmentId,
+    clientId,
+    tier,
+    isRecurring,
+    recurrencePeriod,
+    recurrenceMonths,
+  } = useLocalSearchParams<{
+    date?: string;
+    slots?: string;
+    notes?: string;
+    appointmentId?: string;
+    clientId?: string | string[];
+    tier?: string | string[];
+    isRecurring?: string;
+    recurrencePeriod?: string;
+    recurrenceMonths?: string;
+  }>();
 
   const resolvedClientId = useMemo(() => {
     const raw = Array.isArray(clientId) ? clientId[0] : clientId;
@@ -140,7 +179,7 @@ export default function ScheduleReviewScreen() {
   const trimmedNotes = useMemo(() => notes?.trim() ?? "", [notes]);
 
   const handleConfirm = useCallback(async () => {
-    if (!slot) {
+    if (!slots) {
       Alert.alert(
         "Selecione um horario",
         "Volte e escolha uma data e horario.",
@@ -151,9 +190,13 @@ export default function ScheduleReviewScreen() {
 
     try {
       setIsSubmitting(true);
+      
+      const parsedSlots = slots ? JSON.parse(slots) as string[] : [];
+      const firstSlot = parsedSlots[0];
+      
       if (appointmentId) {
         await rescheduleAppointment(Number(appointmentId), {
-          newDate: slot,
+          newDate: firstSlot,
           notes: trimmedNotes ? trimmedNotes : undefined,
         });
         Alert.alert(
@@ -177,11 +220,17 @@ export default function ScheduleReviewScreen() {
         return;
       }
 
+      const slotDuration = userContext.tier === "QUINZE_SELECT" ? 120 : 30;
+
       await scheduleAppointment({
         clientId: userContext.clientId,
         appointmentTier: userContext.tier,
-        scheduledAt: slot,
+        scheduledAt: firstSlot,
+        durationMinutes: parsedSlots.length * slotDuration,
         notes: trimmedNotes ? trimmedNotes : undefined,
+        recurring: isRecurring === "true",
+        recurrencePeriod: recurrencePeriod,
+        recurrenceMonths: recurrenceMonths ? parseInt(recurrenceMonths, 10) : undefined,
       });
       Alert.alert(
         "Agendamento confirmado",
@@ -198,10 +247,22 @@ export default function ScheduleReviewScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [appointmentId, router, slot, trimmedNotes, userContext]);
+  }, [
+    appointmentId,
+    router,
+    slots,
+    trimmedNotes,
+    userContext,
+    isRecurring,
+    recurrencePeriod,
+    recurrenceMonths,
+  ]);
 
   const displayDate = useMemo(() => formatDateDisplay(date), [date]);
-  const displayTime = useMemo(() => formatTimeDisplay(slot), [slot]);
+  const displayTime = useMemo(
+    () => formatTimeDisplay(slots, userContext?.tier ?? resolvedTier),
+    [slots, userContext?.tier, resolvedTier]
+  );
 
   const dataRows = [
     { label: "Data", value: displayDate },
@@ -211,7 +272,7 @@ export default function ScheduleReviewScreen() {
 
   const isConfirmDisabled =
     isSubmitting ||
-    !slot ||
+    !slots ||
     (!appointmentId && (isLoadingUser || !userContext));
 
   return (
