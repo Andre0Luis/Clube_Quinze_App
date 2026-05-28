@@ -23,7 +23,7 @@
     "owner": "andre0luis",
     "ios": {
       "bundleIdentifier": "com.andre0luis.ProjetoQuinze",
-      "buildNumber": "26",
+      "buildNumber": "27",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
