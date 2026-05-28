@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "880291992171",
+    "project_id": "clubequinze",
+    "storage_bucket": "clubequinze.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:880291992171:android:8c3c3b46ccaef68ea0572e",
+        "android_client_info": {
+          "package_name": "com.andre0luis.clubequinze"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOMy8u9w8up_XmtV5_OREfmLH0hlnW9tY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

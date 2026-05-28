@@ -13,8 +13,7 @@
     },
     "production": {
       "android": {
-        "credentialsSource": "local",
-        "googleServicesFile": "$GOOGLE_SERVICES_JSON"
+        "credentialsSource": "local"
       },
       "env": {
         "NODE_ENV": "production",

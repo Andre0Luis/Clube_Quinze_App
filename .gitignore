@@ -55,7 +55,6 @@ turtle-build/
 credentials.json
 credentials/
 
-# Firebase — config files contain API keys, never commit
-google-services.json
-GoogleService-Info.plist
+# Firebase — apenas a service account key é sensível (chave privada RSA)
+# google-services.json e GoogleService-Info.plist são config do app, safe to commit
 *-firebase-adminsdk-*.json
