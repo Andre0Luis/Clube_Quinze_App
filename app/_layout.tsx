@@ -9,19 +9,28 @@ import "react-native-reanimated";
 import MenuDeNavegao from "../components/MenuDeNavegao";
 import { getCurrentUser } from "../services/users";
 
-import * as Notifications from "expo-notifications";
+// Lazy-load expo-notifications so it doesn't crash in Expo Go (SDK 53+)
+let Notifications: typeof import("expo-notifications") | null = null;
+try {
+  Notifications = require("expo-notifications");
+} catch {
+  console.warn("expo-notifications not available (Expo Go on SDK 53+). Push notifications disabled.");
+}
+
 import { usePushNotifications } from "../hooks/usePushNotifications";
 
 // Controls how locally-scheduled notifications appear while the app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 SplashScreen.preventAutoHideAsync();
 
