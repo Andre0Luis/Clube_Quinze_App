@@ -20,6 +20,10 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
 prepare_react_native_project!
 
+# Required for React Native Firebase — Firebase iOS SDK uses Swift and needs
+# static frameworks so that GoogleUtilities and other ObjC pods define modules.
+$RNFirebaseAsStaticFramework = true
+
 target 'ClubeQuinzeApp' do
   use_expo_modules!
 
