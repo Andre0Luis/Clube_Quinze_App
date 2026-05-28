@@ -54,3 +54,8 @@ turtle-build/
 *.pem
 credentials.json
 credentials/
+
+# Firebase — config files contain API keys, never commit
+google-services.json
+GoogleService-Info.plist
+*-firebase-adminsdk-*.json

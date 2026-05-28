@@ -138,10 +138,9 @@ export default function CommunityScreen() {
       try {
         const user = await getCurrentUser();
         if (!isMounted) return;
-        const allowed =
-          user?.role === "CLUB_ADMIN" ||
-          user?.membershipTier === "QUINZE_SELECT";
-        setAuthorized(Boolean(allowed));
+        // Comunidade é aberta para qualquer cliente autenticado (Standard, Premium, Select e Admin)
+        const allowed = Boolean(user);
+        setAuthorized(allowed);
         if (!allowed) {
           router.replace("/");
         }
