@@ -108,6 +108,10 @@ export default function LoginScreen() {
       await SecureStore.setItemAsync("accessToken", accessToken);
       await SecureStore.setItemAsync("refreshToken", refreshToken);
 
+      // We have the token, register the device for push notifications
+      const { registerCurrentPushToken } = require("../hooks/usePushNotifications");
+      await registerCurrentPushToken();
+
       router.replace("/(tabs)");
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;

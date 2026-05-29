@@ -34,7 +34,7 @@ export function usePushNotifications() {
   useEffect(() => {
     if (!messaging) return;
 
-    setupAndRegister();
+    registerCurrentPushToken();
 
     const unsubRefresh = messaging().onTokenRefresh(syncToken);
 
@@ -70,7 +70,7 @@ export function usePushNotifications() {
   }, [router]);
 }
 
-async function setupAndRegister() {
+export async function registerCurrentPushToken() {
   if (!messaging) return;
 
   if (Platform.OS === "android" && Notifications) {
