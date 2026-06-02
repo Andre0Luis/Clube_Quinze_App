@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -120,6 +121,9 @@ const formatDateLabel = (value?: string) => {
     day: "2-digit",
   });
 };
+
+// Versão do app (lida do app.json via expo-constants; mantida em sync com os nativos).
+const appVersion = Constants.expoConfig?.version ?? "1.17.0";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -427,6 +431,7 @@ export default function ProfileScreen() {
               contentFit="contain"
             />
             <Text style={styles.brandTagline}>Far and beyond</Text>
+            <Text style={styles.brandVersion}>Versão {appVersion}</Text>
           </View>
         </View>
       </ScrollView>
@@ -698,5 +703,12 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.dMSansRegular,
     color: Color.mainTrunks,
     letterSpacing: 1,
+  },
+  brandVersion: {
+    marginTop: 4,
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansRegular,
+    color: Color.mainTrunks,
+    opacity: 0.7,
   },
 });
