@@ -3,7 +3,7 @@
     "name": "Clube Quinze",
     "slug": "ProjetoQuinze",
     "scheme": "com.andre0luis.ProjetoQuinze",
-    "version": "1.16.0",
+    "version": "1.17.0",
     "icon": "./assets/images/icon.png",
     "updates": {
       "fallbackToCacheTimeout": 0
