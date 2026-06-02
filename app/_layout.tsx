@@ -6,6 +6,7 @@ import "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import "react-native-reanimated";
+import ErrorBoundary from "../components/ErrorBoundary";
 import MenuDeNavegao from "../components/MenuDeNavegao";
 import { getCurrentUser } from "../services/users";
 
@@ -166,21 +167,23 @@ export default function RootLayout() {
   };
 
   return (
-    <View style={styles.container}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: showNav ? styles.stackContent : undefined,
-        }}
-      />
-      {showNav ? (
-        <View
-          style={[styles.navWrapper, { paddingBottom: insets.bottom + 16 }]}
-        >
-          <MenuDeNavegao activeKey={activeKey} onSelectTab={handleSelectTab} />
-        </View>
-      ) : null}
-    </View>
+    <ErrorBoundary>
+      <View style={styles.container}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: showNav ? styles.stackContent : undefined,
+          }}
+        />
+        {showNav ? (
+          <View
+            style={[styles.navWrapper, { paddingBottom: insets.bottom + 16 }]}
+          >
+            <MenuDeNavegao activeKey={activeKey} onSelectTab={handleSelectTab} />
+          </View>
+        ) : null}
+      </View>
+    </ErrorBoundary>
   );
 }
 

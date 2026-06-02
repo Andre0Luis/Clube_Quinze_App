@@ -32,3 +32,32 @@ export const registerPushToken = async (token: string, platform: string) => {
   const config = await withAuthHeader();
   await api.post("/notifications/tokens", { token, platform }, config);
 };
+
+export const getUnreadCount = async (): Promise<number> => {
+  if (isMockEnabled()) return 0;
+  const config = await withAuthHeader();
+  const { data } = await api.get<{ count: number }>(
+    "/notifications/unread-count",
+    config,
+  );
+  return data?.count ?? 0;
+};
+
+export const markNotificationRead = async (id: number) => {
+  if (isMockEnabled()) return;
+  const config = await withAuthHeader();
+  await api.patch(`/notifications/${id}/read`, undefined, config);
+};
+
+export const markAllNotificationsRead = async () => {
+  if (isMockEnabled()) return;
+  const config = await withAuthHeader();
+  await api.post("/notifications/read-all", undefined, config);
+};
+
+// Desativa as notificações push do usuário no backend (invalida os tokens ativos).
+export const disablePushTokens = async () => {
+  if (isMockEnabled()) return;
+  const config = await withAuthHeader();
+  await api.delete("/notifications/tokens", config);
+};

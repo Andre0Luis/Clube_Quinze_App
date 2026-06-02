@@ -38,6 +38,7 @@ import {
     listPosts,
     unlikePost,
 } from "../../services/community";
+import { compressImageForUpload } from "../../services/image";
 import { uploadMedia } from "../../services/media";
 import { getCurrentUser, getUserById } from "../../services/users";
 import type {
@@ -365,9 +366,14 @@ export default function CommunityScreen() {
       if (!assets.length) {
         return;
       }
+      // Comprime/redimensiona antes de anexar para aliviar o upload e o backend.
+      const compressed = await Promise.all(
+        assets.map(async (asset) => ({
+          uri: await compressImageForUpload(asset.uri),
+        })),
+      );
       setSelectedMedia((prev) => {
-        const appended = assets.map((asset) => ({ uri: asset.uri }));
-        const merged = [...prev, ...appended];
+        const merged = [...prev, ...compressed];
         return merged.slice(0, MAX_MEDIA_ITEMS);
       });
     } catch (error) {
@@ -986,7 +992,7 @@ export default function CommunityScreen() {
                       color={Color.piccolo}
                     />
                     <Text style={styles.postActionLabel}>
-                      {post.comments.length}
+                      {(post.comments ?? []).length}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity

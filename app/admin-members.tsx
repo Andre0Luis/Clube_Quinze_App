@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -50,18 +51,15 @@ export default function AdminMembersScreen() {
   );
   const isSelectView = resolvedTier === "QUINZE_SELECT";
 
-  useEffect(() => {
-    let isActive = true;
-    const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
       setIsLoading(true);
       setError(null);
       try {
         if (isMockEnabled()) {
-          if (isActive) setMembers(mockMembers);
+          setMembers(mockMembers);
           return;
         }
         const users = await listUsers();
-        if (!isActive) return;
 
         const mapped = users.map((user) => {
           const planName = user.plan?.name ?? "";
@@ -91,17 +89,18 @@ export default function AdminMembersScreen() {
       } catch (err: any) {
         console.error("Failed to load members", err);
         const errorMsg = err?.response?.data?.message || err.message || "Não foi possível carregar os membros.";
-        if (isActive) setError(`Erro: ${errorMsg}`);
+        setError(`Erro: ${errorMsg}`);
       } finally {
-        if (isActive) setIsLoading(false);
+        setIsLoading(false);
       }
-    };
-
-    void fetchMembers();
-    return () => {
-      isActive = false;
-    };
   }, []);
+
+  // Rebusca sempre que a tela ganha foco — garante que membros recém-cadastrados apareçam.
+  useFocusEffect(
+    useCallback(() => {
+      void fetchMembers();
+    }, [fetchMembers]),
+  );
 
   const filteredMembers = useMemo(() => {
     const base = members.filter((member) =>
@@ -154,7 +153,12 @@ export default function AdminMembersScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={isLoading} onRefresh={fetchMembers} />
+        }
+      >
         <View style={styles.metricCard}>
           <Text style={styles.metricValue}>{filteredMembers.length}</Text>
           <Text style={styles.metricLabel}>{totalLabel}</Text>

@@ -328,7 +328,7 @@ export default function CommunityPostScreen() {
         content: commentContent.trim(),
       });
       setPost((prev) =>
-        prev ? { ...prev, comments: [...prev.comments, comment] } : prev,
+        prev ? { ...prev, comments: [...(prev.comments ?? []), comment] } : prev,
       );
       setCommentContent("");
     } catch (error) {
@@ -511,17 +511,17 @@ export default function CommunityPostScreen() {
                       size={16}
                       color={Color.piccolo}
                     />
-                    <Text style={styles.metaLabel}>{post.comments.length}</Text>
+                    <Text style={styles.metaLabel}>{(post.comments ?? []).length}</Text>
                   </View>
                 </View>
               </View>
 
               <View style={styles.commentsHeader}>
                 <Text style={styles.commentsTitle}>Comentarios</Text>
-                <Text style={styles.commentsCount}>{post.comments.length}</Text>
+                <Text style={styles.commentsCount}>{(post.comments ?? []).length}</Text>
               </View>
 
-              {post.comments.length === 0 ? (
+              {(post.comments ?? []).length === 0 ? (
                 <View style={styles.emptyComments}>
                   <Ionicons
                     name="chatbubble-outline"
@@ -533,7 +533,7 @@ export default function CommunityPostScreen() {
                   </Text>
                 </View>
               ) : (
-                post.comments.map((comment) => {
+                (post.comments ?? []).map((comment) => {
                   const commentAuthor =
                     typeof comment.authorId === "number"
                       ? commentAuthors[comment.authorId]

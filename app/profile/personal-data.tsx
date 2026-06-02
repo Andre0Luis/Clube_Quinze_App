@@ -27,6 +27,7 @@ import {
   Padding,
   StyleVariable,
 } from "../../GlobalStyles";
+import { compressImageForUpload } from "../../services/image";
 import { uploadMedia } from "../../services/media";
 import {
   deleteUserById,
@@ -289,9 +290,10 @@ export default function PersonalDataScreen() {
         return;
       }
 
+      const compressedUri = await compressImageForUpload(asset.uri);
       setAvatar({
         id: `avatar-${Date.now()}`,
-        uri: asset.uri,
+        uri: compressedUri,
       });
     } catch (error) {
       console.error("Failed to pick avatar media", error);
@@ -334,9 +336,10 @@ export default function PersonalDataScreen() {
         return;
       }
 
+      const compressedUri = await compressImageForUpload(asset.uri);
       setAvatar({
         id: `avatar-${Date.now()}`,
-        uri: asset.uri,
+        uri: compressedUri,
       });
     } catch (error) {
       console.error("Failed to capture avatar media", error);

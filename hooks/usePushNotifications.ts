@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { registerPushToken } from "../services/notifications";
@@ -34,7 +35,12 @@ export function usePushNotifications() {
   useEffect(() => {
     if (!messaging) return;
 
-    registerCurrentPushToken();
+    // Respeita a preferência do usuário (toggle em Configurações → Notificações).
+    SecureStore.getItemAsync("push_notifications_enabled").then((pref) => {
+      if (pref !== "false") {
+        void registerCurrentPushToken();
+      }
+    });
 
     const unsubRefresh = messaging().onTokenRefresh(syncToken);
 
@@ -70,8 +76,8 @@ export function usePushNotifications() {
   }, [router]);
 }
 
-export async function registerCurrentPushToken() {
-  if (!messaging) return;
+export async function registerCurrentPushToken(): Promise<boolean> {
+  if (!messaging) return false;
 
   if (Platform.OS === "android" && Notifications) {
     await Notifications.setNotificationChannelAsync("agendamentos", {
@@ -87,10 +93,11 @@ export async function registerCurrentPushToken() {
     authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
     authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-  if (!granted) return;
+  if (!granted) return false;
 
   const token = await messaging().getToken();
   await syncToken(token);
+  return true;
 }
 
 async function syncToken(token: string) {
@@ -100,5 +107,40 @@ async function syncToken(token: string) {
     await registerPushToken(token, Platform.OS);
   } catch (error) {
     console.error("Failed to register FCM token:", error);
+  }
+}
+
+export type PushPermissionStatus = "granted" | "denied" | "undetermined" | "unavailable";
+
+/** Status atual da permissão de notificação do SO (sem solicitar). */
+export async function getPushPermissionStatus(): Promise<PushPermissionStatus> {
+  if (!messaging) return "unavailable";
+  try {
+    const status = await messaging().hasPermission();
+    if (
+      status === messaging.AuthorizationStatus.AUTHORIZED ||
+      status === messaging.AuthorizationStatus.PROVISIONAL
+    ) {
+      return "granted";
+    }
+    if (status === messaging.AuthorizationStatus.DENIED) return "denied";
+    return "undetermined";
+  } catch {
+    return "undetermined";
+  }
+}
+
+/** Solicita permissão e, se concedida, registra o token. Retorna true se ativou. */
+export async function enablePushNotifications(): Promise<boolean> {
+  return registerCurrentPushToken();
+}
+
+/** Apaga o token FCM do device (para de receber). O backend é tratado pela camada de serviço. */
+export async function deleteCurrentPushToken(): Promise<void> {
+  if (!messaging) return;
+  try {
+    await messaging().deleteToken();
+  } catch (error) {
+    console.warn("Failed to delete FCM token:", error);
   }
 }

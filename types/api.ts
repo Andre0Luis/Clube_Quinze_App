@@ -202,13 +202,16 @@ export interface LikeResponse {
   createdAt: string;
 }
 
+export type NotificationType = "REMINDER" | "PLAN" | "NEWS" | "GENERAL";
+
 export interface NotificationResponse {
   id: number;
+  userId: number | null;
   title?: string;
-  body?: string;
-  createdAt: string;
-  readAt?: string | null;
-  data?: Record<string, string | number | boolean | null>;
+  message?: string;
+  type: NotificationType;
+  read: boolean;
+  sentAt: string;
 }
 
 export interface PaymentRenewalResponse {

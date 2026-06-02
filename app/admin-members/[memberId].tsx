@@ -28,6 +28,7 @@ import {
     cancelAppointment,
     listAppointments,
 } from "../../services/appointments";
+import { compressImageForUpload } from "../../services/image";
 import { findMemberById } from "../../services/mock/admin-members";
 import { isMockEnabled } from "../../services/mock/settings";
 import * as ImagePicker from "expo-image-picker";
@@ -562,18 +563,16 @@ export default function AdminMemberDetailScreen() {
       for (let i = 0; i < result.assets.length; i++) {
         if (nextGallery.length >= 4) break;
         const asset = result.assets[i];
-        
+
         try {
-          const extension = asset.uri.split(".").pop()?.toLowerCase() || "jpg";
-          let mimeType = "image/jpeg";
-          if (extension === "png") mimeType = "image/png";
-          if (extension === "heic") mimeType = "image/heic";
-          
+          // Comprime/redimensiona (saída sempre JPEG) antes do upload.
+          const uploadUri = await compressImageForUpload(asset.uri);
+
           const uploaded = await uploadMedia(
             {
-              uri: asset.uri,
-              name: `gallery-${Date.now()}-${i}.${extension}`,
-              type: mimeType,
+              uri: uploadUri,
+              name: `gallery-${Date.now()}-${i}.jpg`,
+              type: "image/jpeg",
             },
             "gallery"
           );
