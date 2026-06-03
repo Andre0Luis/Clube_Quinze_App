@@ -41,6 +41,18 @@ target 'ClubeQuinzeApp' do
 
   config = use_native_modules!(config_command)
 
+  # React Native Firebase: the Firebase Swift pods need module maps on the ObjC deps below.
+  # Explicit :modular_headers => true per-pod avoids the global use_modular_headers! which
+  # breaks expo-dev-launcher (RCTPackagerConnection undefined symbol for arm64).
+  pod 'GoogleUtilities',        :modular_headers => true
+  pod 'FirebaseCore',           :modular_headers => true
+  pod 'FirebaseCoreInternal',   :modular_headers => true
+  pod 'FirebaseCoreExtension',  :modular_headers => true
+  pod 'FirebaseInstallations',  :modular_headers => true
+  pod 'FirebaseMessaging',      :modular_headers => true
+  pod 'GoogleDataTransport',    :modular_headers => true
+  pod 'nanopb',                 :modular_headers => true
+
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
 
