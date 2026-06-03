@@ -3,7 +3,7 @@
     "name": "Clube Quinze",
     "slug": "ProjetoQuinze",
     "scheme": "com.andre0luis.ProjetoQuinze",
-    "version": "1.17.0",
+    "version": "1.17.1",
     "icon": "./assets/images/icon.png",
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -23,13 +23,13 @@
     "owner": "andre0luis",
     "ios": {
       "bundleIdentifier": "com.andre0luis.ProjetoQuinze",
-      "buildNumber": "31",
+      "buildNumber": "32",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "versionCode": 19,
+      "versionCode": 20,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-adaptive-foreground.png",
         "backgroundColor": "#ffffff"
