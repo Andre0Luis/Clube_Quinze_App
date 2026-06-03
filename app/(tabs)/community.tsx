@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import * as Sharing from "expo-sharing";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -124,41 +126,16 @@ const formatDateLabel = (value?: string) => {
 export default function CommunityScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [authorized, setAuthorized] = useState(true);
   const [activeTab, setActiveTab] = useState<TabName>("communities");
   const [postsPage, setPostsPage] = useState<PageResponse<PostResponse> | null>(
     null,
   );
+  const hasLoadedOnce = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
-    const checkAccess = async () => {
-      try {
-        const user = await getCurrentUser();
-        if (!isMounted) return;
-        // Comunidade é aberta para qualquer cliente autenticado (Standard, Premium, Select e Admin)
-        const allowed = Boolean(user);
-        setAuthorized(allowed);
-        if (!allowed) {
-          router.replace("/");
-        }
-      } catch (error) {
-        if (isMounted) {
-          setAuthorized(false);
-          router.replace("/");
-        }
-      }
-    };
-
-    checkAccess();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [router]);
   const [isPickingMedia, setIsPickingMedia] = useState(false);
   const [postContent, setPostContent] = useState("");
   const [selectedMedia, setSelectedMedia] = useState<ComposerMedia[]>([]);
@@ -258,7 +235,9 @@ export default function CommunityScreen() {
   const fetchCommunityData = useCallback(
     async (options?: { silent?: boolean }) => {
       setErrorMessage(null);
-      if (options?.silent) {
+      // Re-visitas usam refresh silencioso (sem apagar conteúdo existente)
+      const isSilent = options?.silent || hasLoadedOnce.current;
+      if (isSilent) {
         setIsRefreshing(true);
       } else {
         setIsLoading(true);
@@ -269,6 +248,16 @@ export default function CommunityScreen() {
           listPosts({ page: 0, size: 10 }),
           getCurrentUser(),
         ]);
+
+        // Auth check inline — redireciona se não autenticado
+        if (!profile) {
+          setAuthorized(false);
+          router.replace("/");
+          return;
+        }
+
+        hasLoadedOnce.current = true;
+        setAuthorized(true);
         setPostsPage(pageResponse);
         setCurrentUser(profile);
         setLikedPostIds((prev) =>
@@ -280,22 +269,25 @@ export default function CommunityScreen() {
         void ensureAuthorProfiles(pageResponse.content ?? []);
       } catch (error) {
         console.error("Failed to load community data", error);
-        setErrorMessage("Não foi possível carregar a comunidade agora.");
+        if (!hasLoadedOnce.current) {
+          // Falha no primeiro load pode ser auth — redireciona
+          setAuthorized(false);
+          router.replace("/");
+        } else {
+          setErrorMessage("Não foi possível carregar a comunidade agora.");
+        }
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
       }
     },
-    [ensureAuthorProfiles],
+    [ensureAuthorProfiles, router],
   );
 
   useFocusEffect(
     useCallback(() => {
-      if (!authorized) {
-        return;
-      }
       fetchCommunityData();
-    }, [fetchCommunityData, authorized]),
+    }, [fetchCommunityData]),
   );
 
   const handleRefresh = useCallback(
@@ -502,9 +494,53 @@ export default function CommunityScreen() {
 
   const handleSharePost = useCallback(async (post: PostResponse) => {
     try {
-      await Share.share({
-        message: `${post.content}\n\nCompartilhado via Clube Quinze.`,
-      });
+      const caption = `${post.content}\n\nCompartilhado via Clube Quinze.`;
+      const mediaItems = extractMediaFromPost(post);
+      const firstImage = mediaItems[0];
+
+      // Sem imagem — compartilha só o texto
+      if (!firstImage) {
+        await Share.share({ message: caption });
+        return;
+      }
+
+      const imageUri = firstImage.imageBase64
+        ? `data:image/jpeg;base64,${firstImage.imageBase64}`
+        : firstImage.imageUrl;
+
+      if (!imageUri) {
+        await Share.share({ message: caption });
+        return;
+      }
+
+      // Se for base64, salva como arquivo temporário
+      let localUri: string;
+      if (imageUri.startsWith("data:")) {
+        const base64Data = imageUri.split(",")[1];
+        localUri = `${FileSystem.cacheDirectory}share_${post.id}.jpg`;
+        await FileSystem.writeAsStringAsync(localUri, base64Data, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      } else {
+        // Baixa a imagem remota para um arquivo local
+        localUri = `${FileSystem.cacheDirectory}share_${post.id}.jpg`;
+        const download = await FileSystem.downloadAsync(imageUri, localUri);
+        localUri = download.uri;
+      }
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        // expo-sharing abre o sheet nativo com a imagem;
+        // o usuário pode adicionar a legenda antes de enviar no WhatsApp
+        await Sharing.shareAsync(localUri, {
+          mimeType: "image/jpeg",
+          dialogTitle: caption,
+          UTI: "public.jpeg",
+        });
+      } else {
+        // Fallback para texto se o sharing nativo não estiver disponível
+        await Share.share({ message: caption });
+      }
     } catch (error) {
       console.error("Failed to share post", error);
     }
@@ -603,16 +639,6 @@ export default function CommunityScreen() {
     },
     [router],
   );
-
-  if (authorized === null) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingState}>
-          <ActivityIndicator color={Color.piccolo} size="large" />
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   if (!authorized) {
     return null;

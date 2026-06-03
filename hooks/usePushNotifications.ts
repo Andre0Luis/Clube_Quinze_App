@@ -95,9 +95,16 @@ export async function registerCurrentPushToken(): Promise<boolean> {
 
   if (!granted) return false;
 
-  const token = await messaging().getToken();
-  await syncToken(token);
-  return true;
+  try {
+    const token = await messaging().getToken();
+    await syncToken(token);
+    return true;
+  } catch (error) {
+    // Simulador iOS não suporta APNs — getToken falha com messaging/unregistered.
+    // Em dispositivos reais isso não acontece. Nunca bloquear o fluxo de login por isso.
+    console.warn("FCM getToken falhou (esperado no simulador iOS):", error);
+    return false;
+  }
 }
 
 async function syncToken(token: string) {
