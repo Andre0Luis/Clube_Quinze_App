@@ -20,12 +20,6 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
 prepare_react_native_project!
 
-# Required for React Native Firebase — generates module maps for ObjC pods
-# (GoogleUtilities etc.) so Swift Firebase pods can import them.
-# Do NOT use use_frameworks! here: it would make RNFBApp a framework and break
-# the non-modular React-Core header includes.
-use_modular_headers!
-
 target 'ClubeQuinzeApp' do
   use_expo_modules!
 
@@ -65,5 +59,25 @@ target 'ClubeQuinzeApp' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # React Native Firebase: Swift Firebase pods (FirebaseCoreInternal etc.) need
+    # GoogleUtilities to define a module map. Applying DEFINES_MODULE only to the
+    # specific Google/Firebase pods avoids the global use_modular_headers! which
+    # breaks expo-dev-launcher (RCTPackagerConnection undefined symbol).
+    firebase_pods = %w[
+      GoogleUtilities
+      FirebaseCoreInternal
+      FirebaseCore
+      FirebaseInstallations
+      FirebaseMessaging
+      GoogleDataTransport
+    ]
+    installer.pods_project.targets.each do |target|
+      if firebase_pods.include?(target.name)
+        target.build_configurations.each do |config|
+          config.build_settings['DEFINES_MODULE'] = 'YES'
+        end
+      end
+    end
   end
 end
