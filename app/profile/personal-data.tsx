@@ -394,12 +394,15 @@ export default function PersonalDataScreen() {
         return;
       }
 
-      setGalleryMedia((prev) => {
-        const mapped = assets.map((asset, index) => ({
+      // Comprime antes de armazenar para evitar erro 413 no upload
+      const compressed = await Promise.all(
+        assets.map(async (asset, index) => ({
           id: `gallery-${Date.now()}-${index}`,
-          uri: asset.uri,
-        }));
-        const merged = [...prev, ...mapped];
+          uri: await compressImageForUpload(asset.uri),
+        })),
+      );
+      setGalleryMedia((prev) => {
+        const merged = [...prev, ...compressed];
         return merged.slice(0, MAX_GALLERY_ITEMS);
       });
     } catch (error) {
@@ -445,6 +448,8 @@ export default function PersonalDataScreen() {
         return;
       }
 
+      // Comprime antes de armazenar para evitar erro 413 no upload
+      const compressedUri = await compressImageForUpload(asset.uri);
       setGalleryMedia((prev) => {
         if (prev.length >= MAX_GALLERY_ITEMS) {
           return prev;
@@ -453,7 +458,7 @@ export default function PersonalDataScreen() {
           ...prev,
           {
             id: `gallery-${Date.now()}`,
-            uri: asset.uri,
+            uri: compressedUri,
           },
         ];
         return next.slice(0, MAX_GALLERY_ITEMS);
