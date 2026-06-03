@@ -17,6 +17,7 @@
     "@types/react": "~19.1.10",
     "axios": "^1.13.2",
     "expo": "~54.0.33",
+    "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.13",
     "expo-dev-client": "~6.0.21",
     "expo-device": "^55.0.10",
@@ -69,5 +70,5 @@
     "start": "expo start",
     "web": "expo start --web"
   },
-  "version": "1.17.1"
+  "version": "1.17.2"
 }

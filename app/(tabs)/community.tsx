@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
+import * as Clipboard from "expo-clipboard";
+import * as FileSystem from "expo-file-system/legacy";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -528,17 +529,24 @@ export default function CommunityScreen() {
         localUri = download.uri;
       }
 
+      // Copia a legenda para o clipboard antes de abrir o share sheet.
+      // No WhatsApp, ao escolher o contato, o usuário pode colar a legenda
+      // pois o app não aceita texto + imagem juntos pelo share nativo.
+      await Clipboard.setStringAsync(caption);
+      Alert.alert(
+        "📋 Legenda copiada!",
+        "A legenda foi copiada. Após selecionar o contato no WhatsApp, cole-a no campo de texto.",
+        [{ text: "OK", style: "default" }],
+      );
+
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
-        // expo-sharing abre o sheet nativo com a imagem;
-        // o usuário pode adicionar a legenda antes de enviar no WhatsApp
         await Sharing.shareAsync(localUri, {
           mimeType: "image/jpeg",
           dialogTitle: caption,
           UTI: "public.jpeg",
         });
       } else {
-        // Fallback para texto se o sharing nativo não estiver disponível
         await Share.share({ message: caption });
       }
     } catch (error) {

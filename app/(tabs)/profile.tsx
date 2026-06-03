@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import Constants from "expo-constants";
+import appConfig from "../../app.json";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -123,7 +123,7 @@ const formatDateLabel = (value?: string) => {
 };
 
 // Versão do app (lida do app.json via expo-constants; mantida em sync com os nativos).
-const appVersion = Constants.expoConfig?.version ?? "1.17.0";
+const appVersion = appConfig.expo.version;
 
 export default function ProfileScreen() {
   const router = useRouter();
