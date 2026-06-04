@@ -1,39 +1,22 @@
+import { getApp } from "@react-native-firebase/app";
+import messaging from "@react-native-firebase/messaging";
+import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect } from "react";
-import { Platform } from "react-native";
+import { PermissionsAndroid, Platform } from "react-native";
 import { registerPushToken } from "../services/notifications";
 import { getAccessToken } from "../services/storage";
 
-// Lazy-load Firebase and expo-notifications so the module doesn't crash in
-// environments where they are unavailable (e.g. Expo Go on SDK 53+).
-let messaging: typeof import("@react-native-firebase/messaging").default | null = null;
-let Notifications: typeof import("expo-notifications") | null = null;
-
-try {
-  messaging = require("@react-native-firebase/messaging").default;
-} catch {
-  console.warn("@react-native-firebase/messaging not available. Push notifications disabled.");
-}
-
-try {
-  Notifications = require("expo-notifications");
-} catch {
-  console.warn("expo-notifications not available. Local notifications disabled.");
-}
-
-// Must be registered outside any component — handles FCM when app is killed/background
-try {
-  messaging?.().setBackgroundMessageHandler(async () => {});
-} catch {
-  // Silently ignore if messaging is unavailable
-}
+// Background handler — deve estar fora de qualquer componente.
+// Usa API modular (messaging(getApp())) para evitar deprecation warning do RNFirebase v22.
+messaging(getApp()).setBackgroundMessageHandler(async () => {});
 
 export function usePushNotifications() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!messaging) return;
+    const fcm = messaging(getApp());
 
     // Respeita a preferência do usuário (toggle em Configurações → Notificações).
     SecureStore.getItemAsync("push_notifications_enabled").then((pref) => {
@@ -42,31 +25,27 @@ export function usePushNotifications() {
       }
     });
 
-    const unsubRefresh = messaging().onTokenRefresh(syncToken);
+    const unsubRefresh = fcm.onTokenRefresh(syncToken);
 
-    const unsubForeground = messaging().onMessage(async (remoteMessage) => {
+    const unsubForeground = fcm.onMessage(async (remoteMessage) => {
       const title = remoteMessage.notification?.title ?? "Agendamento";
       const body = remoteMessage.notification?.body ?? "";
-      if (Notifications) {
-        await Notifications.scheduleNotificationAsync({
-          content: { title, body, data: remoteMessage.data ?? {} },
-          trigger: null,
-        });
-      }
+      await Notifications.scheduleNotificationAsync({
+        content: { title, body, data: remoteMessage.data ?? {} },
+        trigger: null,
+      });
     });
 
-    const unsubOpen = messaging().onNotificationOpenedApp((remoteMessage) => {
+    const unsubOpen = fcm.onNotificationOpenedApp((remoteMessage) => {
       const id = remoteMessage.data?.appointmentId;
       if (id) router.push(`/appointments/${id}`);
     });
 
-    messaging()
-      .getInitialNotification()
-      .then((remoteMessage) => {
-        if (!remoteMessage) return;
-        const id = remoteMessage.data?.appointmentId;
-        if (id) router.push(`/appointments/${id}`);
-      });
+    fcm.getInitialNotification().then((remoteMessage) => {
+      if (!remoteMessage) return;
+      const id = remoteMessage.data?.appointmentId;
+      if (id) router.push(`/appointments/${id}`);
+    });
 
     return () => {
       unsubRefresh();
@@ -77,9 +56,17 @@ export function usePushNotifications() {
 }
 
 export async function registerCurrentPushToken(): Promise<boolean> {
-  if (!messaging) return false;
+  // Android 13+ (API 33+) requer permissão explícita POST_NOTIFICATIONS do sistema
+  // antes que qualquer push possa ser exibido. Sem isso, messaging().requestPermission()
+  // retorna "authorized" mas as notificações são silenciosamente bloqueadas.
+  if (Platform.OS === "android" && Platform.Version >= 33) {
+    const result = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    );
+    if (result !== PermissionsAndroid.RESULTS.GRANTED) return false;
+  }
 
-  if (Platform.OS === "android" && Notifications) {
+  if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("agendamentos", {
       name: "Agendamentos",
       importance: Notifications.AndroidImportance.HIGH,
@@ -88,7 +75,8 @@ export async function registerCurrentPushToken(): Promise<boolean> {
     });
   }
 
-  const authStatus = await messaging().requestPermission();
+  const fcm = messaging(getApp());
+  const authStatus = await fcm.requestPermission();
   const granted =
     authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
     authStatus === messaging.AuthorizationStatus.PROVISIONAL;
@@ -96,12 +84,11 @@ export async function registerCurrentPushToken(): Promise<boolean> {
   if (!granted) return false;
 
   try {
-    const token = await messaging().getToken();
+    const token = await fcm.getToken();
     await syncToken(token);
     return true;
   } catch (error) {
     // Simulador iOS não suporta APNs — getToken falha com messaging/unregistered.
-    // Em dispositivos reais isso não acontece. Nunca bloquear o fluxo de login por isso.
     console.warn("FCM getToken falhou (esperado no simulador iOS):", error);
     return false;
   }
@@ -121,9 +108,8 @@ export type PushPermissionStatus = "granted" | "denied" | "undetermined" | "unav
 
 /** Status atual da permissão de notificação do SO (sem solicitar). */
 export async function getPushPermissionStatus(): Promise<PushPermissionStatus> {
-  if (!messaging) return "unavailable";
   try {
-    const status = await messaging().hasPermission();
+    const status = await messaging(getApp()).hasPermission();
     if (
       status === messaging.AuthorizationStatus.AUTHORIZED ||
       status === messaging.AuthorizationStatus.PROVISIONAL
@@ -142,11 +128,10 @@ export async function enablePushNotifications(): Promise<boolean> {
   return registerCurrentPushToken();
 }
 
-/** Apaga o token FCM do device (para de receber). O backend é tratado pela camada de serviço. */
+/** Apaga o token FCM do device (para de receber). */
 export async function deleteCurrentPushToken(): Promise<void> {
-  if (!messaging) return;
   try {
-    await messaging().deleteToken();
+    await messaging(getApp()).deleteToken();
   } catch (error) {
     console.warn("Failed to delete FCM token:", error);
   }
