@@ -277,7 +277,13 @@ const AdminDashboardScreen = () => {
               <Text style={styles.brandName}>Clube Quinze</Text>
             </View>
           </View>
-          <Ionicons name="notifications-outline" size={20} color={Color.hit} />
+          <TouchableOpacity
+            onPress={() => router.push("/admin-notification-settings")}
+            activeOpacity={0.7}
+            accessibilityLabel="Configurar lembretes de atendimento"
+          >
+            <Ionicons name="notifications-outline" size={20} color={Color.hit} />
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.greeting}>Ola, {greetingName} 👋</Text>

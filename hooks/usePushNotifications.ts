@@ -1,4 +1,3 @@
-import { getApp } from "@react-native-firebase/app";
 import messaging from "@react-native-firebase/messaging";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
@@ -9,14 +8,13 @@ import { registerPushToken } from "../services/notifications";
 import { getAccessToken } from "../services/storage";
 
 // Background handler — deve estar fora de qualquer componente.
-// Usa API modular (messaging(getApp())) para evitar deprecation warning do RNFirebase v22.
-messaging(getApp()).setBackgroundMessageHandler(async () => {});
+messaging().setBackgroundMessageHandler(async () => {});
 
 export function usePushNotifications() {
   const router = useRouter();
 
   useEffect(() => {
-    const fcm = messaging(getApp());
+    const fcm = messaging();
 
     // Respeita a preferência do usuário (toggle em Configurações → Notificações).
     SecureStore.getItemAsync("push_notifications_enabled").then((pref) => {
@@ -75,7 +73,7 @@ export async function registerCurrentPushToken(): Promise<boolean> {
     });
   }
 
-  const fcm = messaging(getApp());
+  const fcm = messaging();
   const authStatus = await fcm.requestPermission();
   const granted =
     authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -84,12 +82,24 @@ export async function registerCurrentPushToken(): Promise<boolean> {
   if (!granted) return false;
 
   try {
+    // iOS: é OBRIGATÓRIO registrar o device com APNs antes de getToken().
+    // Sem isso, getToken() lança messaging/unregistered e o token nunca é gerado —
+    // por isso o push não chegava no iOS (no Android isso não é necessário).
+    if (Platform.OS === "ios") {
+      if (!fcm.isDeviceRegisteredForRemoteMessages) {
+        await fcm.registerDeviceForRemoteMessages();
+      }
+      // garante que o APNs token já está disponível antes de pedir o FCM token
+      await fcm.getAPNSToken();
+    }
+
     const token = await fcm.getToken();
     await syncToken(token);
     return true;
   } catch (error) {
-    // Simulador iOS não suporta APNs — getToken falha com messaging/unregistered.
-    console.warn("FCM getToken falhou (esperado no simulador iOS):", error);
+    // No simulador iOS (sem APNs) isso falha — esperado. Em device real, com o
+    // APNs key configurado no Firebase, funciona.
+    console.warn("FCM getToken falhou (simulador iOS ou APNs ausente):", error);
     return false;
   }
 }
@@ -109,7 +119,7 @@ export type PushPermissionStatus = "granted" | "denied" | "undetermined" | "unav
 /** Status atual da permissão de notificação do SO (sem solicitar). */
 export async function getPushPermissionStatus(): Promise<PushPermissionStatus> {
   try {
-    const status = await messaging(getApp()).hasPermission();
+    const status = await messaging().hasPermission();
     if (
       status === messaging.AuthorizationStatus.AUTHORIZED ||
       status === messaging.AuthorizationStatus.PROVISIONAL
@@ -131,7 +141,7 @@ export async function enablePushNotifications(): Promise<boolean> {
 /** Apaga o token FCM do device (para de receber). */
 export async function deleteCurrentPushToken(): Promise<void> {
   try {
-    await messaging(getApp()).deleteToken();
+    await messaging().deleteToken();
   } catch (error) {
     console.warn("Failed to delete FCM token:", error);
   }

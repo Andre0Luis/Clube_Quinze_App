@@ -61,3 +61,32 @@ export const disablePushTokens = async () => {
   const config = await withAuthHeader();
   await api.delete("/notifications/tokens", config);
 };
+
+// ── Configuração de lembretes do admin (admin-only) ───────────────────────────
+
+export type AdminNotificationSettings = {
+  enabled: boolean;
+  offsets: number[]; // minutos antes do atendimento, ex: [60, 30]
+};
+
+export const getAdminNotificationSettings =
+  async (): Promise<AdminNotificationSettings> => {
+    const config = await withAuthHeader();
+    const { data } = await api.get<AdminNotificationSettings>(
+      "/admin/settings/notifications",
+      config,
+    );
+    return data;
+  };
+
+export const updateAdminNotificationSettings = async (
+  settings: AdminNotificationSettings,
+): Promise<AdminNotificationSettings> => {
+  const config = await withAuthHeader();
+  const { data } = await api.put<AdminNotificationSettings>(
+    "/admin/settings/notifications",
+    settings,
+    config,
+  );
+  return data;
+};
