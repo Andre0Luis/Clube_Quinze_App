@@ -70,5 +70,5 @@
     "start": "expo start",
     "web": "expo start --web"
   },
-  "version": "1.18.0"
+  "version": "1.18.1"
 }
