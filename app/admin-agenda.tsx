@@ -53,6 +53,8 @@ const formatDateLong = (iso: string) => {
   return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} • ${day} de ${month} • ${time}`;
 };
 
+const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
@@ -328,29 +330,28 @@ const AdminAgendaScreen = () => {
 
   const renderDay = (value: number | null, index: number) => {
     if (!value) {
-      return <View key={`empty-${index}`} style={styles.dayEmpty} />;
+      return <View key={`empty-${index}`} style={styles.dayCell} />;
     }
-    const isSelected = selectedDate.getDate() === value;
-    const isToday = sameDay(
-      new Date(),
-      new Date(anchorMonth.getFullYear(), anchorMonth.getMonth(), value),
+    const cellDate = new Date(
+      anchorMonth.getFullYear(),
+      anchorMonth.getMonth(),
+      value,
     );
+    const isSelected = sameDay(selectedDate, cellDate);
+    const isToday = sameDay(new Date(), cellDate);
     return (
-      <TouchableOpacity
-        key={`day-${value}`}
-        style={[styles.dayCell, isSelected && styles.dayCellActive]}
-        onPress={() =>
-          setSelectedDate(
-            new Date(anchorMonth.getFullYear(), anchorMonth.getMonth(), value),
-          )
-        }
-        activeOpacity={0.85}
-      >
-        <Text style={[styles.dayText, isSelected && styles.dayTextActive]}>
-          {value}
-        </Text>
-        {isToday && !isSelected ? <Text style={styles.todayDot}>•</Text> : null}
-      </TouchableOpacity>
+      <View key={`day-${value}`} style={styles.dayCell}>
+        <TouchableOpacity
+          style={[styles.dayInner, isSelected && styles.dayCellActive]}
+          onPress={() => setSelectedDate(cellDate)}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.dayText, isSelected && styles.dayTextActive]}>
+            {value}
+          </Text>
+          {isToday && !isSelected ? <Text style={styles.todayDot}>•</Text> : null}
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -513,6 +514,13 @@ const AdminAgendaScreen = () => {
               <Ionicons name="chevron-forward" size={20} color={Color.hit} />
             </TouchableOpacity>
           </View>
+          <View style={styles.weekHeader}>
+            {WEEKDAYS.map((w) => (
+              <Text key={w} style={styles.weekHeaderText}>
+                {w}
+              </Text>
+            ))}
+          </View>
           <View style={styles.calendarGrid}>{monthDays.map(renderDay)}</View>
         </View>
 
@@ -636,16 +644,37 @@ const styles = StyleSheet.create({
     textAlign: "center",
     flex: 1,
   },
+  weekHeader: {
+    flexDirection: "row",
+    flexWrap: "nowrap",
+    width: "100%",
+    maxWidth: 360,
+    alignSelf: "center",
+    marginBottom: 6,
+  },
+  weekHeaderText: {
+    width: "14.2857%",
+    textAlign: "center",
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
+    color: Color.mainTrunks,
+  },
   calendarGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: StyleVariable.gap1,
+    width: "100%",
     maxWidth: 360,
     alignSelf: "center",
   },
   dayCell: {
-    width: 44,
-    height: 44,
+    width: "14.2857%",
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayInner: {
+    width: 40,
+    height: 40,
     borderRadius: StyleVariable.interactiveBorderRadiusRadiusISm,
     borderWidth: 1,
     borderColor: "#E6EAF1",
