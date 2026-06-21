@@ -29,6 +29,7 @@ import {
 } from "../../services/appointments";
 import { getCurrentUser } from "../../services/users";
 import type { AvailableSlotResponse, MembershipTier } from "../../types/api";
+import { BOOKING_ENABLED } from "../../constants/features";
 
 const DAYS_OF_WEEK = ["D", "S", "T", "Q", "Q", "S", "S"] as const;
 const MONTH_LABELS = [
@@ -447,6 +448,43 @@ export default function ScheduleScreen() {
     );
   };
 
+  // Cliente não pode mais agendar/escolher horário (apenas visualiza seus agendamentos).
+  // Defesa contra acesso direto/back: bloqueia a tela para não-admins quando o booking está
+  // desabilitado. O fluxo do admin (agendar para um membro) continua funcionando normalmente.
+  if (!BOOKING_ENABLED && !isAdmin && !isPrefetching) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.85}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={18} color={Color.piccolo} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Agendamento</Text>
+        </View>
+        <View style={styles.bookingDisabledContainer}>
+          <Ionicons name="calendar-outline" size={48} color={Color.piccolo} />
+          <Text style={styles.bookingDisabledTitle}>
+            Agendamento indisponível
+          </Text>
+          <Text style={styles.bookingDisabledText}>
+            No momento não é possível agendar pelo app. Fale com a recepção para
+            marcar o seu horário.
+          </Text>
+          <TouchableOpacity
+            style={styles.bookingDisabledButton}
+            activeOpacity={0.9}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.bookingDisabledButtonText}>Voltar</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -620,6 +658,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Color.mainGohan,
+  },
+  bookingDisabledContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Padding.padding_24,
+    gap: 16,
+  },
+  bookingDisabledTitle: {
+    fontFamily: FontFamily.dMSansBold,
+    fontSize: FontSize.fs_16,
+    color: Color.mainBulma,
+    textAlign: "center",
+  },
+  bookingDisabledText: {
+    fontFamily: FontFamily.dMSansRegular,
+    fontSize: FontSize.fs_14,
+    color: Color.mainTrunks,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  bookingDisabledButton: {
+    marginTop: 8,
+    backgroundColor: Color.piccolo,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: Border.br_16,
+  },
+  bookingDisabledButtonText: {
+    fontFamily: FontFamily.dMSansBold,
+    fontSize: FontSize.fs_14,
+    color: Color.mainGohan,
   },
   header: {
     flexDirection: "row",

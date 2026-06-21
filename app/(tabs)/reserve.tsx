@@ -22,6 +22,7 @@ import {
     Padding,
     StyleVariable,
 } from "../../GlobalStyles";
+import { BOOKING_ENABLED } from "../../constants/features";
 import { listMyAppointments } from "../../services/appointments";
 import type { AppointmentResponse, AppointmentTier } from "../../types/api";
 
@@ -364,14 +365,16 @@ export default function ReserveScreen() {
           })
         )}
 
-        <TouchableOpacity
-          style={styles.newAppointmentButton}
-          activeOpacity={0.9}
-          onPress={() => router.push("/schedule")}
-        >
-          <Ionicons name="add" size={20} color={Color.mainGoten} />
-          <Text style={styles.newAppointmentText}>Agendar novo horario</Text>
-        </TouchableOpacity>
+        {BOOKING_ENABLED ? (
+          <TouchableOpacity
+            style={styles.newAppointmentButton}
+            activeOpacity={0.9}
+            onPress={() => router.push("/schedule")}
+          >
+            <Ionicons name="add" size={20} color={Color.mainGoten} />
+            <Text style={styles.newAppointmentText}>Agendar novo horario</Text>
+          </TouchableOpacity>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

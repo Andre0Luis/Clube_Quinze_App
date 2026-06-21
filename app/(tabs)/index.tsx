@@ -28,6 +28,7 @@ import {
   Padding,
   StyleVariable,
 } from "../../GlobalStyles";
+import { BOOKING_ENABLED } from "../../constants/features";
 import { listMyAppointments } from "../../services/appointments";
 import { logout as logoutService } from "../../services/auth";
 import { getAdminDashboardMetrics } from "../../services/dashboard";
@@ -776,7 +777,7 @@ export default function HomeScreen() {
                     }
                     if (nextAppointment) {
                       pushAppointmentDetails(nextAppointment.id);
-                    } else {
+                    } else if (BOOKING_ENABLED) {
                       handleNavigate("/schedule");
                     }
                   }}
@@ -843,14 +844,16 @@ export default function HomeScreen() {
                         <View style={styles.cardBody}>
                           <Text style={styles.cardTitle}>Sem agendamentos</Text>
                         </View>
-                        <View style={styles.cardFooter}>
-                          <Text style={styles.cardLink}>Agendar horario</Text>
-                          <Ionicons
-                            name="arrow-forward"
-                            size={16}
-                            color={Color.piccolo}
-                          />
-                        </View>
+                        {BOOKING_ENABLED ? (
+                          <View style={styles.cardFooter}>
+                            <Text style={styles.cardLink}>Agendar horario</Text>
+                            <Ionicons
+                              name="arrow-forward"
+                              size={16}
+                              color={Color.piccolo}
+                            />
+                          </View>
+                        ) : null}
                       </>
                     )}
                   </View>
