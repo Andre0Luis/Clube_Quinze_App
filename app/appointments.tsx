@@ -21,6 +21,7 @@ import {
     Padding,
     StyleVariable,
 } from "../GlobalStyles";
+import { BOOKING_ENABLED } from "../constants/features";
 import { listMyAppointments } from "../services/appointments";
 import { getCurrentUser } from "../services/users";
 import type { AppointmentResponse } from "../types/api";
@@ -301,11 +302,13 @@ export default function AppointmentsScreen() {
             </Text>
             <Text style={styles.emptyDescription}>
               {activeTab === "upcoming"
-                ? "Agende seu próximo atendimento agora!"
+                ? BOOKING_ENABLED
+                  ? "Agende seu próximo atendimento agora!"
+                  : "Você ainda não possui agendamentos."
                 : "Assim que concluir seus atendimentos, eles aparecem aqui."}
             </Text>
 
-            {activeTab === "upcoming" ? (
+            {activeTab === "upcoming" && BOOKING_ENABLED ? (
               <TouchableOpacity
                 style={styles.emptyActionButton}
                 activeOpacity={0.9}
@@ -369,15 +372,17 @@ export default function AppointmentsScreen() {
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.scheduleButton}
-          onPress={() => router.push("/schedule")}
-          activeOpacity={0.9}
-        >
-          <Text style={styles.scheduleButtonText}>Agendar</Text>
-        </TouchableOpacity>
-      </View>
+      {BOOKING_ENABLED ? (
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.scheduleButton}
+            onPress={() => router.push("/schedule")}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.scheduleButtonText}>Agendar</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }

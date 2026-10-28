@@ -29,6 +29,7 @@ import {
 } from "../../services/appointments";
 import { getCurrentUser } from "../../services/users";
 import type { AvailableSlotResponse, MembershipTier } from "../../types/api";
+import { BOOKING_ENABLED } from "../../constants/features";
 
 const DAYS_OF_WEEK = ["D", "S", "T", "Q", "Q", "S", "S"] as const;
 const MONTH_LABELS = [
@@ -76,6 +77,26 @@ const formatDisplayTime = (iso: string) => {
 
 const MAX_MONTH_OFFSET = 3;
 
+// Duração do atendimento (admin): atalhos + valor personalizado em múltiplos de 15 min.
+const DURATION_PRESETS = [30, 60, 120] as const;
+const DEFAULT_DURATION = 30;
+const DURATION_STEP = 15;
+const MIN_DURATION = 15;
+const MAX_DURATION = 480;
+
+const formatDuration = (minutes: number) => {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+};
+
+const isValidDuration = (minutes: number) =>
+  Number.isInteger(minutes) &&
+  minutes >= MIN_DURATION &&
+  minutes <= MAX_DURATION &&
+  minutes % DURATION_STEP === 0;
+
 interface DayCell {
   date: Date | null;
   key: string;
@@ -116,7 +137,10 @@ export default function ScheduleScreen() {
   const [currentMonth, setCurrentMonth] = useState(() => toStartOfMonth(today));
   const [selectedDate, setSelectedDate] = useState<Date>(today);
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
-  
+  const [durationMinutes, setDurationMinutes] = useState<number>(DEFAULT_DURATION);
+  const [isCustomDuration, setIsCustomDuration] = useState(false);
+  const [customDurationText, setCustomDurationText] = useState("");
+
   // Recurrence states
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrencePeriod, setRecurrencePeriod] = useState<"WEEKLY" | "BIWEEKLY" | "MONTHLY">("WEEKLY");
@@ -200,6 +224,8 @@ export default function ScheduleScreen() {
         const response: AvailableSlotResponse = await listAvailableSlots({
           date: formatDateParam(date),
           tier: membershipTier,
+          // Cliente segue a grade padrão do plano; só o admin escolhe a duração.
+          durationMinutes: isAdmin ? durationMinutes : undefined,
         });
         setAvailableSlots(response.availableSlots ?? []);
       } catch (error) {
@@ -212,8 +238,25 @@ export default function ScheduleScreen() {
         setIsLoadingSlots(false);
       }
     },
-    [membershipTier],
+    [membershipTier, isAdmin, durationMinutes],
   );
+
+  const handleSelectPreset = useCallback((minutes: number) => {
+    setIsCustomDuration(false);
+    setCustomDurationText("");
+    setDurationMinutes(minutes);
+    setSelectedSlots([]);
+  }, []);
+
+  const handleChangeCustomDuration = useCallback((text: string) => {
+    const digits = text.replace(/\D/g, "").slice(0, 3);
+    setCustomDurationText(digits);
+    const parsed = Number(digits);
+    if (digits && isValidDuration(parsed)) {
+      setDurationMinutes(parsed);
+      setSelectedSlots([]);
+    }
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -274,6 +317,13 @@ export default function ScheduleScreen() {
         if (appointment.notes) {
           setNotes(appointment.notes);
         }
+        if (appointment.durationMinutes && isValidDuration(appointment.durationMinutes)) {
+          setDurationMinutes(appointment.durationMinutes);
+          if (!(DURATION_PRESETS as readonly number[]).includes(appointment.durationMinutes)) {
+            setIsCustomDuration(true);
+            setCustomDurationText(String(appointment.durationMinutes));
+          }
+        }
       } catch (error) {
         Alert.alert(
           "Não foi possível carregar",
@@ -312,21 +362,12 @@ export default function ScheduleScreen() {
       return;
     }
 
-    if (isAdmin && selectedSlots.length > 1) {
-      const sorted = [...selectedSlots].sort();
-      const expectedDiff = membershipTier === "QUINZE_SELECT" ? 120 : 30;
-      let isContiguous = true;
-      for (let i = 1; i < sorted.length; i++) {
-        const diff = (new Date(sorted[i]).getTime() - new Date(sorted[i-1]).getTime()) / 60000;
-        if (diff !== expectedDiff) {
-          isContiguous = false;
-          break;
-        }
-      }
-      if (!isContiguous) {
-        Alert.alert("Seleção Inválida", "Para agendar múltiplos horários, eles precisam ser consecutivos para formar um único bloco de tempo.");
-        return;
-      }
+    if (isAdmin && !isValidDuration(durationMinutes)) {
+      Alert.alert(
+        "Duração inválida",
+        "Informe uma duração entre 15 minutos e 8 horas, em múltiplos de 15 minutos.",
+      );
+      return;
     }
 
     const sortedSlots = [...selectedSlots].sort();
@@ -336,6 +377,7 @@ export default function ScheduleScreen() {
       params: {
         date: selectedDate.toISOString(),
         slots: JSON.stringify(sortedSlots),
+        duration: isAdmin ? String(durationMinutes) : undefined,
         notes: notes.trim() ? notes.trim() : "",
         appointmentId: appointmentId ?? undefined,
         clientId: resolvedClientId ? String(resolvedClientId) : undefined,
@@ -419,18 +461,7 @@ export default function ScheduleScreen() {
                 isSelected ? styles.slotCardSelected : null,
               ]}
               activeOpacity={0.85}
-              onPress={() => {
-                if (!isAdmin) {
-                  setSelectedSlots([slot]);
-                  return;
-                }
-                setSelectedSlots((prev) => {
-                  if (prev.includes(slot)) {
-                    return prev.filter((s) => s !== slot);
-                  }
-                  return [...prev, slot];
-                });
-              }}
+              onPress={() => setSelectedSlots([slot])}
             >
               <Text
                 style={[
@@ -446,6 +477,43 @@ export default function ScheduleScreen() {
       </View>
     );
   };
+
+  // Cliente não pode mais agendar/escolher horário (apenas visualiza seus agendamentos).
+  // Defesa contra acesso direto/back: bloqueia a tela para não-admins quando o booking está
+  // desabilitado. O fluxo do admin (agendar para um membro) continua funcionando normalmente.
+  if (!BOOKING_ENABLED && !isAdmin && !isPrefetching) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.85}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={18} color={Color.piccolo} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Agendamento</Text>
+        </View>
+        <View style={styles.bookingDisabledContainer}>
+          <Ionicons name="calendar-outline" size={48} color={Color.piccolo} />
+          <Text style={styles.bookingDisabledTitle}>
+            Agendamento indisponível
+          </Text>
+          <Text style={styles.bookingDisabledText}>
+            No momento não é possível agendar pelo app. Fale com a recepção para
+            marcar o seu horário.
+          </Text>
+          <TouchableOpacity
+            style={styles.bookingDisabledButton}
+            activeOpacity={0.9}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.bookingDisabledButtonText}>Voltar</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -513,6 +581,72 @@ export default function ScheduleScreen() {
             {generateCalendarCells().map(renderDayCell)}
           </View>
         </View>
+
+        {isAdmin && (
+          <View style={styles.durationBlock}>
+            <Text style={styles.sectionTitle}>Duração do atendimento</Text>
+            <View style={styles.optionsRow}>
+              {DURATION_PRESETS.map((minutes) => {
+                const selected = !isCustomDuration && durationMinutes === minutes;
+                return (
+                  <TouchableOpacity
+                    key={minutes}
+                    style={[styles.optionChip, selected && styles.optionChipSelected]}
+                    onPress={() => handleSelectPreset(minutes)}
+                    activeOpacity={0.85}
+                  >
+                    <Text
+                      style={[
+                        styles.optionChipText,
+                        selected && styles.optionChipTextSelected,
+                      ]}
+                    >
+                      {formatDuration(minutes)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity
+                style={[styles.optionChip, isCustomDuration && styles.optionChipSelected]}
+                onPress={() => {
+                  setIsCustomDuration(true);
+                  setCustomDurationText(String(durationMinutes));
+                }}
+                activeOpacity={0.85}
+              >
+                <Text
+                  style={[
+                    styles.optionChipText,
+                    isCustomDuration && styles.optionChipTextSelected,
+                  ]}
+                >
+                  Personalizado
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {isCustomDuration && (
+              <View style={styles.customDurationRow}>
+                <TextInput
+                  style={styles.customDurationInput}
+                  value={customDurationText}
+                  onChangeText={handleChangeCustomDuration}
+                  keyboardType="number-pad"
+                  placeholder="Ex.: 45"
+                  placeholderTextColor={Color.mainBeerus}
+                  maxLength={3}
+                />
+                <Text style={styles.customDurationUnit}>minutos</Text>
+              </View>
+            )}
+            <Text style={styles.durationHint}>
+              {isCustomDuration &&
+              customDurationText &&
+              !isValidDuration(Number(customDurationText))
+                ? "Use múltiplos de 15 minutos, de 15 a 480 (8 h)."
+                : `Duração selecionada: ${formatDuration(durationMinutes)} · horários de 15 em 15 minutos.`}
+            </Text>
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>Selecione um horario</Text>
         {slotsContent()}
@@ -620,6 +754,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Color.mainGohan,
+  },
+  bookingDisabledContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Padding.padding_24,
+    gap: 16,
+  },
+  bookingDisabledTitle: {
+    fontFamily: FontFamily.dMSansBold,
+    fontSize: FontSize.fs_16,
+    color: Color.mainBulma,
+    textAlign: "center",
+  },
+  bookingDisabledText: {
+    fontFamily: FontFamily.dMSansRegular,
+    fontSize: FontSize.fs_14,
+    color: Color.mainTrunks,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  bookingDisabledButton: {
+    marginTop: 8,
+    backgroundColor: Color.piccolo,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: Border.br_16,
+  },
+  bookingDisabledButtonText: {
+    fontFamily: FontFamily.dMSansBold,
+    fontSize: FontSize.fs_14,
+    color: Color.mainGohan,
   },
   header: {
     flexDirection: "row",
@@ -841,6 +1007,34 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: Color.mainBeerus,
+  },
+  durationBlock: {
+    marginBottom: 8,
+  },
+  customDurationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 12,
+  },
+  customDurationInput: {
+    minWidth: 96,
+    borderWidth: 1,
+    borderColor: Color.mainBeerus,
+    borderRadius: Border.br_8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: FontSize.fs_16,
+    color: Color.piccolo,
+  },
+  customDurationUnit: {
+    fontSize: FontSize.fs_14,
+    color: Color.piccolo,
+  },
+  durationHint: {
+    marginTop: 8,
+    fontSize: FontSize.fs_12,
+    color: Color.mainBeerus,
   },
   optionsRow: {
     flexDirection: "row",

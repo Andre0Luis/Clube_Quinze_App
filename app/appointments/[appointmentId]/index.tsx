@@ -26,6 +26,7 @@ import {
     listMyAppointments,
     updateAppointmentStatus,
 } from "../../../services/appointments";
+import { BOOKING_ENABLED } from "../../../constants/features";
 import type { AppointmentResponse } from "../../../types/api";
 
 const statusStyles: Record<string, { label: string; color: string }> = {
@@ -174,8 +175,10 @@ export default function AppointmentDetailsScreen() {
     [appointment?.status],
   );
 
-  const canReschedule = appointment?.status === "SCHEDULED";
-  const canCancel = canReschedule;
+  // Reagendar é um novo booking — desabilitado junto com BOOKING_ENABLED.
+  // Cancelar continua disponível independentemente.
+  const canCancel = appointment?.status === "SCHEDULED";
+  const canReschedule = canCancel && BOOKING_ENABLED;
   const canEvaluate = appointment?.status === "COMPLETED";
 
   const handleNavigateToFeedback = () => {
