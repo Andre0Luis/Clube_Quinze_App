@@ -49,6 +49,8 @@ export interface ListMyAppointmentsParams {
 export interface ListAvailableSlotsParams {
   date: string;
   tier?: AppointmentTier;
+  /** Só admin/funcionário: lista inícios (grade de 15 min) onde cabe essa duração. */
+  durationMinutes?: number;
 }
 
 export const listAppointments = async (params?: ListAppointmentsParams) => {
@@ -157,6 +159,7 @@ export const cancelAppointment = async (appointmentId: number) => {
 export const listAvailableSlots = async ({
   date,
   tier,
+  durationMinutes,
 }: ListAvailableSlotsParams) => {
   if (isMockEnabled()) {
     return clone(mockData.listAvailableSlots(date, tier));
@@ -167,7 +170,11 @@ export const listAvailableSlots = async ({
     "/appointments/availability",
     {
       ...config,
-      params: tier ? { date, tier } : { date },
+      params: {
+        date,
+        ...(tier ? { tier } : {}),
+        ...(durationMinutes ? { durationMinutes } : {}),
+      },
     },
   );
   return data;
