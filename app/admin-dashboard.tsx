@@ -22,7 +22,7 @@ import {
   Padding,
   StyleVariable,
 } from "../GlobalStyles";
-import { listAppointments } from "../services/appointments";
+import { countActiveAppointments } from "../services/appointments";
 import { getAdminDashboardMetrics } from "../services/dashboard";
 import { getCurrentUser, listUsers } from "../services/users";
 import type {
@@ -82,15 +82,7 @@ const AdminDashboardScreen = () => {
 
       let scheduledTotal = dashboardData?.upcomingAppointments ?? 0;
       try {
-        const scheduledPage = await listAppointments({
-          status: "SCHEDULED",
-          page: 0,
-          size: 1,
-        });
-        scheduledTotal =
-          typeof scheduledPage?.totalElements === "number"
-            ? scheduledPage.totalElements
-            : (scheduledPage?.content?.length ?? scheduledTotal);
+        scheduledTotal = await countActiveAppointments();
       } catch (appointmentsError) {
         console.error(
           "Failed to load admin appointments list",

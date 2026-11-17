@@ -28,6 +28,7 @@ import {
   Padding,
   StyleVariable,
 } from "../../GlobalStyles";
+import { getStatusMeta, isActiveStatus } from "../../constants/appointmentStatus";
 import { BOOKING_ENABLED } from "../../constants/features";
 import { listMyAppointments } from "../../services/appointments";
 import { logout as logoutService } from "../../services/auth";
@@ -92,23 +93,6 @@ const quickActions: QuickAction[] = [
   },
 ];
 
-const getStatusMeta = (status?: string) => {
-  switch (status) {
-    case "SCHEDULED":
-      return { label: "Agendado", background: "#1B9984", text: "#FFFFFF" };
-    case "COMPLETED":
-      return { label: "concluído", background: "#4CAF50", text: "#FFFFFF" };
-    case "CANCELED":
-      return { label: "Cancelado", background: "#D7263D", text: "#FFFFFF" };
-    default:
-      return {
-        label: status ? status : "Desconhecido",
-        background: Color.mainBeerus,
-        text: Color.mainBulma,
-      };
-  }
-};
-
 const formatAppointmentDate = (input: string) => {
   const date = new Date(input);
   if (Number.isNaN(date.getTime())) {
@@ -130,7 +114,7 @@ const findNextAppointment = (items: AppointmentResponse[]) => {
   const now = Date.now();
   return items
     .filter((appointment) => {
-      if (appointment.status !== "SCHEDULED") {
+      if (!isActiveStatus(appointment.status)) {
         return false;
       }
       const scheduledAt = new Date(appointment.scheduledAt).getTime();

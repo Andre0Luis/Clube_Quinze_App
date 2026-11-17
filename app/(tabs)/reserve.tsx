@@ -22,28 +22,12 @@ import {
     Padding,
     StyleVariable,
 } from "../../GlobalStyles";
+import { getStatusMeta, isActiveStatus } from "../../constants/appointmentStatus";
 import { BOOKING_ENABLED } from "../../constants/features";
 import { listMyAppointments } from "../../services/appointments";
 import type { AppointmentResponse, AppointmentTier } from "../../types/api";
 
 type AppointmentTab = "upcoming" | "history";
-
-const getStatusMeta = (status?: AppointmentResponse["status"]) => {
-  switch (status) {
-    case "SCHEDULED":
-      return { label: "Agendado", background: "#1B9984", text: "#FFFFFF" };
-    case "COMPLETED":
-      return { label: "concluído", background: "#4CAF50", text: "#FFFFFF" };
-    case "CANCELED":
-      return { label: "Cancelado", background: "#D7263D", text: "#FFFFFF" };
-    default:
-      return {
-        label: status ?? "Status",
-        background: Color.mainBeerus,
-        text: Color.mainBulma,
-      };
-  }
-};
 
 const capitalize = (value: string) =>
   `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
@@ -144,7 +128,7 @@ export default function ReserveScreen() {
     const now = Date.now();
     return appointments
       .filter((appointment) => {
-        if (appointment.status !== "SCHEDULED") {
+        if (!isActiveStatus(appointment.status)) {
           return false;
         }
         const scheduledTime = new Date(appointment.scheduledAt).getTime();
@@ -167,7 +151,7 @@ export default function ReserveScreen() {
         const isPast = !Number.isNaN(scheduledTime)
           ? scheduledTime < now
           : false;
-        return appointment.status !== "SCHEDULED" || isPast;
+        return !isActiveStatus(appointment.status) || isPast;
       })
       .sort(
         (a, b) =>

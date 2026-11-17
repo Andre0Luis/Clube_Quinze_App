@@ -37,6 +37,10 @@ jobs:
       - name: Catraca de qualidade (tsc + eslint)
         run: node scripts/ci/ratchet.js
 
+      # Testes de lógica pura (node:test, sem emulador): rota da notificação, status dos agendamentos etc.
+      - name: Testes
+        run: npm test
+
   config:
     name: Configuração do Expo
     runs-on: ubuntu-latest

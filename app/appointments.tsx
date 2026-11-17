@@ -21,6 +21,7 @@ import {
     Padding,
     StyleVariable,
 } from "../GlobalStyles";
+import { getStatusMeta, isActiveStatus } from "../constants/appointmentStatus";
 import { BOOKING_ENABLED } from "../constants/features";
 import { listMyAppointments } from "../services/appointments";
 import { getCurrentUser } from "../services/users";
@@ -50,21 +51,7 @@ const formatAppointmentDate = (input: string) => {
   return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} • ${day} de ${month} • ${time}`;
 };
 
-const statusStyles: Record<
-  string,
-  { label: string; background: string; text: string }
-> = {
-  SCHEDULED: { label: "Agendado", background: "#1B9984", text: "#FFFFFF" },
-  COMPLETED: { label: "concluído", background: "#4CAF50", text: "#FFFFFF" },
-  CANCELED: { label: "Cancelado", background: "#D7263D", text: "#FFFFFF" },
-};
-
-const getStatusStyle = (status?: string) =>
-  statusStyles[status ?? ""] ?? {
-    label: status ? status : "Desconhecido",
-    background: Color.mainBeerus,
-    text: Color.mainBulma,
-  };
+const getStatusStyle = (status?: string) => getStatusMeta(status);
 
 const isWithinNext30Days = (appointment: AppointmentResponse) => {
   const now = new Date();
@@ -77,14 +64,14 @@ const isWithinNext30Days = (appointment: AppointmentResponse) => {
   }
 
   return (
-    appointment.status === "SCHEDULED" &&
+    isActiveStatus(appointment.status) &&
     scheduled.getTime() >= now.getTime() &&
     scheduled.getTime() <= limit.getTime()
   );
 };
 
 const isHistoryEntry = (appointment: AppointmentResponse) => {
-  if (appointment.status !== "SCHEDULED") {
+  if (!isActiveStatus(appointment.status)) {
     return true;
   }
   const now = new Date();

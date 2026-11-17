@@ -203,14 +203,18 @@ export default function ScheduleReviewScreen() {
       const adminDuration = duration ? Number(duration) : undefined;
       
       if (appointmentId) {
-        await rescheduleAppointment(Number(appointmentId), {
+        const result = await rescheduleAppointment(Number(appointmentId), {
           newDate: firstSlot,
           notes: trimmedNotes ? trimmedNotes : undefined,
           durationMinutes: adminDuration,
         });
+        // Cliente: vira um PEDIDO que o admin precisa aprovar. Admin: a remarcação é direta.
+        const isRequest = result.status === "RESCHEDULE_REQUESTED";
         Alert.alert(
-          "Agendamento atualizado",
-          "Seu atendimento foi remarcado com sucesso.",
+          isRequest ? "Pedido enviado" : "Agendamento atualizado",
+          isRequest
+            ? "Pedimos a remarcação ao clube. Você será avisado quando for aprovada; enquanto isso seu horário atual continua reservado."
+            : "Seu atendimento foi remarcado com sucesso.",
           [
             {
               text: "OK",
