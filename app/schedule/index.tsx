@@ -451,7 +451,8 @@ export default function ScheduleScreen() {
   // Cliente não pode mais agendar/escolher horário (apenas visualiza seus agendamentos).
   // Defesa contra acesso direto/back: bloqueia a tela para não-admins quando o booking está
   // desabilitado. O fluxo do admin (agendar para um membro) continua funcionando normalmente.
-  if (!BOOKING_ENABLED && !isAdmin && !isPrefetching) {
+  // Pedido de remarcação (appointmentId presente) é permitido: o admin ainda precisa aprovar.
+  if (!BOOKING_ENABLED && !isAdmin && !appointmentId && !isPrefetching) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>

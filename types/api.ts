@@ -3,7 +3,12 @@ export type MembershipTier =
   | "QUINZE_PREMIUM"
   | "QUINZE_SELECT";
 
-export type AppointmentStatus = "SCHEDULED" | "COMPLETED" | "CANCELED";
+export type AppointmentStatus =
+  | "SCHEDULED"
+  | "CONFIRMED"
+  | "RESCHEDULE_REQUESTED"
+  | "COMPLETED"
+  | "CANCELED";
 
 export type AppointmentTier =
   | "QUINZE_STANDARD"
@@ -122,6 +127,60 @@ export interface AppointmentResponse {
   durationMinutes?: number;
   recurrenceGroupId?: string;
   recurrencePeriod?: string;
+  /** Quando foi confirmado (cliente ou admin). */
+  confirmedAt?: string | null;
+  /** Novo horário proposto pelo cliente (status RESCHEDULE_REQUESTED). */
+  proposedAt?: string | null;
+}
+
+/** Aprovação de uma proposta de remarcação (admin). Ambos opcionais. */
+export interface AppointmentRescheduleApprovalRequest {
+  /** Aprova em outro horário (útil quando há conflito no proposto). */
+  newDate?: string;
+  /** Duração do atendimento (múltiplo de 15, 15–480). */
+  durationMinutes?: number;
+}
+
+/** Links para salvar o agendamento na agenda do cliente. */
+export interface CalendarLinksResponse {
+  googleCalendarUrl: string;
+  icsUrl: string;
+}
+
+export type GoogleIntegrationState =
+  | "NOT_CONFIGURED"
+  | "DISCONNECTED"
+  | "NEEDS_CALENDAR"
+  | "READY"
+  | "REVOKED";
+
+export interface GoogleIntegrationStatus {
+  configured: boolean;
+  status: GoogleIntegrationState;
+  googleEmail?: string | null;
+  calendarId?: string | null;
+  calendarSummary?: string | null;
+}
+
+export interface GoogleCalendarOption {
+  id: string;
+  summary: string;
+  primary: boolean;
+}
+
+export interface ChooseCalendarRequest {
+  mode: "CREATE" | "EXISTING";
+  calendarId?: string;
+  name?: string;
+}
+
+/** Parâmetros do fluxo de confirmação (todos os prazos em minutos ANTES do atendimento). */
+export interface AppointmentConfirmationSettings {
+  enabled: boolean;
+  confirmationRequestOffset: number;
+  adminAlertOffset: number;
+  clientReminderOffsets: number[];
+  skipRemindersWhenConfirmed: number[];
 }
 
 export interface AvailableSlotResponse {

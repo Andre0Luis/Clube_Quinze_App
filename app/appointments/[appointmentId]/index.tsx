@@ -20,26 +20,21 @@ import {
     Padding,
     StyleVariable,
 } from "../../../GlobalStyles";
+import AddToCalendar from "../../../components/AddToCalendar";
+import { getStatusMeta, isActiveStatus } from "../../../constants/appointmentStatus";
 import {
+    cancelAppointment,
+    confirmAppointment,
     getAppointmentById,
     listAppointments,
     listMyAppointments,
-    updateAppointmentStatus,
 } from "../../../services/appointments";
-import { BOOKING_ENABLED } from "../../../constants/features";
 import type { AppointmentResponse } from "../../../types/api";
 
-const statusStyles: Record<string, { label: string; color: string }> = {
-  SCHEDULED: { label: "Agendado", color: "#1B9984" },
-  COMPLETED: { label: "Concluído", color: "#4CAF50" },
-  CANCELED: { label: "Cancelado", color: "#D7263D" },
+const getStatusLabel = (status?: string) => {
+  const meta = getStatusMeta(status);
+  return { label: meta.label, color: meta.background };
 };
-
-const getStatusLabel = (status?: string) =>
-  statusStyles[status ?? ""] ?? {
-    label: status ? status : "Desconhecido",
-    color: Color.mainTrunks,
-  };
 
 const formatDate = (input?: string) => {
   if (!input) {
@@ -101,14 +96,19 @@ const DetailRow = ({
 
 export default function AppointmentDetailsScreen() {
   const router = useRouter();
-  const { appointmentId, allowAdmin } = useLocalSearchParams<{
+  const { appointmentId, allowAdmin, action } = useLocalSearchParams<{
     appointmentId?: string;
     allowAdmin?: string | string[];
+    action?: string | string[];
   }>();
+  // action=confirm vem do push "Confirme seu agendamento": destaca o pedido de confirmação.
+  const highlightConfirm = (Array.isArray(action) ? action[0] : action) === "confirm";
   const allowAdminFlag = Array.isArray(allowAdmin) ? allowAdmin[0] : allowAdmin;
   const isAdminContext = allowAdminFlag === "1";
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [appointment, setAppointment] = useState<AppointmentResponse | null>(
     null,
@@ -175,10 +175,14 @@ export default function AppointmentDetailsScreen() {
     [appointment?.status],
   );
 
-  // Reagendar é um novo booking — desabilitado junto com BOOKING_ENABLED.
-  // Cancelar continua disponível independentemente.
-  const canCancel = appointment?.status === "SCHEDULED";
-  const canReschedule = canCancel && BOOKING_ENABLED;
+  // Cliente: confirma, pede remarcação (o admin aprova) e cancela. A remarcação é só um PEDIDO, por isso vale mesmo
+  // com BOOKING_ENABLED desligado (esse flag trava apenas agendar do zero).
+  const isActive = isActiveStatus(appointment?.status);
+  const canConfirm = appointment?.status === "SCHEDULED";
+  const canReschedule =
+    appointment?.status === "SCHEDULED" || appointment?.status === "CONFIRMED";
+  const canCancel = isActive;
+  const hasPendingProposal = appointment?.status === "RESCHEDULE_REQUESTED";
   const canEvaluate = appointment?.status === "COMPLETED";
 
   const handleNavigateToFeedback = () => {
@@ -217,7 +221,8 @@ export default function AppointmentDetailsScreen() {
     try {
       setIsCancelling(true);
       setCancelError(null);
-      await updateAppointmentStatus(appointment.id, { status: "CANCELED" });
+      // DELETE: o cliente pode cancelar o próprio agendamento (o PATCH /status é só do admin e dava 403).
+      await cancelAppointment(appointment.id);
       setAppointment((prev) => (prev ? { ...prev, status: "CANCELED" } : prev));
       setConfirmCancel(false);
       router.back();
@@ -227,6 +232,22 @@ export default function AppointmentDetailsScreen() {
       );
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleConfirmAppointment = async () => {
+    if (!appointment || !canConfirm || isConfirming) {
+      return;
+    }
+    try {
+      setIsConfirming(true);
+      setConfirmError(null);
+      const updated = await confirmAppointment(appointment.id);
+      setAppointment(updated);
+    } catch {
+      setConfirmError("Não foi possível confirmar agora. Tente novamente em instantes.");
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -298,6 +319,30 @@ export default function AppointmentDetailsScreen() {
               color={statusMeta.color}
             />
           </View>
+
+          {highlightConfirm && canConfirm ? (
+            <View style={styles.noticeCard}>
+              <Ionicons name="alert-circle-outline" size={20} color="#E07B00" />
+              <Text style={styles.noticeText}>
+                Confirme seu atendimento: toque em “Confirmar presença”. Se não puder
+                comparecer, peça a remarcação ou cancele.
+              </Text>
+            </View>
+          ) : null}
+
+          {hasPendingProposal ? (
+            <View style={styles.noticeCard}>
+              <Ionicons name="time-outline" size={20} color="#E07B00" />
+              <Text style={styles.noticeText}>
+                {appointment?.proposedAt
+                  ? `Você pediu para remarcar para ${formatDate(appointment.proposedAt)} às ${formatTime(appointment.proposedAt)}. `
+                  : "Você pediu a remarcação. "}
+                Aguarde a resposta do clube; enquanto isso, seu horário atual continua reservado.
+              </Text>
+            </View>
+          ) : null}
+
+          {isActive && appointment ? <AddToCalendar appointmentId={appointment.id} /> : null}
         </ScrollView>
       ) : (
         <View style={styles.loaderWrapper}>
@@ -315,15 +360,35 @@ export default function AppointmentDetailsScreen() {
       )}
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 16, 24) }]}>
-        {canReschedule ? (
+        {canConfirm || canReschedule || canCancel ? (
           <View style={styles.actionStack}>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={handleNavigateToReschedule}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.primaryButtonText}>Remarcar</Text>
-            </TouchableOpacity>
+            {canConfirm ? (
+              <TouchableOpacity
+                style={[styles.primaryButton, isConfirming ? styles.primaryButtonDisabled : null]}
+                onPress={handleConfirmAppointment}
+                activeOpacity={0.9}
+                disabled={isConfirming}
+              >
+                {isConfirming ? (
+                  <ActivityIndicator size="small" color={Color.mainGoten} />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Confirmar presença</Text>
+                )}
+              </TouchableOpacity>
+            ) : null}
+            {confirmError ? <Text style={styles.errorText}>{confirmError}</Text> : null}
+
+            {canReschedule ? (
+              <TouchableOpacity
+                style={canConfirm ? styles.secondaryButton : styles.primaryButton}
+                onPress={handleNavigateToReschedule}
+                activeOpacity={0.9}
+              >
+                <Text style={canConfirm ? styles.secondaryButtonText : styles.primaryButtonText}>
+                  Pedir remarcação
+                </Text>
+              </TouchableOpacity>
+            ) : null}
 
             <TouchableOpacity
               style={[
@@ -383,6 +448,24 @@ export default function AppointmentDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
+  noticeCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F5D7A8",
+    backgroundColor: "#FFF6E8",
+    marginTop: 12,
+  },
+  noticeText: {
+    flex: 1,
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_24,
+    color: "#7A4A00",
+    fontFamily: FontFamily.dMSansRegular,
+  },
   container: {
     flex: 1,
     backgroundColor: Color.mainGohan,

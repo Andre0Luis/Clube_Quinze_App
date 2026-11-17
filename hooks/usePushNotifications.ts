@@ -5,6 +5,7 @@ import * as SecureStore from "expo-secure-store";
 import { useEffect } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
 import { registerPushToken } from "../services/notifications";
+import { routeForNotification } from "../utils/notificationRoute";
 import { getAccessToken } from "../services/storage";
 
 // Background handler — deve estar fora de qualquer componente.
@@ -35,14 +36,14 @@ export function usePushNotifications() {
     });
 
     const unsubOpen = fcm.onNotificationOpenedApp((remoteMessage) => {
-      const id = remoteMessage.data?.appointmentId;
-      if (id) router.push(`/appointments/${id}`);
+      const route = routeForNotification(remoteMessage.data);
+      if (route) router.push(route as never);
     });
 
     fcm.getInitialNotification().then((remoteMessage) => {
       if (!remoteMessage) return;
-      const id = remoteMessage.data?.appointmentId;
-      if (id) router.push(`/appointments/${id}`);
+      const route = routeForNotification(remoteMessage.data);
+      if (route) router.push(route as never);
     });
 
     return () => {
