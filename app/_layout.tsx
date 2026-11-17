@@ -6,6 +6,7 @@ import "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import "react-native-reanimated";
+import EnvironmentBanner from "../components/EnvironmentBanner";
 import ErrorBoundary from "../components/ErrorBoundary";
 import MenuDeNavegao from "../components/MenuDeNavegao";
 import { getCurrentUser } from "../services/users";
@@ -169,6 +170,7 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <View style={styles.container}>
+        <EnvironmentBanner />
         <Stack
           screenOptions={{
             headerShown: false,

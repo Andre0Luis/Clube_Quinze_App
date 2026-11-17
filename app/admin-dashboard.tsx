@@ -23,6 +23,7 @@ import {
   StyleVariable,
 } from "../GlobalStyles";
 import { countActiveAppointments } from "../services/appointments";
+import { GOOGLE_CALENDAR_ENABLED } from "../constants/features";
 import { getAdminDashboardMetrics } from "../services/dashboard";
 import { getCurrentUser, listUsers } from "../services/users";
 import type {
@@ -277,12 +278,21 @@ const AdminDashboardScreen = () => {
             >
               <Ionicons name="git-compare-outline" size={20} color={Color.hit} />
             </TouchableOpacity>
+            {GOOGLE_CALENDAR_ENABLED ? (
+              <TouchableOpacity
+                onPress={() => router.push("/admin-google-calendar")}
+                activeOpacity={0.7}
+                accessibilityLabel="Conectar o Google Agenda"
+              >
+                <Ionicons name="calendar-outline" size={20} color={Color.hit} />
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
-              onPress={() => router.push("/admin-google-calendar")}
+              onPress={() => router.push("/admin-environment")}
               activeOpacity={0.7}
-              accessibilityLabel="Conectar o Google Agenda"
+              accessibilityLabel="Trocar o ambiente (produção ou homologação)"
             >
-              <Ionicons name="calendar-outline" size={20} color={Color.hit} />
+              <Ionicons name="swap-horizontal-outline" size={20} color={Color.hit} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push("/admin-notification-settings")}
