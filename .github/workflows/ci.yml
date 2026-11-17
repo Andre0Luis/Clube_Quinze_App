@@ -1,0 +1,59 @@
+name: CI
+
+# Gitflow: feature/* -> develop -> release/x.y.z -> main (+ tag vX.Y.Z); hotfix/* parte da main.
+on:
+  pull_request:
+    branches: [develop, main, "release/**", "hotfix/**"]
+  push:
+    branches: [develop, "release/**", "hotfix/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Tipos e lint (catraca)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+
+      # O projeto tem erros antigos: o CI só barra o que PIOROU em relação a .ci/baseline.json.
+      - name: Catraca de qualidade (tsc + eslint)
+        run: node scripts/ci/ratchet.js
+
+  config:
+    name: Configuração do Expo
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Por enquanto só informa; não bloqueia o merge.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: expo-doctor
+        run: npx --yes expo-doctor@latest
