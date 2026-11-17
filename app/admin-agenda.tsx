@@ -24,6 +24,7 @@ import {
     Padding,
     StyleVariable,
 } from "../GlobalStyles";
+import { getStatusMeta, isActiveStatus } from "../constants/appointmentStatus";
 import api from "../services/api";
 import { cancelAppointment, listAppointments } from "../services/appointments";
 import { getCurrentUser, getUserById } from "../services/users";
@@ -63,7 +64,7 @@ const sameDay = (a: Date, b: Date) =>
 const findNext = (items: AppointmentResponse[]) => {
   const now = Date.now();
   return items
-    .filter((item) => item.status === "SCHEDULED")
+    .filter((item) => isActiveStatus(item.status))
     .filter((item) => {
       const time = new Date(item.scheduledAt).getTime();
       return Number.isNaN(time) ? false : time >= now;
@@ -261,7 +262,7 @@ const AdminAgendaScreen = () => {
 
   const appointmentsForDay = useMemo(() => {
     return appointments
-      .filter((item) => item.status === "SCHEDULED")
+      .filter((item) => isActiveStatus(item.status))
       .filter((item) => {
         const when = new Date(item.scheduledAt);
         return Number.isNaN(when.getTime())
@@ -379,8 +380,14 @@ const AdminAgendaScreen = () => {
           : `data:image/jpeg;base64,${info.gallery[0].imageBase64}`
         : null);
     const initials = getInitials(info?.name ?? clientNames[item.clientId]);
+    const statusMeta = getStatusMeta(item.status);
     return (
-      <View style={styles.slotCard}>
+      <View
+        style={[
+          styles.slotCard,
+          { borderLeftWidth: 4, borderLeftColor: statusMeta.background },
+        ]}
+      >
         <View style={styles.slotHeader}>
           <View style={styles.avatar}>
             {avatarUri ? (
@@ -411,6 +418,19 @@ const AdminAgendaScreen = () => {
         <View style={styles.slotDivider} />
         <View style={styles.slotFooter}>
           <Text style={styles.slotTime}>{time}</Text>
+          <View
+            style={{
+              backgroundColor: statusMeta.background,
+              borderRadius: 999,
+              paddingHorizontal: 10,
+              paddingVertical: 3,
+              marginLeft: 8,
+            }}
+          >
+            <Text style={{ color: statusMeta.text, fontSize: 12, fontWeight: "600" }}>
+              {statusMeta.label}
+            </Text>
+          </View>
           <Text style={styles.slotService}>
             {item.serviceType ?? "Atendimento"}
           </Text>

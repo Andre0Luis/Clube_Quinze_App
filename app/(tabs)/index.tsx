@@ -28,6 +28,8 @@ import {
   Padding,
   StyleVariable,
 } from "../../GlobalStyles";
+import { getStatusMeta, isActiveStatus } from "../../constants/appointmentStatus";
+import { BOOKING_ENABLED } from "../../constants/features";
 import { listMyAppointments } from "../../services/appointments";
 import { logout as logoutService } from "../../services/auth";
 import { getAdminDashboardMetrics } from "../../services/dashboard";
@@ -91,23 +93,6 @@ const quickActions: QuickAction[] = [
   },
 ];
 
-const getStatusMeta = (status?: string) => {
-  switch (status) {
-    case "SCHEDULED":
-      return { label: "Agendado", background: "#1B9984", text: "#FFFFFF" };
-    case "COMPLETED":
-      return { label: "concluído", background: "#4CAF50", text: "#FFFFFF" };
-    case "CANCELED":
-      return { label: "Cancelado", background: "#D7263D", text: "#FFFFFF" };
-    default:
-      return {
-        label: status ? status : "Desconhecido",
-        background: Color.mainBeerus,
-        text: Color.mainBulma,
-      };
-  }
-};
-
 const formatAppointmentDate = (input: string) => {
   const date = new Date(input);
   if (Number.isNaN(date.getTime())) {
@@ -129,7 +114,7 @@ const findNextAppointment = (items: AppointmentResponse[]) => {
   const now = Date.now();
   return items
     .filter((appointment) => {
-      if (appointment.status !== "SCHEDULED") {
+      if (!isActiveStatus(appointment.status)) {
         return false;
       }
       const scheduledAt = new Date(appointment.scheduledAt).getTime();
@@ -776,7 +761,7 @@ export default function HomeScreen() {
                     }
                     if (nextAppointment) {
                       pushAppointmentDetails(nextAppointment.id);
-                    } else {
+                    } else if (BOOKING_ENABLED) {
                       handleNavigate("/schedule");
                     }
                   }}
@@ -843,14 +828,16 @@ export default function HomeScreen() {
                         <View style={styles.cardBody}>
                           <Text style={styles.cardTitle}>Sem agendamentos</Text>
                         </View>
-                        <View style={styles.cardFooter}>
-                          <Text style={styles.cardLink}>Agendar horario</Text>
-                          <Ionicons
-                            name="arrow-forward"
-                            size={16}
-                            color={Color.piccolo}
-                          />
-                        </View>
+                        {BOOKING_ENABLED ? (
+                          <View style={styles.cardFooter}>
+                            <Text style={styles.cardLink}>Agendar horario</Text>
+                            <Ionicons
+                              name="arrow-forward"
+                              size={16}
+                              color={Color.piccolo}
+                            />
+                          </View>
+                        ) : null}
                       </>
                     )}
                   </View>

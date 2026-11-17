@@ -21,6 +21,8 @@ import {
     Padding,
     StyleVariable,
 } from "../GlobalStyles";
+import { getStatusMeta, isActiveStatus } from "../constants/appointmentStatus";
+import { BOOKING_ENABLED } from "../constants/features";
 import { listMyAppointments } from "../services/appointments";
 import { getCurrentUser } from "../services/users";
 import type { AppointmentResponse } from "../types/api";
@@ -49,21 +51,7 @@ const formatAppointmentDate = (input: string) => {
   return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} • ${day} de ${month} • ${time}`;
 };
 
-const statusStyles: Record<
-  string,
-  { label: string; background: string; text: string }
-> = {
-  SCHEDULED: { label: "Agendado", background: "#1B9984", text: "#FFFFFF" },
-  COMPLETED: { label: "concluído", background: "#4CAF50", text: "#FFFFFF" },
-  CANCELED: { label: "Cancelado", background: "#D7263D", text: "#FFFFFF" },
-};
-
-const getStatusStyle = (status?: string) =>
-  statusStyles[status ?? ""] ?? {
-    label: status ? status : "Desconhecido",
-    background: Color.mainBeerus,
-    text: Color.mainBulma,
-  };
+const getStatusStyle = (status?: string) => getStatusMeta(status);
 
 const isWithinNext30Days = (appointment: AppointmentResponse) => {
   const now = new Date();
@@ -76,14 +64,14 @@ const isWithinNext30Days = (appointment: AppointmentResponse) => {
   }
 
   return (
-    appointment.status === "SCHEDULED" &&
+    isActiveStatus(appointment.status) &&
     scheduled.getTime() >= now.getTime() &&
     scheduled.getTime() <= limit.getTime()
   );
 };
 
 const isHistoryEntry = (appointment: AppointmentResponse) => {
-  if (appointment.status !== "SCHEDULED") {
+  if (!isActiveStatus(appointment.status)) {
     return true;
   }
   const now = new Date();
@@ -301,11 +289,13 @@ export default function AppointmentsScreen() {
             </Text>
             <Text style={styles.emptyDescription}>
               {activeTab === "upcoming"
-                ? "Agende seu próximo atendimento agora!"
+                ? BOOKING_ENABLED
+                  ? "Agende seu próximo atendimento agora!"
+                  : "Você ainda não possui agendamentos."
                 : "Assim que concluir seus atendimentos, eles aparecem aqui."}
             </Text>
 
-            {activeTab === "upcoming" ? (
+            {activeTab === "upcoming" && BOOKING_ENABLED ? (
               <TouchableOpacity
                 style={styles.emptyActionButton}
                 activeOpacity={0.9}
@@ -369,15 +359,17 @@ export default function AppointmentsScreen() {
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.scheduleButton}
-          onPress={() => router.push("/schedule")}
-          activeOpacity={0.9}
-        >
-          <Text style={styles.scheduleButtonText}>Agendar</Text>
-        </TouchableOpacity>
-      </View>
+      {BOOKING_ENABLED ? (
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.scheduleButton}
+            onPress={() => router.push("/schedule")}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.scheduleButtonText}>Agendar</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }

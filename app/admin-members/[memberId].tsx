@@ -26,7 +26,7 @@ import {
 import api from "../../services/api";
 import {
     cancelAppointment,
-    listAppointments,
+    listActiveAppointments,
 } from "../../services/appointments";
 import { compressImageForUpload } from "../../services/image";
 import { findMemberById } from "../../services/mock/admin-members";
@@ -224,14 +224,13 @@ export default function AdminMemberDetailScreen() {
       setAppointmentsLoading(true);
       setAppointmentsError(null);
       try {
-        const page = await listAppointments({
+        // Agendado + confirmado + remarcação em análise (o backend filtra por um status de cada vez).
+        const active = await listActiveAppointments({
           clientId: member.id,
-          status: "SCHEDULED",
-          page: 0,
           size: 10,
         });
         const now = Date.now();
-        const upcoming = (page.content ?? [])
+        const upcoming = active
           .filter((appointment) => {
             const time = new Date(appointment.scheduledAt).getTime();
             return !Number.isNaN(time) && time >= now;

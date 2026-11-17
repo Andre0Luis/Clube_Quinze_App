@@ -22,7 +22,8 @@ import {
   Padding,
   StyleVariable,
 } from "../GlobalStyles";
-import { listAppointments } from "../services/appointments";
+import { countActiveAppointments } from "../services/appointments";
+import { GOOGLE_CALENDAR_ENABLED } from "../constants/features";
 import { getAdminDashboardMetrics } from "../services/dashboard";
 import { getCurrentUser, listUsers } from "../services/users";
 import type {
@@ -82,15 +83,7 @@ const AdminDashboardScreen = () => {
 
       let scheduledTotal = dashboardData?.upcomingAppointments ?? 0;
       try {
-        const scheduledPage = await listAppointments({
-          status: "SCHEDULED",
-          page: 0,
-          size: 1,
-        });
-        scheduledTotal =
-          typeof scheduledPage?.totalElements === "number"
-            ? scheduledPage.totalElements
-            : (scheduledPage?.content?.length ?? scheduledTotal);
+        scheduledTotal = await countActiveAppointments();
       } catch (appointmentsError) {
         console.error(
           "Failed to load admin appointments list",
@@ -277,13 +270,38 @@ const AdminDashboardScreen = () => {
               <Text style={styles.brandName}>Clube Quinze</Text>
             </View>
           </View>
-          <TouchableOpacity
-            onPress={() => router.push("/admin-notification-settings")}
-            activeOpacity={0.7}
-            accessibilityLabel="Configurar lembretes de atendimento"
-          >
-            <Ionicons name="notifications-outline" size={20} color={Color.hit} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+            <TouchableOpacity
+              onPress={() => router.push("/admin-requests")}
+              activeOpacity={0.7}
+              accessibilityLabel="Solicitações: remarcações e confirmações pendentes"
+            >
+              <Ionicons name="git-compare-outline" size={20} color={Color.hit} />
+            </TouchableOpacity>
+            {GOOGLE_CALENDAR_ENABLED ? (
+              <TouchableOpacity
+                onPress={() => router.push("/admin-google-calendar")}
+                activeOpacity={0.7}
+                accessibilityLabel="Conectar o Google Agenda"
+              >
+                <Ionicons name="calendar-outline" size={20} color={Color.hit} />
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              onPress={() => router.push("/admin-environment")}
+              activeOpacity={0.7}
+              accessibilityLabel="Trocar o ambiente (produção ou homologação)"
+            >
+              <Ionicons name="swap-horizontal-outline" size={20} color={Color.hit} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/admin-notification-settings")}
+              activeOpacity={0.7}
+              accessibilityLabel="Configurar lembretes de atendimento"
+            >
+              <Ionicons name="notifications-outline" size={20} color={Color.hit} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={styles.greeting}>Ola, {greetingName} 👋</Text>
