@@ -71,13 +71,10 @@
     "ios": "expo run:ios",
     "start": "expo start",
     "web": "expo start --web",
-<<<<<<< HEAD
-    "test": "node --test \"tests/**/*.test.ts\""
-=======
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "ratchet": "node scripts/ci/ratchet.js"
->>>>>>> origin/develop
+    "ratchet": "node scripts/ci/ratchet.js",
+    "test": "node --test \"tests/**/*.test.ts\""
   },
   "version": "1.18.1"
 }
