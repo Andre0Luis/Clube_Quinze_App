@@ -269,13 +269,29 @@ const AdminDashboardScreen = () => {
               <Text style={styles.brandName}>Clube Quinze</Text>
             </View>
           </View>
-          <TouchableOpacity
-            onPress={() => router.push("/admin-notification-settings")}
-            activeOpacity={0.7}
-            accessibilityLabel="Configurar lembretes de atendimento"
-          >
-            <Ionicons name="notifications-outline" size={20} color={Color.hit} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+            <TouchableOpacity
+              onPress={() => router.push("/admin-requests")}
+              activeOpacity={0.7}
+              accessibilityLabel="Solicitações: remarcações e confirmações pendentes"
+            >
+              <Ionicons name="git-compare-outline" size={20} color={Color.hit} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/admin-google-calendar")}
+              activeOpacity={0.7}
+              accessibilityLabel="Conectar o Google Agenda"
+            >
+              <Ionicons name="calendar-outline" size={20} color={Color.hit} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/admin-notification-settings")}
+              activeOpacity={0.7}
+              accessibilityLabel="Configurar lembretes de atendimento"
+            >
+              <Ionicons name="notifications-outline" size={20} color={Color.hit} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={styles.greeting}>Ola, {greetingName} 👋</Text>
