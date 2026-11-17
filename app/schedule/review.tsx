@@ -42,7 +42,11 @@ const formatDateDisplay = (iso?: string) => {
   });
 };
 
-const formatTimeDisplay = (slotsJson?: string, tier?: string) => {
+const formatTimeDisplay = (
+  slotsJson?: string,
+  tier?: string,
+  durationMinutes?: number,
+) => {
   if (!slotsJson) {
     return "";
   }
@@ -58,8 +62,9 @@ const formatTimeDisplay = (slotsJson?: string, tier?: string) => {
       minute: "2-digit",
     });
 
-    const slotDuration = tier === "QUINZE_SELECT" ? 120 : 30;
-    
+    const slotDuration =
+      durationMinutes ?? (tier === "QUINZE_SELECT" ? 120 : 30);
+
     if (slots.length === 1) {
       const end = new Date(first.getTime() + slotDuration * 60000);
       const endStr = end.toLocaleTimeString("pt-BR", {
@@ -88,6 +93,7 @@ export default function ScheduleReviewScreen() {
   const {
     date,
     slots,
+    duration,
     notes,
     appointmentId,
     clientId,
@@ -98,6 +104,7 @@ export default function ScheduleReviewScreen() {
   } = useLocalSearchParams<{
     date?: string;
     slots?: string;
+    duration?: string;
     notes?: string;
     appointmentId?: string;
     clientId?: string | string[];
@@ -193,11 +200,13 @@ export default function ScheduleReviewScreen() {
       
       const parsedSlots = slots ? JSON.parse(slots) as string[] : [];
       const firstSlot = parsedSlots[0];
+      const adminDuration = duration ? Number(duration) : undefined;
       
       if (appointmentId) {
         await rescheduleAppointment(Number(appointmentId), {
           newDate: firstSlot,
           notes: trimmedNotes ? trimmedNotes : undefined,
+          durationMinutes: adminDuration,
         });
         Alert.alert(
           "Agendamento atualizado",
@@ -226,7 +235,7 @@ export default function ScheduleReviewScreen() {
         clientId: userContext.clientId,
         appointmentTier: userContext.tier,
         scheduledAt: firstSlot,
-        durationMinutes: parsedSlots.length * slotDuration,
+        durationMinutes: adminDuration ?? parsedSlots.length * slotDuration,
         notes: trimmedNotes ? trimmedNotes : undefined,
         recurring: isRecurring === "true",
         recurrencePeriod: recurrencePeriod,
@@ -251,6 +260,7 @@ export default function ScheduleReviewScreen() {
     appointmentId,
     router,
     slots,
+    duration,
     trimmedNotes,
     userContext,
     isRecurring,
@@ -260,8 +270,13 @@ export default function ScheduleReviewScreen() {
 
   const displayDate = useMemo(() => formatDateDisplay(date), [date]);
   const displayTime = useMemo(
-    () => formatTimeDisplay(slots, userContext?.tier ?? resolvedTier),
-    [slots, userContext?.tier, resolvedTier]
+    () =>
+      formatTimeDisplay(
+        slots,
+        userContext?.tier ?? resolvedTier,
+        duration ? Number(duration) : undefined,
+      ),
+    [slots, userContext?.tier, resolvedTier, duration]
   );
 
   const dataRows = [

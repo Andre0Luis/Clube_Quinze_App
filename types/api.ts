@@ -109,6 +109,8 @@ export interface AppointmentStatusUpdateRequest {
 export interface AppointmentRescheduleRequest {
   newDate: string;
   notes?: string;
+  /** Só admin/funcionário: altera a duração (múltiplo de 15, 15–480). */
+  durationMinutes?: number;
 }
 
 export interface AppointmentResponse {
