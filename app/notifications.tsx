@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Color, FontFamily, FontSize, Padding } from "../GlobalStyles";
+import { routeForNotification } from "../utils/notificationRoute";
 import {
   enablePushNotifications,
   getPushPermissionStatus,
@@ -78,18 +79,29 @@ export default function NotificationsListScreen() {
     }, [load]),
   );
 
-  const handleOpen = useCallback(async (item: NotificationResponse) => {
-    if (item.read) return;
-    // Atualização otimista + persistência
-    setItems((prev) =>
-      prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)),
-    );
-    try {
-      await markNotificationRead(item.id);
-    } catch (error) {
-      console.error("Failed to mark notification read", error);
-    }
-  }, []);
+  const handleOpen = useCallback(
+    async (item: NotificationResponse) => {
+      // Leva para a tela do agendamento (admin: o do cliente, com aprovar/recusar/cancelar).
+      const route = routeForNotification({
+        appointmentId: item.appointmentId,
+        kind: item.kind,
+      });
+      if (route) {
+        router.push(route);
+      }
+      if (item.read) return;
+      // Atualização otimista + persistência
+      setItems((prev) =>
+        prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)),
+      );
+      try {
+        await markNotificationRead(item.id);
+      } catch (error) {
+        console.error("Failed to mark notification read", error);
+      }
+    },
+    [router],
+  );
 
   const handleMarkAll = useCallback(async () => {
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -167,8 +179,18 @@ export default function NotificationsListScreen() {
                 <Text style={styles.cardMessage}>{item.message}</Text>
               ) : null}
               <Text style={styles.cardWhen}>{formatWhen(item.sentAt)}</Text>
+              {item.appointmentId ? (
+                <Text style={styles.cardAction}>
+                  {String(item.kind ?? "").startsWith("admin_")
+                    ? "Toque para responder"
+                    : "Toque para ver o agendamento"}
+                </Text>
+              ) : null}
             </View>
             {!item.read ? <View style={styles.unreadDot} /> : null}
+            {item.appointmentId ? (
+              <Ionicons name="chevron-forward" size={18} color={Color.mainTrunks} />
+            ) : null}
           </TouchableOpacity>
         )}
         ListEmptyComponent={
@@ -237,6 +259,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: FontSize.fs_15, fontFamily: FontFamily.dMSansBold, color: Color.hit },
   cardMessage: { fontSize: FontSize.fs_14, color: Color.mainTrunks, marginTop: 2, fontFamily: FontFamily.dMSansRegular },
   cardWhen: { fontSize: FontSize.fs_12, color: Color.mainTrunks, marginTop: 6, opacity: 0.8 },
+  cardAction: { fontSize: FontSize.fs_12, color: Color.piccolo, marginTop: 4, fontFamily: FontFamily.dMSansBold },
   unreadDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Color.piccolo },
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16 },
   emptyText: { fontSize: FontSize.fs_16, color: Color.mainTrunks, textAlign: "center", fontFamily: FontFamily.dMSansRegular },

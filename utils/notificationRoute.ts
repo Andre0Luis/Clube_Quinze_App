@@ -1,7 +1,9 @@
 /**
- * Para onde levar o usuário quando ele toca numa notificação. O backend manda `kind` e `appointmentId` em `data`.
+ * Para onde levar o usuário quando ele toca numa notificação. O backend manda `kind` e `appointmentId`
+ * (no push, em `data`; na lista, nos campos da notificação).
  *  - appointment_confirmation  → detalhe do agendamento, destacando "Confirmar presença"
- *  - admin_unconfirmed / admin_reschedule_request → tela de solicitações do admin
+ *  - admin_* (pedido de remarcação, sem confirmação…) → detalhe do agendamento do CLIENTE em modo admin,
+ *    onde estão aprovar / recusar / outro horário / cancelar. Sem id, cai na lista de solicitações.
  *  - demais (lembretes, remarcado, cancelado…) → detalhe do agendamento
  */
 export type PushData = Record<string, unknown> | undefined | null;
@@ -14,7 +16,7 @@ export function routeForNotification(data: PushData): string | null {
   const kind = asString(data?.kind);
 
   if (kind === "admin_unconfirmed" || kind === "admin_reschedule_request") {
-    return id ? `/admin-requests?focus=${id}` : "/admin-requests";
+    return id ? `/appointments/${id}?allowAdmin=1` : "/admin-requests";
   }
   if (!id) {
     return null;

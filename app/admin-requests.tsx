@@ -98,6 +98,8 @@ export default function AdminRequestsScreen() {
   }, [load]);
 
   const clientName = (a: AppointmentResponse) => names[a.clientId] ?? "Cliente";
+  const openDetails = (a: AppointmentResponse) =>
+    router.push(`/appointments/${a.id}?allowAdmin=1`);
   const goReschedule = (a: AppointmentResponse) =>
     router.push({ pathname: "/schedule", params: { appointmentId: String(a.id) } });
 
@@ -195,7 +197,13 @@ export default function AdminRequestsScreen() {
             const busy = busyId === a.id;
             return (
               <View key={a.id} style={[styles.card, focusId === a.id ? styles.cardFocus : null]}>
-                <Text style={styles.cardTitle}>{clientName(a)}</Text>
+                <TouchableOpacity onPress={() => openDetails(a)} style={styles.cardTitleRow} accessibilityRole="button" accessibilityLabel={`Abrir agendamento de ${clientName(a)}`}>
+                  <Text style={styles.cardTitle}>{clientName(a)}</Text>
+                  <View style={styles.detailsLink}>
+                    <Text style={styles.detailsLinkText}>Ver detalhes</Text>
+                    <Ionicons name="chevron-forward" size={14} color={Color.piccolo} />
+                  </View>
+                </TouchableOpacity>
                 <View style={styles.row}>
                   <Text style={styles.label}>Horário atual</Text>
                   <Text style={styles.value}>{formatWhen(a.scheduledAt)}</Text>
@@ -244,7 +252,13 @@ export default function AdminRequestsScreen() {
             const busy = busyId === a.id;
             return (
               <View key={a.id} style={[styles.card, focusId === a.id ? styles.cardFocus : null]}>
-                <Text style={styles.cardTitle}>{clientName(a)}</Text>
+                <TouchableOpacity onPress={() => openDetails(a)} style={styles.cardTitleRow} accessibilityRole="button" accessibilityLabel={`Abrir agendamento de ${clientName(a)}`}>
+                  <Text style={styles.cardTitle}>{clientName(a)}</Text>
+                  <View style={styles.detailsLink}>
+                    <Text style={styles.detailsLinkText}>Ver detalhes</Text>
+                    <Ionicons name="chevron-forward" size={14} color={Color.piccolo} />
+                  </View>
+                </TouchableOpacity>
                 <View style={styles.row}>
                   <Text style={styles.label}>Horário</Text>
                   <Text style={styles.value}>{formatWhen(a.scheduledAt)}</Text>
@@ -283,6 +297,9 @@ const styles = StyleSheet.create({
   sectionTitle: { marginTop: 8, fontSize: FontSize.fs_16, fontFamily: FontFamily.dMSansBold, color: Color.mainBulma },
   card: { gap: 8, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: Color.mainBeerus, backgroundColor: Color.mainGoten },
   cardFocus: { borderColor: "#E07B00", borderWidth: 2 },
+  cardTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  detailsLink: { flexDirection: "row", alignItems: "center", gap: 2 },
+  detailsLinkText: { fontSize: FontSize.fs_12, color: Color.piccolo, fontFamily: FontFamily.dMSansBold },
   cardTitle: { fontSize: FontSize.fs_18, fontFamily: FontFamily.dMSansBold, color: Color.mainBulma },
   row: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
   label: { fontSize: FontSize.fs_14, color: Color.mainTrunks, fontFamily: FontFamily.dMSansRegular },

@@ -30,7 +30,7 @@ import {
 } from "../../GlobalStyles";
 import { getStatusMeta, isActiveStatus } from "../../constants/appointmentStatus";
 import { BOOKING_ENABLED } from "../../constants/features";
-import { listMyAppointments } from "../../services/appointments";
+import { listAppointments, listMyAppointments } from "../../services/appointments";
 import { logout as logoutService } from "../../services/auth";
 import { getAdminDashboardMetrics } from "../../services/dashboard";
 import { isMockEnabled } from "../../services/mock/settings";
@@ -61,7 +61,8 @@ type ActionCard =
   | { kind: "adminMembersSelect"; span: 1 }
   | { kind: "adminAgenda"; span: 1 }
   | { kind: "adminPayments"; span: 1 }
-  | { kind: "register"; span: 2 };
+  | { kind: "adminRequests"; span: 1 }
+  | { kind: "register"; span: 1 };
 
 type MemberCounts = {
   standard: number;
@@ -138,6 +139,7 @@ export default function HomeScreen() {
   const [adminDashboard, setAdminDashboard] =
     useState<AdminDashboardResponse | null>(null);
   const [memberCounts, setMemberCounts] = useState<MemberCounts | null>(null);
+  const [pendingRequests, setPendingRequests] = useState<number | null>(null);
 
   const handleNavigate = useCallback(
     (path: string, params?: Record<string, string>) => {
@@ -350,6 +352,26 @@ export default function HomeScreen() {
     };
   }, [isAdmin]);
 
+  // Admin: quantos pedidos de remarcação aguardam resposta (atualiza ao voltar para a home).
+  useFocusEffect(
+    useCallback(() => {
+      if (isAdmin !== true) {
+        return () => undefined;
+      }
+      let active = true;
+      listAppointments({ status: "RESCHEDULE_REQUESTED", page: 0, size: 1 })
+        .then((page) => {
+          if (active) {
+            setPendingRequests(page?.totalElements ?? page?.content?.length ?? 0);
+          }
+        })
+        .catch(() => active && setPendingRequests(null));
+      return () => {
+        active = false;
+      };
+    }, [isAdmin]),
+  );
+
   useFocusEffect(
     useCallback(() => {
       if (isAdmin !== false) {
@@ -467,7 +489,8 @@ export default function HomeScreen() {
         { kind: "adminMembersSelect", span: 1 },
         { kind: "adminAgenda", span: 1 },
         { kind: "adminPayments", span: 1 },
-        { kind: "register", span: 2 },
+        { kind: "adminRequests", span: 1 },
+        { kind: "register", span: 1 },
         { kind: "community", span: 2 },
       ];
     }
@@ -714,6 +737,57 @@ export default function HomeScreen() {
                 );
               }
 
+              if (item.kind === "adminRequests") {
+                const hasPending = (pendingRequests ?? 0) > 0;
+                return (
+                  <TouchableOpacity
+                    key="admin-requests"
+                    style={cardStyle}
+                    activeOpacity={0.9}
+                    onPress={() => handleNavigate("/admin-requests")}
+                    accessibilityLabel={
+                      hasPending
+                        ? `Solicitações de remarcação, ${pendingRequests} aguardando`
+                        : "Solicitações de remarcação"
+                    }
+                  >
+                    <View style={styles.quickActionCardContent}>
+                      <View style={styles.cardHeader}>
+                        <View style={styles.cardIconWrapper}>
+                          <Ionicons
+                            name="swap-horizontal-outline"
+                            size={18}
+                            color={Color.piccolo}
+                          />
+                        </View>
+                        {hasPending ? (
+                          <View style={styles.pendingBadge}>
+                            <Text style={styles.pendingBadgeText}>
+                              {pendingRequests}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <View style={styles.cardBody}>
+                        <Text style={styles.cardTitle}>
+                          Solicitações de remarcação
+                        </Text>
+                      </View>
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.cardLink}>
+                          {hasPending ? "Responder" : "Ver pedidos"}
+                        </Text>
+                        <Ionicons
+                          name="arrow-forward"
+                          size={16}
+                          color={Color.piccolo}
+                        />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+
               if (item.kind === "register") {
                 return (
                   <TouchableOpacity
@@ -738,7 +812,7 @@ export default function HomeScreen() {
                         <Text style={styles.cardTitle}>Cadastrar usuário</Text>
                       </View>
                       <View style={styles.cardFooter}>
-                        <Text style={styles.cardLink}>Iniciar cadastro</Text>
+                        <Text style={styles.cardLink}>Cadastrar</Text>
                         <Ionicons
                           name="arrow-forward"
                           size={16}
@@ -850,22 +924,6 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <TouchableOpacity
             activeOpacity={0.88}
-            onPress={() => Linking.openURL("https://passosmagicos.org.br/")}
-            accessibilityRole="link"
-            accessibilityLabel="Acessar Passos Magicos"
-          >
-            <Image
-              source={require("../../assets/passos_magicos.jpg")}
-              style={styles.magicStepsImage}
-              contentFit="contain"
-              accessibilityLabel="Passos Magicos"
-            />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <TouchableOpacity
-            activeOpacity={0.88}
             onPress={() => Linking.openURL("https://www.produtos15.com.br/")}
             accessibilityRole="link"
             accessibilityLabel="Acessar Produtos Quinze"
@@ -875,6 +933,22 @@ export default function HomeScreen() {
               style={styles.magicStepsImage}
               contentFit="contain"
               accessibilityLabel="Produtos Quinze"
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => Linking.openURL("https://passosmagicos.org.br/")}
+            accessibilityRole="link"
+            accessibilityLabel="Acessar Passos Magicos"
+          >
+            <Image
+              source={require("../../assets/passos_magicos.jpg")}
+              style={styles.magicStepsImage}
+              contentFit="contain"
+              accessibilityLabel="Passos Magicos"
             />
           </TouchableOpacity>
         </View>
@@ -926,6 +1000,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#E7F6FF",
     alignItems: "center",
     justifyContent: "center",
+  },
+  pendingBadge: {
+    minWidth: 24,
+    height: 24,
+    paddingHorizontal: 7,
+    borderRadius: 12,
+    backgroundColor: "#E07B00",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pendingBadgeText: {
+    color: "#FFFFFF",
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
   },
   statusBadge: {
     paddingHorizontal: StyleVariable.px3,

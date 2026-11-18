@@ -1,6 +1,7 @@
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
     Border,
@@ -13,6 +14,7 @@ import {
     Padding,
     Width,
 } from "../GlobalStyles";
+import { getUnreadCount } from "../services/notifications";
 
 type FrameComponent1Props = {
   userName?: string;
@@ -22,6 +24,20 @@ const FrameComponent1 = ({
   userName = "João",
 }: FrameComponent1Props) => {
   const router = useRouter();
+  const [unread, setUnread] = useState(0);
+
+  // Recarrega ao voltar para a home (ex.: depois de ler as notificações o selo some).
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getUnreadCount()
+        .then((count) => active && setUnread(count))
+        .catch(() => active && setUnread(0));
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   return (
     <View style={styles.frameParent}>
@@ -41,8 +57,20 @@ const FrameComponent1 = ({
         <TouchableOpacity
           onPress={() => router.push("/notifications")}
           activeOpacity={0.8}
+          style={styles.bell}
+          accessibilityRole="button"
+          accessibilityLabel={
+            unread > 0
+              ? `Notificações, ${unread} não lidas`
+              : "Notificações"
+          }
         >
           <Ionicons name="notifications-outline" size={24} color={Color.white} />
+          {unread > 0 ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unread > 9 ? "9+" : unread}</Text>
+            </View>
+          ) : null}
         </TouchableOpacity>
       </View>
       <Text style={[styles.olJoo, styles.olJooTypo]}>Olá, {userName} 👋</Text>
@@ -81,6 +109,32 @@ const styles = StyleSheet.create({
     height: 42,
     width: 42,
     borderRadius: 56,
+  },
+  bell: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: "#D7263D",
+    borderWidth: 2,
+    borderColor: Color.piccolo,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    lineHeight: 12,
+    fontFamily: FontFamily.dMSansBold,
   },
   buttonText: {
     fontSize: FontSize.fs_14,

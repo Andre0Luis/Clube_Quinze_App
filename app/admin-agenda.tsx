@@ -289,7 +289,7 @@ const AdminAgendaScreen = () => {
     const title = clientLabel(appointment, clientNames);
     Alert.alert(title, "Escolha uma opcao", [
       {
-        text: "Alterar horario",
+        text: "Abrir detalhes",
         onPress: () =>
           router.push(`/appointments/${String(appointment.id)}?allowAdmin=1`),
       },
@@ -382,7 +382,13 @@ const AdminAgendaScreen = () => {
     const initials = getInitials(info?.name ?? clientNames[item.clientId]);
     const statusMeta = getStatusMeta(item.status);
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() =>
+          router.push(`/appointments/${String(item.id)}?allowAdmin=1`)
+        }
+        accessibilityRole="button"
+        accessibilityLabel={`Abrir agendamento de ${clientLabel(item, clientNames)}, ${time}, ${statusMeta.label}`}
         style={[
           styles.slotCard,
           { borderLeftWidth: 4, borderLeftColor: statusMeta.background },
@@ -434,8 +440,14 @@ const AdminAgendaScreen = () => {
           <Text style={styles.slotService}>
             {item.serviceType ?? "Atendimento"}
           </Text>
+          <Ionicons
+            name="chevron-forward"
+            size={16}
+            color={Color.mainTrunks}
+            style={{ marginLeft: 6 }}
+          />
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 

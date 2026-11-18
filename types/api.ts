@@ -273,6 +273,10 @@ export interface NotificationResponse {
   type: NotificationType;
   read: boolean;
   sentAt: string;
+  /** Agendamento a que o aviso se refere (null em avisos gerais). */
+  appointmentId?: number | null;
+  /** Tipo de ação (ex.: admin_reschedule_request), usado para escolher a tela ao tocar. */
+  kind?: string | null;
 }
 
 export interface PaymentRenewalResponse {
