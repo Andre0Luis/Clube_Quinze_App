@@ -27,6 +27,7 @@ import {
 } from "../../GlobalStyles";
 import { logout as logoutService } from "../../services/auth";
 import { getCurrentUser } from "../../services/users";
+import { planLabel } from "../../utils/planLabel";
 import type { UserProfileResponse } from "../../types/api";
 
 type ProfileOption = {
@@ -229,7 +230,7 @@ export default function ProfileScreen() {
       parts.push(membershipLabel);
     }
     if (profile.plan?.name) {
-      parts.push(profile.plan.name);
+      parts.push(planLabel(profile.plan.name));
     }
     if (roleLabel) {
       parts.push(roleLabel);
@@ -249,7 +250,7 @@ export default function ProfileScreen() {
       }
       if (option.id === "plans") {
         const label = profile?.plan
-          ? profile.plan.name
+          ? planLabel(profile.plan.name)
           : "Conheça os planos disponíveis.";
         return { ...option, description: label };
       }
@@ -339,7 +340,7 @@ export default function ProfileScreen() {
                       size={14}
                       color={Color.mainGoten}
                     />
-                    <Text style={styles.badgeText}>{profile.plan.name}</Text>
+                    <Text style={styles.badgeText}>{planLabel(profile.plan.name)}</Text>
                   </View>
                 ) : null}
               </View>

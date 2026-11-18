@@ -28,6 +28,7 @@ import { getStatusMeta, isActiveStatus } from "../constants/appointmentStatus";
 import api from "../services/api";
 import { cancelAppointment, listAppointments } from "../services/appointments";
 import { getCurrentUser, getUserById } from "../services/users";
+import { planLabel } from "../utils/planLabel";
 import type { AppointmentResponse } from "../types/api";
 
 type ClientInfo = {
@@ -137,7 +138,7 @@ const getInitials = (name?: string) => {
 
 const getRoleLabel = (info?: ClientInfo) => {
   const planName = info?.planName?.trim();
-  if (planName) return planName;
+  if (planName) return planLabel(planName);
   if (info?.membershipTier === "QUINZE_SELECT") return "Select";
   if (info?.membershipTier === "QUINZE_PREMIUM") return "Premium";
   if (info?.membershipTier === "QUINZE_STANDARD") return "Standard";

@@ -27,6 +27,7 @@ import {
 } from "../GlobalStyles";
 import { listPaymentRenewals } from "../services/payments";
 import { getUserById, renewUserPlan } from "../services/users";
+import { planLabel } from "../utils/planLabel";
 import type { PaymentRenewalResponse } from "../types/api";
 
 const formatCurrency = (value?: number) => {
@@ -234,7 +235,7 @@ export default function AdminPaymentsScreen() {
                 {formatCurrency(renewal.plan?.price)}
               </Text>
             </View>
-            <Text style={styles.cardPlan}>{renewal.plan?.name ?? "Plano"}</Text>
+            <Text style={styles.cardPlan}>{planLabel(renewal.plan?.name)}</Text>
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Vencimento</Text>
               <Text style={styles.metaValue}>
