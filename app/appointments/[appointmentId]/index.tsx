@@ -606,7 +606,8 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Padding.padding_24,
     paddingTop: StyleVariable.py4,
-    paddingBottom: Padding.padding_24,
+    // Folga para a barra de abas flutuante não cobrir o último botão.
+    paddingBottom: 140,
     gap: StyleVariable.py4,
   },
   detailCard: {

@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Card from "../../components/Card";
+import ConfirmAppointmentCard from "../../components/ConfirmAppointmentCard";
 import FrameComponent1 from "../../components/FrameComponent1";
 import {
   Border,
@@ -30,6 +31,7 @@ import {
 } from "../../GlobalStyles";
 import { getStatusMeta, isActiveStatus } from "../../constants/appointmentStatus";
 import { BOOKING_ENABLED } from "../../constants/features";
+import { needsConfirmation } from "../../utils/confirmation";
 import { listAppointments, listMyAppointments } from "../../services/appointments";
 import { logout as logoutService } from "../../services/auth";
 import { getAdminDashboardMetrics } from "../../services/dashboard";
@@ -54,6 +56,7 @@ type QuickAction = {
 };
 
 type ActionCard =
+  | { kind: "confirm"; span: 2 }
   | { kind: "next"; span: 2 }
   | { kind: "link"; action: QuickAction; span: 1 }
   | { kind: "community"; span: 2 }
@@ -372,6 +375,16 @@ export default function HomeScreen() {
     }, [isAdmin]),
   );
 
+  // Recarrega só o próximo agendamento (sem spinner) depois de confirmar/cancelar pelo card da home.
+  const refreshNextAppointment = useCallback(async () => {
+    try {
+      const page = await listMyAppointments({ size: 50 });
+      setNextAppointment(findNextAppointment(page.content ?? []) ?? null);
+    } catch {
+      // mantém o que já está na tela
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       if (isAdmin !== false) {
@@ -499,14 +512,18 @@ export default function HomeScreen() {
       .filter((action) => action.href !== "/register")
       .map((action) => ({ kind: "link", action, span: 1 }) as const);
 
-    const cards: ActionCard[] = [{ kind: "next", span: 2 }, ...linkActions];
+    const cards: ActionCard[] = [
+      ...(needsConfirmation(nextAppointment) ? [{ kind: "confirm", span: 2 } as const] : []),
+      { kind: "next", span: 2 },
+      ...linkActions,
+    ];
 
     if (profile?.membershipTier === "QUINZE_SELECT") {
       cards.push({ kind: "community", span: 2 });
     }
 
     return cards;
-  }, [isAdmin, profile?.membershipTier]);
+  }, [isAdmin, profile?.membershipTier, nextAppointment]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -522,6 +539,17 @@ export default function HomeScreen() {
                 styles.quickActionCard,
                 item.span === 2 && styles.quickActionCardFull,
               ];
+
+              if (item.kind === "confirm" && nextAppointment) {
+                return (
+                  <View key="confirm-appointment" style={styles.confirmWrapper}>
+                    <ConfirmAppointmentCard
+                      appointment={nextAppointment}
+                      onChanged={refreshNextAppointment}
+                    />
+                  </View>
+                );
+              }
 
               if (item.kind === "link") {
                 const displayLabel =
@@ -1091,6 +1119,9 @@ const styles = StyleSheet.create({
     minHeight: 170,
     borderWidth: 1,
     borderColor: "#E6EAF1",
+  },
+  confirmWrapper: {
+    width: "100%",
   },
   quickActionCardFull: {
     width: "100%",
