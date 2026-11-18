@@ -91,6 +91,7 @@ export default function ReserveScreen() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const fetchAppointments = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -103,8 +104,10 @@ export default function ReserveScreen() {
       try {
         const page = await listMyAppointments({ size: 50, page: 0 });
         setAppointments(page.content ?? []);
+        setLoadError(false);
       } catch (error) {
         console.error("Failed to load appointments", error);
+        setLoadError(true);
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
@@ -247,6 +250,21 @@ export default function ReserveScreen() {
         {isLoading ? (
           <View style={styles.loaderWrapper}>
             <ActivityIndicator size="small" color={Color.piccolo} />
+          </View>
+        ) : loadError && appointments.length === 0 ? (
+          <View style={styles.emptyState} testID="load-error">
+            <Ionicons name="cloud-offline-outline" size={32} color={Color.mainTrunks} />
+            <Text style={styles.emptyStateTitle}>Não foi possível carregar</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              Verifique sua conexão e tente novamente.
+            </Text>
+            <TouchableOpacity
+              style={styles.newAppointmentButton}
+              onPress={() => fetchAppointments()}
+              accessibilityRole="button"
+            >
+              <Text style={styles.newAppointmentText}>Tentar novamente</Text>
+            </TouchableOpacity>
           </View>
         ) : appointmentsToRender.length === 0 ? (
           <View style={styles.emptyState}>
