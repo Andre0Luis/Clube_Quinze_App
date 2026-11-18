@@ -10,9 +10,12 @@ test("pedido de confirmação abre o detalhe destacando a confirmação", () => 
   );
 });
 
-test("avisos do admin (não confirmou / pedido de remarcação) abrem as solicitações com foco no agendamento", () => {
-  assert.equal(routeForNotification({ kind: "admin_unconfirmed", appointmentId: "7" }), "/admin-requests?focus=7");
-  assert.equal(routeForNotification({ kind: "admin_reschedule_request", appointmentId: 9 }), "/admin-requests?focus=9");
+test("avisos do admin (não confirmou / pedido de remarcação) abrem o agendamento do cliente em modo admin", () => {
+  assert.equal(routeForNotification({ kind: "admin_unconfirmed", appointmentId: "7" }), "/appointments/7?allowAdmin=1");
+  assert.equal(routeForNotification({ kind: "admin_reschedule_request", appointmentId: 9 }), "/appointments/9?allowAdmin=1");
+});
+
+test("aviso do admin sem agendamento cai na lista de solicitações", () => {
   assert.equal(routeForNotification({ kind: "admin_unconfirmed" }), "/admin-requests");
 });
 

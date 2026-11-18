@@ -28,6 +28,7 @@ import { getStatusMeta, isActiveStatus } from "../constants/appointmentStatus";
 import api from "../services/api";
 import { cancelAppointment, listAppointments } from "../services/appointments";
 import { getCurrentUser, getUserById } from "../services/users";
+import { planLabel } from "../utils/planLabel";
 import type { AppointmentResponse } from "../types/api";
 
 type ClientInfo = {
@@ -137,18 +138,28 @@ const getInitials = (name?: string) => {
 
 const getRoleLabel = (info?: ClientInfo) => {
   const planName = info?.planName?.trim();
-  if (planName) return planName;
+  if (planName) return planLabel(planName);
   if (info?.membershipTier === "QUINZE_SELECT") return "Select";
   if (info?.membershipTier === "QUINZE_PREMIUM") return "Premium";
   if (info?.membershipTier === "QUINZE_STANDARD") return "Standard";
   return "";
 };
 
+type StatusFilter = "ALL" | "SCHEDULED" | "CONFIRMED" | "RESCHEDULE_REQUESTED";
+
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: "ALL", label: "Todos" },
+  { key: "SCHEDULED", label: "A confirmar" },
+  { key: "CONFIRMED", label: "Confirmados" },
+  { key: "RESCHEDULE_REQUESTED", label: "Remarcação" },
+];
+
 const AdminAgendaScreen = () => {
   const router = useRouter();
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [anchorMonth, setAnchorMonth] = useState<Date>(new Date());
   const [clientNames, setClientNames] = useState<Record<number, string>>({});
   const [clientInfo, setClientInfo] = useState<Record<number, ClientInfo>>({});
@@ -263,6 +274,7 @@ const AdminAgendaScreen = () => {
   const appointmentsForDay = useMemo(() => {
     return appointments
       .filter((item) => isActiveStatus(item.status))
+      .filter((item) => statusFilter === "ALL" || item.status === statusFilter)
       .filter((item) => {
         const when = new Date(item.scheduledAt);
         return Number.isNaN(when.getTime())
@@ -273,7 +285,7 @@ const AdminAgendaScreen = () => {
         (a, b) =>
           new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
       );
-  }, [appointments, selectedDate]);
+  }, [appointments, selectedDate, statusFilter]);
 
   const monthDays = useMemo(() => buildMonthDays(anchorMonth), [anchorMonth]);
 
@@ -289,7 +301,7 @@ const AdminAgendaScreen = () => {
     const title = clientLabel(appointment, clientNames);
     Alert.alert(title, "Escolha uma opcao", [
       {
-        text: "Alterar horario",
+        text: "Abrir detalhes",
         onPress: () =>
           router.push(`/appointments/${String(appointment.id)}?allowAdmin=1`),
       },
@@ -382,7 +394,13 @@ const AdminAgendaScreen = () => {
     const initials = getInitials(info?.name ?? clientNames[item.clientId]);
     const statusMeta = getStatusMeta(item.status);
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() =>
+          router.push(`/appointments/${String(item.id)}?allowAdmin=1`)
+        }
+        accessibilityRole="button"
+        accessibilityLabel={`Abrir agendamento de ${clientLabel(item, clientNames)}, ${time}, ${statusMeta.label}`}
         style={[
           styles.slotCard,
           { borderLeftWidth: 4, borderLeftColor: statusMeta.background },
@@ -434,8 +452,14 @@ const AdminAgendaScreen = () => {
           <Text style={styles.slotService}>
             {item.serviceType ?? "Atendimento"}
           </Text>
+          <Ionicons
+            name="chevron-forward"
+            size={16}
+            color={Color.mainTrunks}
+            style={{ marginLeft: 6 }}
+          />
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -467,7 +491,7 @@ const AdminAgendaScreen = () => {
               <>
                 <Text
                   style={styles.nextClient}
-                >{`${clientLabel(nextAppointment, clientNames)} e o seu próximo cliente`}</Text>
+                >{`${clientLabel(nextAppointment, clientNames)} é o seu próximo cliente`}</Text>
                 {nextClientRole ? (
                   <Text style={styles.nextRole}>{nextClientRole}</Text>
                 ) : null}
@@ -546,6 +570,29 @@ const AdminAgendaScreen = () => {
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Horarios</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            {STATUS_FILTERS.map((filter) => {
+              const active = statusFilter === filter.key;
+              return (
+                <TouchableOpacity
+                  key={filter.key}
+                  onPress={() => setStatusFilter(filter.key)}
+                  style={[styles.filterChip, active && styles.filterChipActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={`Filtrar: ${filter.label}`}
+                >
+                  <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
           {isLoading ? (
             <View style={styles.listEmpty}>
               <ActivityIndicator size="small" color={Color.piccolo} />
@@ -553,7 +600,9 @@ const AdminAgendaScreen = () => {
           ) : appointmentsForDay.length === 0 ? (
             <View style={styles.listEmpty}>
               <Text style={styles.emptyText}>
-                Nenhum horario para esta data.
+                {statusFilter === "ALL"
+                  ? "Nenhum horario para esta data."
+                  : "Nenhum horario com esse filtro nesta data."}
               </Text>
             </View>
           ) : (
@@ -576,6 +625,18 @@ const AdminAgendaScreen = () => {
 export default AdminAgendaScreen;
 
 const styles = StyleSheet.create({
+  filterRow: { gap: 8, paddingBottom: 4 },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Color.mainBeerus,
+    backgroundColor: Color.mainGoten,
+  },
+  filterChipActive: { backgroundColor: Color.piccolo, borderColor: Color.piccolo },
+  filterChipText: { fontSize: FontSize.fs_14, color: Color.mainBulma, fontFamily: FontFamily.dMSansRegular },
+  filterChipTextActive: { color: Color.mainGoten, fontFamily: FontFamily.dMSansBold },
   safeArea: {
     flex: 1,
     backgroundColor: Color.mainGohan,

@@ -304,3 +304,37 @@ export const listActiveAppointments = async (params?: {
   );
   return pages.flatMap((page) => page?.content ?? []);
 };
+
+export interface TodaySummary {
+  total: number;
+  /** Atendimentos de hoje ainda sem confirmação do cliente. */
+  toConfirm: number;
+  /** Próximo atendimento de hoje que ainda não começou. */
+  nextAt: string | null;
+}
+
+/** Resumo do dia para o admin: quantos atendimentos hoje, quantos sem confirmar e o próximo horário. */
+export const getTodaySummary = async (now: Date = new Date()): Promise<TodaySummary> => {
+  const sameDay = (iso: string) => {
+    const d = new Date(iso);
+    return (
+      !Number.isNaN(d.getTime()) &&
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    );
+  };
+  const pages = await Promise.all(
+    ACTIVE_STATUSES.map((status) => listAppointments({ status, page: 0, size: 200 })),
+  );
+  const today = pages
+    .flatMap((page) => page?.content ?? [])
+    .filter((a) => sameDay(a.scheduledAt))
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  const upcoming = today.find((a) => new Date(a.scheduledAt).getTime() >= now.getTime());
+  return {
+    total: today.length,
+    toConfirm: today.filter((a) => a.status === "SCHEDULED").length,
+    nextAt: upcoming?.scheduledAt ?? null,
+  };
+};

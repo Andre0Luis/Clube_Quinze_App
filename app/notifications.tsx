@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Color, FontFamily, FontSize, Padding } from "../GlobalStyles";
+import { routeForNotification } from "../utils/notificationRoute";
+import { formatRelative } from "../utils/time";
 import {
   enablePushNotifications,
   getPushPermissionStatus,
@@ -50,6 +52,8 @@ const iconFor = (type?: string) => {
   }
 };
 
+type Row = NotificationResponse | { header: string };
+
 export default function NotificationsListScreen() {
   const router = useRouter();
   const [items, setItems] = useState<NotificationResponse[]>([]);
@@ -78,18 +82,29 @@ export default function NotificationsListScreen() {
     }, [load]),
   );
 
-  const handleOpen = useCallback(async (item: NotificationResponse) => {
-    if (item.read) return;
-    // Atualização otimista + persistência
-    setItems((prev) =>
-      prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)),
-    );
-    try {
-      await markNotificationRead(item.id);
-    } catch (error) {
-      console.error("Failed to mark notification read", error);
-    }
-  }, []);
+  const handleOpen = useCallback(
+    async (item: NotificationResponse) => {
+      // Leva para a tela do agendamento (admin: o do cliente, com aprovar/recusar/cancelar).
+      const route = routeForNotification({
+        appointmentId: item.appointmentId,
+        kind: item.kind,
+      });
+      if (route) {
+        router.push(route);
+      }
+      if (item.read) return;
+      // Atualização otimista + persistência
+      setItems((prev) =>
+        prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)),
+      );
+      try {
+        await markNotificationRead(item.id);
+      } catch (error) {
+        console.error("Failed to mark notification read", error);
+      }
+    },
+    [router],
+  );
 
   const handleMarkAll = useCallback(async () => {
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -111,6 +126,17 @@ export default function NotificationsListScreen() {
   }, [permission]);
 
   const hasUnread = items.some((n) => !n.read);
+  const unreadCount = items.filter((n) => !n.read).length;
+
+  // Novas primeiro, depois as anteriores, cada grupo com seu título.
+  const rows = useMemo<Row[]>(() => {
+    const fresh = items.filter((n) => !n.read);
+    const older = items.filter((n) => n.read);
+    return [
+      ...(fresh.length > 0 ? [{ header: `Novas (${fresh.length})` } as Row, ...fresh] : []),
+      ...(older.length > 0 ? [{ header: "Anteriores" } as Row, ...older] : []),
+    ];
+  }, [items]);
   const showPermissionCta =
     permission === "denied" || permission === "undetermined";
 
@@ -120,7 +146,14 @@ export default function NotificationsListScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={Color.hit} />
         </TouchableOpacity>
-        <Text style={styles.title}>Minhas Notificações</Text>
+        <View style={styles.titleBox}>
+          <Text style={styles.title}>Minhas Notificações</Text>
+          {unreadCount > 0 ? (
+            <Text style={styles.subtitle}>
+              {unreadCount === 1 ? "1 não lida" : `${unreadCount} não lidas`}
+            </Text>
+          ) : null}
+        </View>
         {hasUnread ? (
           <TouchableOpacity onPress={handleMarkAll} style={styles.markAllBtn}>
             <Text style={styles.markAllText}>Marcar todas</Text>
@@ -144,15 +177,20 @@ export default function NotificationsListScreen() {
       ) : null}
 
       <FlatList
-        data={items}
-        keyExtractor={(item) => String(item.id)}
+        data={rows}
+        keyExtractor={(row) => ("header" in row ? `h-${row.header}` : String(row.id))}
         contentContainerStyle={
           items.length === 0 ? styles.emptyContent : styles.listContent
         }
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={load} />
         }
-        renderItem={({ item }) => (
+        renderItem={({ item: row }) => {
+          if ("header" in row) {
+            return <Text style={styles.groupTitle}>{row.header}</Text>;
+          }
+          const item = row;
+          return (
           <TouchableOpacity
             style={[styles.card, !item.read && styles.cardUnread]}
             activeOpacity={0.8}
@@ -166,11 +204,22 @@ export default function NotificationsListScreen() {
               {item.message ? (
                 <Text style={styles.cardMessage}>{item.message}</Text>
               ) : null}
-              <Text style={styles.cardWhen}>{formatWhen(item.sentAt)}</Text>
+              <Text style={styles.cardWhen}>{formatRelative(item.sentAt) || formatWhen(item.sentAt)}</Text>
+              {item.appointmentId ? (
+                <Text style={styles.cardAction}>
+                  {String(item.kind ?? "").startsWith("admin_")
+                    ? "Toque para responder"
+                    : "Toque para ver o agendamento"}
+                </Text>
+              ) : null}
             </View>
             {!item.read ? <View style={styles.unreadDot} /> : null}
+            {item.appointmentId ? (
+              <Ionicons name="chevron-forward" size={18} color={Color.mainTrunks} />
+            ) : null}
           </TouchableOpacity>
-        )}
+          );
+        }}
         ListEmptyComponent={
           isLoading ? (
             <ActivityIndicator color={Color.piccolo} />
@@ -199,7 +248,10 @@ const styles = StyleSheet.create({
     borderBottomColor: Color.mainBeerus,
   },
   backButton: { marginRight: 16 },
-  title: { flex: 1, fontSize: FontSize.fs_18, fontFamily: FontFamily.dMSansBold, color: Color.hit },
+  titleBox: { flex: 1 },
+  title: { fontSize: FontSize.fs_18, fontFamily: FontFamily.dMSansBold, color: Color.hit },
+  subtitle: { fontSize: FontSize.fs_12, color: Color.piccolo, fontFamily: FontFamily.dMSansBold },
+  groupTitle: { fontSize: FontSize.fs_14, fontFamily: FontFamily.dMSansBold, color: Color.mainTrunks, marginTop: 6 },
   markAllBtn: { paddingHorizontal: 8, paddingVertical: 4 },
   markAllText: { color: Color.piccolo, fontSize: FontSize.fs_14, fontFamily: FontFamily.dMSansRegular },
   permissionBanner: {
@@ -237,6 +289,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: FontSize.fs_15, fontFamily: FontFamily.dMSansBold, color: Color.hit },
   cardMessage: { fontSize: FontSize.fs_14, color: Color.mainTrunks, marginTop: 2, fontFamily: FontFamily.dMSansRegular },
   cardWhen: { fontSize: FontSize.fs_12, color: Color.mainTrunks, marginTop: 6, opacity: 0.8 },
+  cardAction: { fontSize: FontSize.fs_12, color: Color.piccolo, marginTop: 4, fontFamily: FontFamily.dMSansBold },
   unreadDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Color.piccolo },
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16 },
   emptyText: { fontSize: FontSize.fs_16, color: Color.mainTrunks, textAlign: "center", fontFamily: FontFamily.dMSansRegular },

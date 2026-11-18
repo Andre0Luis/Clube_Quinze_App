@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Linking,
     ScrollView,
     StyleSheet,
     Text,
@@ -21,6 +22,7 @@ import {
     StyleVariable,
 } from "../../../GlobalStyles";
 import AddToCalendar from "../../../components/AddToCalendar";
+import AdminAppointmentActions from "../../../components/AdminAppointmentActions";
 import { getStatusMeta, isActiveStatus } from "../../../constants/appointmentStatus";
 import {
     cancelAppointment,
@@ -29,7 +31,9 @@ import {
     listAppointments,
     listMyAppointments,
 } from "../../../services/appointments";
+import { getCurrentUser, getUserById } from "../../../services/users";
 import type { AppointmentResponse } from "../../../types/api";
+import { whatsappNumber } from "../../../utils/time";
 
 const getStatusLabel = (status?: string) => {
   const meta = getStatusMeta(status);
@@ -104,7 +108,13 @@ export default function AppointmentDetailsScreen() {
   // action=confirm vem do push "Confirme seu agendamento": destaca o pedido de confirmação.
   const highlightConfirm = (Array.isArray(action) ? action[0] : action) === "confirm";
   const allowAdminFlag = Array.isArray(allowAdmin) ? allowAdmin[0] : allowAdmin;
-  const isAdminContext = allowAdminFlag === "1";
+  const allowAdminParam = allowAdminFlag === "1";
+  // O admin também é reconhecido pelo perfil (não depende só do parâmetro da rota, que as notificações nem sempre mandam).
+  const [viewer, setViewer] = useState<{ id: number; isAdmin: boolean } | null>(null);
+  const [clientName, setClientName] = useState<string | null>(null);
+  const [clientPhone, setClientPhone] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const isAdminContext = allowAdminParam || viewer?.isAdmin === true;
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -117,7 +127,7 @@ export default function AppointmentDetailsScreen() {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
-  const loadAppointment = useCallback(async () => {
+  const loadAppointment = useCallback(async (silent = false) => {
     const id = Number(appointmentId);
     if (!appointmentId || Number.isNaN(id)) {
       setErrorMessage("Agendamento inválido.");
@@ -126,7 +136,9 @@ export default function AppointmentDetailsScreen() {
       return;
     }
 
-    setIsLoading(true);
+    if (!silent) {
+      setIsLoading(true);
+    }
     setErrorMessage(null);
     try {
       const response = await getAppointmentById(id);
@@ -163,12 +175,51 @@ export default function AppointmentDetailsScreen() {
   }, [appointmentId, isAdminContext]);
 
   useEffect(() => {
-    const bootstrap = async () => {
-      await loadAppointment();
+    let active = true;
+    getCurrentUser()
+      .then((me) => {
+        if (active && me) {
+          setViewer({ id: me.id, isAdmin: me.role === "CLUB_ADMIN" });
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
     };
+  }, []);
 
-    bootstrap();
-  }, [loadAppointment]);
+  // Recarrega ao entrar e ao voltar (ex.: depois de escolher outro horário, o status mudou).
+  const firstLoad = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      const silent = !firstLoad.current;
+      firstLoad.current = false;
+      void loadAppointment(silent);
+    }, [loadAppointment]),
+  );
+
+  const clientId = appointment?.clientId;
+  useEffect(() => {
+    if (!isAdminContext || !clientId) {
+      return;
+    }
+    let active = true;
+    getUserById(clientId)
+      .then((user) => {
+        if (active) {
+          setClientName(user.name);
+          setClientPhone(user.phone ?? null);
+        }
+      })
+      .catch(() => active && setClientName("Cliente"));
+    return () => {
+      active = false;
+    };
+  }, [isAdminContext, clientId]);
+
+  // Admin só vê o painel de gestão quando o agendamento é de outra pessoa.
+  const adminMode = isAdminContext && appointment?.clientId !== viewer?.id;
+  const displayClient = clientName ?? "Cliente";
 
   const statusMeta = useMemo(
     () => getStatusLabel(appointment?.status),
@@ -251,6 +302,18 @@ export default function AppointmentDetailsScreen() {
     }
   };
 
+  // Sem histórico (ex.: abriu pela notificação com o app fechado), "voltar" leva para a home.
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/");
+    }
+  };
+
+  const phoneDigits = clientPhone?.replace(/\D/g, "") ?? "";
+  const waNumber = whatsappNumber(clientPhone);
+
   const resetCancelConfirmation = () => {
     setConfirmCancel(false);
     setCancelError(null);
@@ -260,13 +323,17 @@ export default function AppointmentDetailsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.85}
           style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
         >
           <Ionicons name="arrow-back" size={18} color={Color.piccolo} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Detalhes</Text>
+        <Text style={styles.headerTitle}>
+          {adminMode ? "Agendamento do cliente" : "Detalhes"}
+        </Text>
       </View>
 
       {isLoading ? (
@@ -278,7 +345,7 @@ export default function AppointmentDetailsScreen() {
           <Text style={styles.errorText}>{errorMessage}</Text>
           <TouchableOpacity
             style={styles.retryButton}
-            onPress={loadAppointment}
+            onPress={() => loadAppointment()}
             activeOpacity={0.9}
           >
             <Text style={styles.retryButtonText}>Tentar novamente</Text>
@@ -297,6 +364,9 @@ export default function AppointmentDetailsScreen() {
               {formatFullDate(appointment.scheduledAt)}
             </Text>
             <View style={styles.divider} />
+            {adminMode ? (
+              <DetailRow label="Cliente" value={displayClient} />
+            ) : null}
             <DetailRow
               label="Data"
               value={formatDate(appointment.scheduledAt)}
@@ -305,6 +375,12 @@ export default function AppointmentDetailsScreen() {
               label="Horario"
               value={formatTime(appointment.scheduledAt)}
             />
+            {adminMode && appointment.durationMinutes ? (
+              <DetailRow
+                label="Duração"
+                value={`${appointment.durationMinutes} min`}
+              />
+            ) : null}
             <DetailRow
               label="Preferências"
               value={
@@ -320,7 +396,60 @@ export default function AppointmentDetailsScreen() {
             />
           </View>
 
-          {highlightConfirm && canConfirm ? (
+          {notice ? (
+            <View style={styles.successCard}>
+              <Ionicons name="checkmark-circle" size={20} color="#2E9E5B" />
+              <Text style={styles.successText}>{notice}</Text>
+            </View>
+          ) : null}
+
+          {adminMode && (waNumber || phoneDigits.length >= 8) ? (
+            <View style={styles.contactRow}>
+              {waNumber ? (
+                <TouchableOpacity
+                  style={styles.contactBtn}
+                  onPress={() => Linking.openURL(`https://wa.me/${waNumber}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Falar com o cliente no WhatsApp"
+                  testID="contact-whatsapp"
+                >
+                  <Ionicons name="logo-whatsapp" size={18} color="#1F9D55" />
+                  <Text style={styles.contactText}>WhatsApp</Text>
+                </TouchableOpacity>
+              ) : null}
+              {phoneDigits.length >= 8 ? (
+                <TouchableOpacity
+                  style={styles.contactBtn}
+                  onPress={() => Linking.openURL(`tel:${phoneDigits}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ligar para o cliente"
+                  testID="contact-call"
+                >
+                  <Ionicons name="call-outline" size={18} color={Color.piccolo} />
+                  <Text style={styles.contactText}>Ligar</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
+
+          {adminMode ? (
+            <AdminAppointmentActions
+              appointment={appointment}
+              clientName={displayClient}
+              onUpdated={(updated, message) => {
+                setAppointment(updated);
+                setNotice(message);
+              }}
+              onReschedule={() =>
+                router.push({
+                  pathname: "/schedule",
+                  params: { appointmentId: String(appointment.id) },
+                })
+              }
+            />
+          ) : null}
+
+          {!adminMode && highlightConfirm && canConfirm ? (
             <View style={styles.noticeCard}>
               <Ionicons name="alert-circle-outline" size={20} color="#E07B00" />
               <Text style={styles.noticeText}>
@@ -330,7 +459,7 @@ export default function AppointmentDetailsScreen() {
             </View>
           ) : null}
 
-          {hasPendingProposal ? (
+          {!adminMode && hasPendingProposal ? (
             <View style={styles.noticeCard}>
               <Ionicons name="time-outline" size={20} color="#E07B00" />
               <Text style={styles.noticeText}>
@@ -351,7 +480,7 @@ export default function AppointmentDetailsScreen() {
           </Text>
           <TouchableOpacity
             style={styles.retryButton}
-            onPress={loadAppointment}
+            onPress={() => loadAppointment()}
             activeOpacity={0.9}
           >
             <Text style={styles.retryButtonText}>Tentar novamente</Text>
@@ -359,6 +488,7 @@ export default function AppointmentDetailsScreen() {
         </View>
       )}
 
+      {adminMode ? null : (
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 16, 24) }]}>
         {canConfirm || canReschedule || canCancel ? (
           <View style={styles.actionStack}>
@@ -443,6 +573,7 @@ export default function AppointmentDetailsScreen() {
           </TouchableOpacity>
         )}
       </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -458,6 +589,37 @@ const styles = StyleSheet.create({
     borderColor: "#F5D7A8",
     backgroundColor: "#FFF6E8",
     marginTop: 12,
+  },
+  contactRow: { flexDirection: "row", gap: 10 },
+  contactBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    minHeight: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Color.mainBeerus,
+    backgroundColor: Color.mainGoten,
+  },
+  contactText: { fontSize: FontSize.fs_14, fontFamily: FontFamily.dMSansBold, color: Color.mainBulma },
+  successCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#BFE5CD",
+    backgroundColor: "#EAF7EF",
+  },
+  successText: {
+    flex: 1,
+    fontSize: FontSize.fs_14,
+    lineHeight: LineHeight.lh_24,
+    color: "#1E6B3E",
+    fontFamily: FontFamily.dMSansRegular,
   },
   noticeText: {
     flex: 1,
@@ -509,7 +671,8 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Padding.padding_24,
     paddingTop: StyleVariable.py4,
-    paddingBottom: Padding.padding_24,
+    // Folga para a barra de abas flutuante não cobrir o último botão.
+    paddingBottom: 140,
     gap: StyleVariable.py4,
   },
   detailCard: {

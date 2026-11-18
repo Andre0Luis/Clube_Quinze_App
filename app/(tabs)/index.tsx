@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +18,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Card from "../../components/Card";
+import ConfirmAppointmentCard from "../../components/ConfirmAppointmentCard";
 import FrameComponent1 from "../../components/FrameComponent1";
 import {
   Border,
@@ -30,7 +32,14 @@ import {
 } from "../../GlobalStyles";
 import { getStatusMeta, isActiveStatus } from "../../constants/appointmentStatus";
 import { BOOKING_ENABLED } from "../../constants/features";
-import { listMyAppointments } from "../../services/appointments";
+import { needsConfirmation } from "../../utils/confirmation";
+import { formatCountdown } from "../../utils/time";
+import {
+  getTodaySummary,
+  listAppointments,
+  listMyAppointments,
+  type TodaySummary,
+} from "../../services/appointments";
 import { logout as logoutService } from "../../services/auth";
 import { getAdminDashboardMetrics } from "../../services/dashboard";
 import { isMockEnabled } from "../../services/mock/settings";
@@ -54,6 +63,8 @@ type QuickAction = {
 };
 
 type ActionCard =
+  | { kind: "today"; span: 2 }
+  | { kind: "confirm"; span: 2 }
   | { kind: "next"; span: 2 }
   | { kind: "link"; action: QuickAction; span: 1 }
   | { kind: "community"; span: 2 }
@@ -61,7 +72,8 @@ type ActionCard =
   | { kind: "adminMembersSelect"; span: 1 }
   | { kind: "adminAgenda"; span: 1 }
   | { kind: "adminPayments"; span: 1 }
-  | { kind: "register"; span: 2 };
+  | { kind: "adminRequests"; span: 1 }
+  | { kind: "register"; span: 1 };
 
 type MemberCounts = {
   standard: number;
@@ -138,6 +150,10 @@ export default function HomeScreen() {
   const [adminDashboard, setAdminDashboard] =
     useState<AdminDashboardResponse | null>(null);
   const [memberCounts, setMemberCounts] = useState<MemberCounts | null>(null);
+  const [pendingRequests, setPendingRequests] = useState<number | null>(null);
+  const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const handleNavigate = useCallback(
     (path: string, params?: Record<string, string>) => {
@@ -350,6 +366,53 @@ export default function HomeScreen() {
     };
   }, [isAdmin]);
 
+  // Admin: pedidos de remarcação pendentes e resumo do dia (atualiza ao voltar para a home e ao puxar para atualizar).
+  const loadAdminLive = useCallback(async () => {
+    const [pending, summary] = await Promise.allSettled([
+      listAppointments({ status: "RESCHEDULE_REQUESTED", page: 0, size: 1 }),
+      getTodaySummary(),
+    ]);
+    setPendingRequests(
+      pending.status === "fulfilled"
+        ? (pending.value?.totalElements ?? pending.value?.content?.length ?? 0)
+        : null,
+    );
+    setTodaySummary(summary.status === "fulfilled" ? summary.value : null);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isAdmin === true) {
+        void loadAdminLive();
+      }
+      return () => undefined;
+    }, [isAdmin, loadAdminLive]),
+  );
+
+  // Recarrega só o próximo agendamento (sem spinner) depois de confirmar/cancelar pelo card da home.
+  const refreshNextAppointment = useCallback(async () => {
+    try {
+      const page = await listMyAppointments({ size: 50 });
+      setNextAppointment(findNextAppointment(page.content ?? []) ?? null);
+    } catch {
+      // mantém o que já está na tela
+    }
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      if (isAdmin === true) {
+        await loadAdminLive();
+      } else if (isAdmin === false) {
+        await refreshNextAppointment();
+      }
+      setRefreshKey((k) => k + 1);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isAdmin, loadAdminLive, refreshNextAppointment]);
+
   useFocusEffect(
     useCallback(() => {
       if (isAdmin !== false) {
@@ -463,11 +526,13 @@ export default function HomeScreen() {
   const actionCards = useMemo<ActionCard[]>(() => {
     if (isAdmin) {
       return [
+        { kind: "today", span: 2 },
         { kind: "adminMembersStandard", span: 1 },
         { kind: "adminMembersSelect", span: 1 },
         { kind: "adminAgenda", span: 1 },
         { kind: "adminPayments", span: 1 },
-        { kind: "register", span: 2 },
+        { kind: "adminRequests", span: 1 },
+        { kind: "register", span: 1 },
         { kind: "community", span: 2 },
       ];
     }
@@ -476,20 +541,30 @@ export default function HomeScreen() {
       .filter((action) => action.href !== "/register")
       .map((action) => ({ kind: "link", action, span: 1 }) as const);
 
-    const cards: ActionCard[] = [{ kind: "next", span: 2 }, ...linkActions];
+    const cards: ActionCard[] = [
+      ...(needsConfirmation(nextAppointment) ? [{ kind: "confirm", span: 2 } as const] : []),
+      { kind: "next", span: 2 },
+      ...linkActions,
+    ];
 
     if (profile?.membershipTier === "QUINZE_SELECT") {
       cards.push({ kind: "community", span: 2 });
     }
 
     return cards;
-  }, [isAdmin, profile?.membershipTier]);
+  }, [isAdmin, profile?.membershipTier, nextAppointment]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+        }
+      >
         <FrameComponent1
           userName={displayName}
+          refreshKey={refreshKey}
         />
 
         <View style={styles.quickActionsWrapper}>
@@ -499,6 +574,17 @@ export default function HomeScreen() {
                 styles.quickActionCard,
                 item.span === 2 && styles.quickActionCardFull,
               ];
+
+              if (item.kind === "confirm" && nextAppointment) {
+                return (
+                  <View key="confirm-appointment" style={styles.confirmWrapper}>
+                    <ConfirmAppointmentCard
+                      appointment={nextAppointment}
+                      onChanged={refreshNextAppointment}
+                    />
+                  </View>
+                );
+              }
 
               if (item.kind === "link") {
                 const displayLabel =
@@ -714,6 +800,105 @@ export default function HomeScreen() {
                 );
               }
 
+              if (item.kind === "today") {
+                const summary = todaySummary;
+                const hasSummary = summary !== null;
+                return (
+                  <TouchableOpacity
+                    key="admin-today"
+                    style={styles.todayCard}
+                    activeOpacity={0.9}
+                    onPress={() => handleNavigate("/admin-agenda")}
+                    accessibilityRole="button"
+                    accessibilityLabel="Resumo de hoje. Abrir agenda"
+                  >
+                    <View style={styles.todayHeader}>
+                      <Ionicons name="today-outline" size={20} color="#FFFFFF" />
+                      <Text style={styles.todayTitle}>Hoje</Text>
+                      <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                    </View>
+                    {hasSummary ? (
+                      <View style={styles.todayRow}>
+                        <View style={styles.todayStat}>
+                          <Text style={styles.todayNumber}>{summary.total}</Text>
+                          <Text style={styles.todayLabel}>
+                            {summary.total === 1 ? "atendimento" : "atendimentos"}
+                          </Text>
+                        </View>
+                        <View style={styles.todayStat}>
+                          <Text style={styles.todayNumber}>{summary.toConfirm}</Text>
+                          <Text style={styles.todayLabel}>a confirmar</Text>
+                        </View>
+                        <View style={styles.todayStat}>
+                          <Text style={styles.todayNumber}>
+                            {summary.nextAt
+                              ? new Date(summary.nextAt).toLocaleTimeString("pt-BR", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "--:--"}
+                          </Text>
+                          <Text style={styles.todayLabel}>próximo</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
+                );
+              }
+
+              if (item.kind === "adminRequests") {
+                const hasPending = (pendingRequests ?? 0) > 0;
+                return (
+                  <TouchableOpacity
+                    key="admin-requests"
+                    style={cardStyle}
+                    activeOpacity={0.9}
+                    onPress={() => handleNavigate("/admin-requests")}
+                    accessibilityLabel={
+                      hasPending
+                        ? `Solicitações de remarcação, ${pendingRequests} aguardando`
+                        : "Solicitações de remarcação"
+                    }
+                  >
+                    <View style={styles.quickActionCardContent}>
+                      <View style={styles.cardHeader}>
+                        <View style={styles.cardIconWrapper}>
+                          <Ionicons
+                            name="swap-horizontal-outline"
+                            size={18}
+                            color={Color.piccolo}
+                          />
+                        </View>
+                        {hasPending ? (
+                          <View style={styles.pendingBadge}>
+                            <Text style={styles.pendingBadgeText}>
+                              {pendingRequests}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <View style={styles.cardBody}>
+                        <Text style={styles.cardTitle}>
+                          Solicitações de remarcação
+                        </Text>
+                      </View>
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.cardLink}>
+                          {hasPending ? "Responder" : "Ver pedidos"}
+                        </Text>
+                        <Ionicons
+                          name="arrow-forward"
+                          size={16}
+                          color={Color.piccolo}
+                        />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+
               if (item.kind === "register") {
                 return (
                   <TouchableOpacity
@@ -738,7 +923,7 @@ export default function HomeScreen() {
                         <Text style={styles.cardTitle}>Cadastrar usuário</Text>
                       </View>
                       <View style={styles.cardFooter}>
-                        <Text style={styles.cardLink}>Iniciar cadastro</Text>
+                        <Text style={styles.cardLink}>Cadastrar</Text>
                         <Ionicons
                           name="arrow-forward"
                           size={16}
@@ -804,6 +989,9 @@ export default function HomeScreen() {
                           <Text style={styles.cardDate}>
                             {formatAppointmentDate(nextAppointment.scheduledAt)}
                           </Text>
+                          <Text style={styles.countdown}>
+                            {formatCountdown(nextAppointment.scheduledAt)}
+                          </Text>
                         </View>
                         <View style={styles.cardFooter}>
                           <Text style={styles.cardLink}>Ver detalhes</Text>
@@ -850,22 +1038,6 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <TouchableOpacity
             activeOpacity={0.88}
-            onPress={() => Linking.openURL("https://passosmagicos.org.br/")}
-            accessibilityRole="link"
-            accessibilityLabel="Acessar Passos Magicos"
-          >
-            <Image
-              source={require("../../assets/passos_magicos.jpg")}
-              style={styles.magicStepsImage}
-              contentFit="contain"
-              accessibilityLabel="Passos Magicos"
-            />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <TouchableOpacity
-            activeOpacity={0.88}
             onPress={() => Linking.openURL("https://www.produtos15.com.br/")}
             accessibilityRole="link"
             accessibilityLabel="Acessar Produtos Quinze"
@@ -875,6 +1047,22 @@ export default function HomeScreen() {
               style={styles.magicStepsImage}
               contentFit="contain"
               accessibilityLabel="Produtos Quinze"
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => Linking.openURL("https://passosmagicos.org.br/")}
+            accessibilityRole="link"
+            accessibilityLabel="Acessar Passos Magicos"
+          >
+            <Image
+              source={require("../../assets/passos_magicos.jpg")}
+              style={styles.magicStepsImage}
+              contentFit="contain"
+              accessibilityLabel="Passos Magicos"
             />
           </TouchableOpacity>
         </View>
@@ -926,6 +1114,44 @@ const styles = StyleSheet.create({
     backgroundColor: "#E7F6FF",
     alignItems: "center",
     justifyContent: "center",
+  },
+  todayCard: {
+    width: "100%",
+    gap: 14,
+    padding: 18,
+    borderRadius: Border.br_16,
+    backgroundColor: Color.piccolo,
+  },
+  todayHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  todayTitle: {
+    flex: 1,
+    color: "#FFFFFF",
+    fontSize: FontSize.fs_18,
+    fontFamily: FontFamily.dMSansBold,
+  },
+  todayRow: { flexDirection: "row", justifyContent: "space-between" },
+  todayStat: { flex: 1, gap: 2 },
+  todayNumber: { color: "#FFFFFF", fontSize: FontSize.fs_24, fontFamily: FontFamily.dMSansBold },
+  todayLabel: { color: "#FFFFFF", opacity: 0.85, fontSize: FontSize.fs_12, fontFamily: FontFamily.dMSansRegular },
+  countdown: {
+    marginTop: 2,
+    color: Color.piccolo,
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
+  },
+  pendingBadge: {
+    minWidth: 24,
+    height: 24,
+    paddingHorizontal: 7,
+    borderRadius: 12,
+    backgroundColor: "#E07B00",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pendingBadgeText: {
+    color: "#FFFFFF",
+    fontSize: FontSize.fs_12,
+    fontFamily: FontFamily.dMSansBold,
   },
   statusBadge: {
     paddingHorizontal: StyleVariable.px3,
@@ -1003,6 +1229,9 @@ const styles = StyleSheet.create({
     minHeight: 170,
     borderWidth: 1,
     borderColor: "#E6EAF1",
+  },
+  confirmWrapper: {
+    width: "100%",
   },
   quickActionCardFull: {
     width: "100%",
