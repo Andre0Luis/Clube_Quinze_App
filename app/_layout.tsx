@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import EnvironmentBanner from "../components/EnvironmentBanner";
 import ErrorBoundary from "../components/ErrorBoundary";
-import MenuDeNavegao from "../components/MenuDeNavegao";
+import MenuDeNavegao, { DEFAULT_ITEMS as MENU_ITEMS } from "../components/MenuDeNavegao";
 import { getCurrentUser } from "../services/users";
 
 // Lazy-load expo-notifications so it doesn't crash in Expo Go (SDK 53+)
@@ -124,12 +124,24 @@ export default function RootLayout() {
     if (
       pathname.startsWith("/reserve") ||
       pathname.startsWith("/schedule") ||
-      pathname.startsWith("/appointments")
+      pathname.startsWith("/appointments") ||
+      pathname.startsWith("/admin-agenda")
     ) {
       return "reserve";
     }
     return "home";
   }, [pathname]);
+
+  // Para o admin, a aba do meio abre a Agenda (e não a reserva do cliente): o rótulo acompanha.
+  const menuItems = useMemo(
+    () =>
+      isAdmin
+        ? MENU_ITEMS.map((item) =>
+            item.key === "reserve" ? { ...item, label: "Agenda" } : item,
+          )
+        : MENU_ITEMS,
+    [isAdmin],
+  );
 
   const showNav = useMemo(() => {
     const firstSegment = segments[0];
@@ -181,7 +193,11 @@ export default function RootLayout() {
           <View
             style={[styles.navWrapper, { paddingBottom: insets.bottom + 16 }]}
           >
-            <MenuDeNavegao activeKey={activeKey} onSelectTab={handleSelectTab} />
+            <MenuDeNavegao
+              activeKey={activeKey}
+              items={menuItems}
+              onSelectTab={handleSelectTab}
+            />
           </View>
         ) : null}
       </View>

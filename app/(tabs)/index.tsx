@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -32,7 +33,13 @@ import {
 import { getStatusMeta, isActiveStatus } from "../../constants/appointmentStatus";
 import { BOOKING_ENABLED } from "../../constants/features";
 import { needsConfirmation } from "../../utils/confirmation";
-import { listAppointments, listMyAppointments } from "../../services/appointments";
+import { formatCountdown } from "../../utils/time";
+import {
+  getTodaySummary,
+  listAppointments,
+  listMyAppointments,
+  type TodaySummary,
+} from "../../services/appointments";
 import { logout as logoutService } from "../../services/auth";
 import { getAdminDashboardMetrics } from "../../services/dashboard";
 import { isMockEnabled } from "../../services/mock/settings";
@@ -56,6 +63,7 @@ type QuickAction = {
 };
 
 type ActionCard =
+  | { kind: "today"; span: 2 }
   | { kind: "confirm"; span: 2 }
   | { kind: "next"; span: 2 }
   | { kind: "link"; action: QuickAction; span: 1 }
@@ -143,6 +151,9 @@ export default function HomeScreen() {
     useState<AdminDashboardResponse | null>(null);
   const [memberCounts, setMemberCounts] = useState<MemberCounts | null>(null);
   const [pendingRequests, setPendingRequests] = useState<number | null>(null);
+  const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const handleNavigate = useCallback(
     (path: string, params?: Record<string, string>) => {
@@ -355,24 +366,27 @@ export default function HomeScreen() {
     };
   }, [isAdmin]);
 
-  // Admin: quantos pedidos de remarcação aguardam resposta (atualiza ao voltar para a home).
+  // Admin: pedidos de remarcação pendentes e resumo do dia (atualiza ao voltar para a home e ao puxar para atualizar).
+  const loadAdminLive = useCallback(async () => {
+    const [pending, summary] = await Promise.allSettled([
+      listAppointments({ status: "RESCHEDULE_REQUESTED", page: 0, size: 1 }),
+      getTodaySummary(),
+    ]);
+    setPendingRequests(
+      pending.status === "fulfilled"
+        ? (pending.value?.totalElements ?? pending.value?.content?.length ?? 0)
+        : null,
+    );
+    setTodaySummary(summary.status === "fulfilled" ? summary.value : null);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      if (isAdmin !== true) {
-        return () => undefined;
+      if (isAdmin === true) {
+        void loadAdminLive();
       }
-      let active = true;
-      listAppointments({ status: "RESCHEDULE_REQUESTED", page: 0, size: 1 })
-        .then((page) => {
-          if (active) {
-            setPendingRequests(page?.totalElements ?? page?.content?.length ?? 0);
-          }
-        })
-        .catch(() => active && setPendingRequests(null));
-      return () => {
-        active = false;
-      };
-    }, [isAdmin]),
+      return () => undefined;
+    }, [isAdmin, loadAdminLive]),
   );
 
   // Recarrega só o próximo agendamento (sem spinner) depois de confirmar/cancelar pelo card da home.
@@ -384,6 +398,20 @@ export default function HomeScreen() {
       // mantém o que já está na tela
     }
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      if (isAdmin === true) {
+        await loadAdminLive();
+      } else if (isAdmin === false) {
+        await refreshNextAppointment();
+      }
+      setRefreshKey((k) => k + 1);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isAdmin, loadAdminLive, refreshNextAppointment]);
 
   useFocusEffect(
     useCallback(() => {
@@ -498,6 +526,7 @@ export default function HomeScreen() {
   const actionCards = useMemo<ActionCard[]>(() => {
     if (isAdmin) {
       return [
+        { kind: "today", span: 2 },
         { kind: "adminMembersStandard", span: 1 },
         { kind: "adminMembersSelect", span: 1 },
         { kind: "adminAgenda", span: 1 },
@@ -527,9 +556,15 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+        }
+      >
         <FrameComponent1
           userName={displayName}
+          refreshKey={refreshKey}
         />
 
         <View style={styles.quickActionsWrapper}>
@@ -765,6 +800,54 @@ export default function HomeScreen() {
                 );
               }
 
+              if (item.kind === "today") {
+                const summary = todaySummary;
+                const hasSummary = summary !== null;
+                return (
+                  <TouchableOpacity
+                    key="admin-today"
+                    style={styles.todayCard}
+                    activeOpacity={0.9}
+                    onPress={() => handleNavigate("/admin-agenda")}
+                    accessibilityRole="button"
+                    accessibilityLabel="Resumo de hoje. Abrir agenda"
+                  >
+                    <View style={styles.todayHeader}>
+                      <Ionicons name="today-outline" size={20} color="#FFFFFF" />
+                      <Text style={styles.todayTitle}>Hoje</Text>
+                      <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                    </View>
+                    {hasSummary ? (
+                      <View style={styles.todayRow}>
+                        <View style={styles.todayStat}>
+                          <Text style={styles.todayNumber}>{summary.total}</Text>
+                          <Text style={styles.todayLabel}>
+                            {summary.total === 1 ? "atendimento" : "atendimentos"}
+                          </Text>
+                        </View>
+                        <View style={styles.todayStat}>
+                          <Text style={styles.todayNumber}>{summary.toConfirm}</Text>
+                          <Text style={styles.todayLabel}>a confirmar</Text>
+                        </View>
+                        <View style={styles.todayStat}>
+                          <Text style={styles.todayNumber}>
+                            {summary.nextAt
+                              ? new Date(summary.nextAt).toLocaleTimeString("pt-BR", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "--:--"}
+                          </Text>
+                          <Text style={styles.todayLabel}>próximo</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
+                );
+              }
+
               if (item.kind === "adminRequests") {
                 const hasPending = (pendingRequests ?? 0) > 0;
                 return (
@@ -906,6 +989,9 @@ export default function HomeScreen() {
                           <Text style={styles.cardDate}>
                             {formatAppointmentDate(nextAppointment.scheduledAt)}
                           </Text>
+                          <Text style={styles.countdown}>
+                            {formatCountdown(nextAppointment.scheduledAt)}
+                          </Text>
                         </View>
                         <View style={styles.cardFooter}>
                           <Text style={styles.cardLink}>Ver detalhes</Text>
@@ -1028,6 +1114,30 @@ const styles = StyleSheet.create({
     backgroundColor: "#E7F6FF",
     alignItems: "center",
     justifyContent: "center",
+  },
+  todayCard: {
+    width: "100%",
+    gap: 14,
+    padding: 18,
+    borderRadius: Border.br_16,
+    backgroundColor: Color.piccolo,
+  },
+  todayHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  todayTitle: {
+    flex: 1,
+    color: "#FFFFFF",
+    fontSize: FontSize.fs_18,
+    fontFamily: FontFamily.dMSansBold,
+  },
+  todayRow: { flexDirection: "row", justifyContent: "space-between" },
+  todayStat: { flex: 1, gap: 2 },
+  todayNumber: { color: "#FFFFFF", fontSize: FontSize.fs_24, fontFamily: FontFamily.dMSansBold },
+  todayLabel: { color: "#FFFFFF", opacity: 0.85, fontSize: FontSize.fs_12, fontFamily: FontFamily.dMSansRegular },
+  countdown: {
+    marginTop: 2,
+    color: Color.piccolo,
+    fontSize: FontSize.fs_14,
+    fontFamily: FontFamily.dMSansBold,
   },
   pendingBadge: {
     minWidth: 24,

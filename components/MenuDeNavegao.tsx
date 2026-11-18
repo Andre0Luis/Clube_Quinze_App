@@ -23,7 +23,7 @@ export type MenuItem = {
   icon: keyof typeof Ionicons.glyphMap;
 };
 
-const DEFAULT_ITEMS: MenuItem[] = [
+export const DEFAULT_ITEMS: MenuItem[] = [
   { key: "home", label: "Home", icon: "home-outline" },
   { key: "reserve", label: "Reserva", icon: "calendar-outline" },
   { key: "community", label: "Comunidade", icon: "people-outline" },

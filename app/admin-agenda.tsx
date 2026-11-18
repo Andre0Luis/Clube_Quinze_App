@@ -144,11 +144,21 @@ const getRoleLabel = (info?: ClientInfo) => {
   return "";
 };
 
+type StatusFilter = "ALL" | "SCHEDULED" | "CONFIRMED" | "RESCHEDULE_REQUESTED";
+
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: "ALL", label: "Todos" },
+  { key: "SCHEDULED", label: "A confirmar" },
+  { key: "CONFIRMED", label: "Confirmados" },
+  { key: "RESCHEDULE_REQUESTED", label: "Remarcação" },
+];
+
 const AdminAgendaScreen = () => {
   const router = useRouter();
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [anchorMonth, setAnchorMonth] = useState<Date>(new Date());
   const [clientNames, setClientNames] = useState<Record<number, string>>({});
   const [clientInfo, setClientInfo] = useState<Record<number, ClientInfo>>({});
@@ -263,6 +273,7 @@ const AdminAgendaScreen = () => {
   const appointmentsForDay = useMemo(() => {
     return appointments
       .filter((item) => isActiveStatus(item.status))
+      .filter((item) => statusFilter === "ALL" || item.status === statusFilter)
       .filter((item) => {
         const when = new Date(item.scheduledAt);
         return Number.isNaN(when.getTime())
@@ -273,7 +284,7 @@ const AdminAgendaScreen = () => {
         (a, b) =>
           new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
       );
-  }, [appointments, selectedDate]);
+  }, [appointments, selectedDate, statusFilter]);
 
   const monthDays = useMemo(() => buildMonthDays(anchorMonth), [anchorMonth]);
 
@@ -479,7 +490,7 @@ const AdminAgendaScreen = () => {
               <>
                 <Text
                   style={styles.nextClient}
-                >{`${clientLabel(nextAppointment, clientNames)} e o seu próximo cliente`}</Text>
+                >{`${clientLabel(nextAppointment, clientNames)} é o seu próximo cliente`}</Text>
                 {nextClientRole ? (
                   <Text style={styles.nextRole}>{nextClientRole}</Text>
                 ) : null}
@@ -558,6 +569,29 @@ const AdminAgendaScreen = () => {
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Horarios</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            {STATUS_FILTERS.map((filter) => {
+              const active = statusFilter === filter.key;
+              return (
+                <TouchableOpacity
+                  key={filter.key}
+                  onPress={() => setStatusFilter(filter.key)}
+                  style={[styles.filterChip, active && styles.filterChipActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={`Filtrar: ${filter.label}`}
+                >
+                  <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
           {isLoading ? (
             <View style={styles.listEmpty}>
               <ActivityIndicator size="small" color={Color.piccolo} />
@@ -565,7 +599,9 @@ const AdminAgendaScreen = () => {
           ) : appointmentsForDay.length === 0 ? (
             <View style={styles.listEmpty}>
               <Text style={styles.emptyText}>
-                Nenhum horario para esta data.
+                {statusFilter === "ALL"
+                  ? "Nenhum horario para esta data."
+                  : "Nenhum horario com esse filtro nesta data."}
               </Text>
             </View>
           ) : (
@@ -588,6 +624,18 @@ const AdminAgendaScreen = () => {
 export default AdminAgendaScreen;
 
 const styles = StyleSheet.create({
+  filterRow: { gap: 8, paddingBottom: 4 },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Color.mainBeerus,
+    backgroundColor: Color.mainGoten,
+  },
+  filterChipActive: { backgroundColor: Color.piccolo, borderColor: Color.piccolo },
+  filterChipText: { fontSize: FontSize.fs_14, color: Color.mainBulma, fontFamily: FontFamily.dMSansRegular },
+  filterChipTextActive: { color: Color.mainGoten, fontFamily: FontFamily.dMSansBold },
   safeArea: {
     flex: 1,
     backgroundColor: Color.mainGohan,

@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Linking,
     ScrollView,
     StyleSheet,
     Text,
@@ -32,6 +33,7 @@ import {
 } from "../../../services/appointments";
 import { getCurrentUser, getUserById } from "../../../services/users";
 import type { AppointmentResponse } from "../../../types/api";
+import { whatsappNumber } from "../../../utils/time";
 
 const getStatusLabel = (status?: string) => {
   const meta = getStatusMeta(status);
@@ -110,6 +112,7 @@ export default function AppointmentDetailsScreen() {
   // O admin também é reconhecido pelo perfil (não depende só do parâmetro da rota, que as notificações nem sempre mandam).
   const [viewer, setViewer] = useState<{ id: number; isAdmin: boolean } | null>(null);
   const [clientName, setClientName] = useState<string | null>(null);
+  const [clientPhone, setClientPhone] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const isAdminContext = allowAdminParam || viewer?.isAdmin === true;
   const [isLoading, setIsLoading] = useState(true);
@@ -202,7 +205,12 @@ export default function AppointmentDetailsScreen() {
     }
     let active = true;
     getUserById(clientId)
-      .then((user) => active && setClientName(user.name))
+      .then((user) => {
+        if (active) {
+          setClientName(user.name);
+          setClientPhone(user.phone ?? null);
+        }
+      })
       .catch(() => active && setClientName("Cliente"));
     return () => {
       active = false;
@@ -294,6 +302,18 @@ export default function AppointmentDetailsScreen() {
     }
   };
 
+  // Sem histórico (ex.: abriu pela notificação com o app fechado), "voltar" leva para a home.
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/");
+    }
+  };
+
+  const phoneDigits = clientPhone?.replace(/\D/g, "") ?? "";
+  const waNumber = whatsappNumber(clientPhone);
+
   const resetCancelConfirmation = () => {
     setConfirmCancel(false);
     setCancelError(null);
@@ -303,9 +323,11 @@ export default function AppointmentDetailsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.85}
           style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
         >
           <Ionicons name="arrow-back" size={18} color={Color.piccolo} />
         </TouchableOpacity>
@@ -378,6 +400,35 @@ export default function AppointmentDetailsScreen() {
             <View style={styles.successCard}>
               <Ionicons name="checkmark-circle" size={20} color="#2E9E5B" />
               <Text style={styles.successText}>{notice}</Text>
+            </View>
+          ) : null}
+
+          {adminMode && (waNumber || phoneDigits.length >= 8) ? (
+            <View style={styles.contactRow}>
+              {waNumber ? (
+                <TouchableOpacity
+                  style={styles.contactBtn}
+                  onPress={() => Linking.openURL(`https://wa.me/${waNumber}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Falar com o cliente no WhatsApp"
+                  testID="contact-whatsapp"
+                >
+                  <Ionicons name="logo-whatsapp" size={18} color="#1F9D55" />
+                  <Text style={styles.contactText}>WhatsApp</Text>
+                </TouchableOpacity>
+              ) : null}
+              {phoneDigits.length >= 8 ? (
+                <TouchableOpacity
+                  style={styles.contactBtn}
+                  onPress={() => Linking.openURL(`tel:${phoneDigits}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ligar para o cliente"
+                  testID="contact-call"
+                >
+                  <Ionicons name="call-outline" size={18} color={Color.piccolo} />
+                  <Text style={styles.contactText}>Ligar</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           ) : null}
 
@@ -539,6 +590,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF6E8",
     marginTop: 12,
   },
+  contactRow: { flexDirection: "row", gap: 10 },
+  contactBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    minHeight: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Color.mainBeerus,
+    backgroundColor: Color.mainGoten,
+  },
+  contactText: { fontSize: FontSize.fs_14, fontFamily: FontFamily.dMSansBold, color: Color.mainBulma },
   successCard: {
     flexDirection: "row",
     alignItems: "flex-start",

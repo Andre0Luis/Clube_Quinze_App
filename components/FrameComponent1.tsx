@@ -18,10 +18,13 @@ import { getUnreadCount } from "../services/notifications";
 
 type FrameComponent1Props = {
   userName?: string;
+  /** Muda quando a home é atualizada (puxar para atualizar): recarrega o selo de não lidas. */
+  refreshKey?: number;
 };
 
 const FrameComponent1 = ({
   userName = "João",
+  refreshKey = 0,
 }: FrameComponent1Props) => {
   const router = useRouter();
   const [unread, setUnread] = useState(0);
@@ -29,6 +32,8 @@ const FrameComponent1 = ({
   // Recarrega ao voltar para a home (ex.: depois de ler as notificações o selo some).
   useFocusEffect(
     useCallback(() => {
+      // refreshKey só força a releitura quando a home é atualizada (puxar para atualizar).
+      void refreshKey;
       let active = true;
       getUnreadCount()
         .then((count) => active && setUnread(count))
@@ -36,7 +41,7 @@ const FrameComponent1 = ({
       return () => {
         active = false;
       };
-    }, []),
+    }, [refreshKey]),
   );
 
   return (
